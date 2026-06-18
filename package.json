@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Nexlogs - Production Ready Social Media Marketplace (Supabase Edition)",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "npm run dev --workspace=client",
     "build": "npm run build --workspace=client",
