@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #1a1a1a;
+  --color-card: #ffffff;
+  --color-card-foreground: #1a1a1a;
+  --color-primary: #f26522;
+  --color-primary-foreground: #ffffff;
+  --color-primary-dark: #d94e0f;
+  --color-secondary: #fff3eb;
+  --color-secondary-foreground: #c44d10;
+  --color-muted: #f8f9fa;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #f26522;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #ef4444;
+  --color-border: #e5e7eb;
+  --color-input: #e5e7eb;
+  --color-ring: #f26522;
+  --color-footer: #f8f9fa;
+  --color-dm-bg: #0b0f14;
+  --color-dm-surface: #151c28;
+  --color-dm-input: #0f1419;
+  --color-dm-border: #243044;
+  --color-dm-input-border: #2a3548;
+  --color-dm-product-row: #3f4753;
+  --color-dm-product-row-hover: #6d7380;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+}
+
+.dark {
+  --color-background: #0b0f14;
+  --color-foreground: #f1f5f9;
+  --color-card: #151c28;
+  --color-card-foreground: #f1f5f9;
+  --color-muted: #151c28;
+  --color-muted-foreground: #94a3b8;
+  --color-secondary: #2d1a0f;
+  --color-secondary-foreground: #fdba74;
+  --color-border: #243044;
+  --color-input: #0f1419;
+  --color-footer: #0b0f14;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #0f1419;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+.btn-orange {
+  background-color: #f26522;
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.btn-orange:hover {
+  background-color: #d94e0f;
+}
+
+.btn-green {
+  background-color: #1b5e20;
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.btn-green:hover {
+  background-color: #145016;
+}
+
+/* Page content — full width with side padding, no center column */
+.page-content {
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-content {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.logo-text {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.logo-affordable {
+  color: #f26522;
+}
+
+.logo-logs {
+  color: #c44d10;
+}
+
+.admin-shell {
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 30%),
+    linear-gradient(180deg, #040b16 0%, #07111f 100%);
+  color: #e2e8f0;
+}
+
+.admin-panel {
+  border: 1px solid #18263b;
+  background: rgba(10, 22, 40, 0.92);
+  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.32);
+}
+
+.admin-panel-soft {
+  border: 1px solid #18263b;
+  background: rgba(8, 18, 34, 0.86);
+}
+
+.admin-heading {
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+  letter-spacing: -0.02em;
+}
+
+.admin-muted {
+  color: #94a3b8;
+}
+
+.admin-input,
+.admin-select,
+.admin-textarea {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid #22324a;
+  background: #06101d;
+  color: #e2e8f0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-input,
+.admin-select {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+}
+
+.admin-textarea {
+  min-height: 7.5rem;
+  padding: 0.875rem;
+  resize: vertical;
+}
+
+.admin-input::placeholder,
+.admin-textarea::placeholder {
+  color: #64748b;
+}
+
+.admin-input:focus,
+.admin-select:focus,
+.admin-textarea:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.7);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}

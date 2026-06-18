@@ -1,0 +1,4 @@
+CREATE OR REPLACE FUNCTION generate_referral_code()
+RETURNS TEXT AS $$
+  SELECT UPPER(SUBSTRING(REPLACE(uuid_generate_v4()::TEXT, '-', '') FROM 1 FOR 8));
+$$ LANGUAGE sql STABLE;

@@ -1,0 +1,287 @@
+import { supabase } from '@/lib/supabase';
+import { isMockMode } from '@/lib/mock-mode';
+import { MOCK_CATEGORIES } from '@/mocks/demo-data';
+import { mockAdminService } from '@/mocks/mock-admin';
+import type { Wishlist, Notification, Category, BlogPost, Faq, Testimonial, Profile, AdminStats, SupportTicket, ActivityLog } from '@/types';
+
+export const wishlistService = {
+  async getWishlist(userId: string): Promise<Wishlist[]> {
+    const { data, error } = await supabase
+      .from('wishlists')
+      .select('*, product:products(*, product_images(*), category:categories(*))')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as Wishlist[];
+  },
+
+  async add(userId: string, productId: string) {
+    const { error } = await supabase.from('wishlists').insert({ user_id: userId, product_id: productId } as never);
+    if (error) throw error;
+  },
+
+  async remove(userId: string, productId: string) {
+    const { error } = await supabase.from('wishlists').delete().eq('user_id', userId).eq('product_id', productId);
+    if (error) throw error;
+  },
+
+  async isInWishlist(userId: string, productId: string): Promise<boolean> {
+    const { data } = await supabase
+      .from('wishlists')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('product_id', productId)
+      .single();
+    return !!data;
+  },
+};
+
+export const notificationService = {
+  async getNotifications(userId: string): Promise<Notification[]> {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data || []) as Notification[];
+  },
+
+  async markAsRead(id: string) {
+    const { error } = await supabase.from('notifications').update({ read: true } as never).eq('id', id);
+    if (error) throw error;
+  },
+
+  async markAllAsRead(userId: string) {
+    const { error } = await supabase.from('notifications').update({ read: true } as never).eq('user_id', userId);
+    if (error) throw error;
+  },
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('read', false);
+    if (error) return 0;
+    return count || 0;
+  },
+};
+
+export const activityLogService = {
+  async create(log: Omit<ActivityLog, 'id' | 'created_at'> & Partial<Pick<ActivityLog, 'id' | 'created_at'>>) {
+    if (isMockMode()) return mockAdminService.createActivityLog(log);
+    const { error } = await supabase.from('activity_logs').insert({
+      user_id: log.user_id,
+      action: log.action,
+      entity: log.entity,
+      entity_id: log.entity_id,
+      metadata: log.metadata,
+    } as never);
+    if (error) throw error;
+  },
+
+  async getAllAdmin(): Promise<ActivityLog[]> {
+    if (isMockMode()) return mockAdminService.getActivityLogs();
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select('*, profile:profiles(full_name, email)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return (data || []) as ActivityLog[];
+  },
+};
+
+export const categoryService = {
+  async getAll(): Promise<Category[]> {
+    if (isMockMode()) return MOCK_CATEGORIES;
+    const { data, error } = await supabase.from('categories').select('*').eq('is_active', true).order('sort_order');
+    if (error) throw error;
+    return (data || []) as Category[];
+  },
+
+  async getAllAdmin(): Promise<Category[]> {
+    if (isMockMode()) return mockAdminService.getCategories();
+    const { data, error } = await supabase.from('categories').select('*').order('sort_order');
+    if (error) throw error;
+    return (data || []) as Category[];
+  },
+
+  async create(category: Partial<Category>) {
+    if (isMockMode()) return mockAdminService.createCategory(category);
+    const { data, error } = await supabase.from('categories').insert(category as never).select().single();
+    if (error) throw error;
+    return data as Category;
+  },
+
+  async update(id: string, updates: Partial<Category>) {
+    if (isMockMode()) return mockAdminService.updateCategory(id, updates);
+    const { data, error } = await supabase.from('categories').update(updates as never).eq('id', id).select().single();
+    if (error) throw error;
+    return data as Category;
+  },
+
+  async delete(id: string) {
+    if (isMockMode()) return mockAdminService.deleteCategory(id);
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+export const blogService = {
+  async getPublished(): Promise<BlogPost[]> {
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select('*, author:profiles(full_name, avatar_url)')
+      .eq('published', true)
+      .order('published_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as BlogPost[];
+  },
+
+  async getBySlug(slug: string): Promise<BlogPost | null> {
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select('*, author:profiles(full_name, avatar_url)')
+      .eq('slug', slug)
+      .eq('published', true)
+      .single();
+    if (error) return null;
+    return data as BlogPost;
+  },
+
+  async getAllAdmin(): Promise<BlogPost[]> {
+    if (isMockMode()) return mockAdminService.getBlogPosts();
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select('*, author:profiles(full_name)')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as BlogPost[];
+  },
+
+  async create(post: Partial<BlogPost>) {
+    const { data, error } = await supabase.from('blog_posts').insert(post as never).select().single();
+    if (error) throw error;
+    return data as BlogPost;
+  },
+
+  async update(id: string, updates: Partial<BlogPost>) {
+    const { data, error } = await supabase.from('blog_posts').update(updates as never).eq('id', id).select().single();
+    if (error) throw error;
+    return data as BlogPost;
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase.from('blog_posts').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+export const contentService = {
+  async getFaqs(): Promise<Faq[]> {
+    const { data, error } = await supabase.from('faqs').select('*').eq('is_active', true).order('sort_order');
+    if (error) throw error;
+    return (data || []) as Faq[];
+  },
+
+  async getTestimonials(): Promise<Testimonial[]> {
+    const { data, error } = await supabase.from('testimonials').select('*').eq('is_active', true).order('sort_order');
+    if (error) throw error;
+    return (data || []) as Testimonial[];
+  },
+};
+
+export const adminService = {
+  async getStats(): Promise<AdminStats> {
+    if (isMockMode()) return mockAdminService.getStats();
+    const [usersRes, ordersRes, productsRes, recentOrdersRes, ticketsRes] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('orders').select('total_amount'),
+      supabase.from('products').select('*', { count: 'exact', head: true }),
+      supabase
+        .from('orders')
+        .select('*, order_items(*, product:products(title)), profile:profiles(full_name, email)')
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('support_tickets')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['open', 'in_progress']),
+    ]);
+
+    const orders = (ordersRes.data || []) as { total_amount: number }[];
+    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+
+    return {
+      totalUsers: usersRes.count || 0,
+      totalOrders: orders.length,
+      totalRevenue,
+      totalProducts: productsRes.count || 0,
+      openTickets: ticketsRes.count || 0,
+      recentOrders: (recentOrdersRes.data || []) as AdminStats['recentOrders'],
+    };
+  },
+
+  async getUsers(): Promise<Profile[]> {
+    if (isMockMode()) return mockAdminService.getUsers();
+    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as Profile[];
+  },
+
+  async updateUser(id: string, updates: Partial<Profile>) {
+    if (isMockMode()) return mockAdminService.updateUser(id, updates);
+    const { data, error } = await supabase.from('profiles').update(updates as never).eq('id', id).select().single();
+    if (error) throw error;
+    return data as Profile;
+  },
+
+  async deleteUser(id: string) {
+    if (isMockMode()) return mockAdminService.deleteUser(id);
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+export const supportTicketService = {
+  async create(ticket: Partial<SupportTicket>) {
+    if (isMockMode()) return mockAdminService.createSupportTicket(ticket);
+    const { data, error } = await supabase.from('support_tickets').insert(ticket as never).select().single();
+    if (error) throw error;
+    return data as SupportTicket;
+  },
+
+  async getAllAdmin() {
+    if (isMockMode()) return mockAdminService.getSupportTickets();
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as SupportTicket[];
+  },
+
+  async update(id: string, updates: Partial<SupportTicket>) {
+    if (isMockMode()) return mockAdminService.updateSupportTicket(id, updates);
+    const { data, error } = await supabase.from('support_tickets').update(updates as never).eq('id', id).select().single();
+    if (error) throw error;
+    return data as SupportTicket;
+  },
+};
+
+export const storageService = {
+  async uploadFile(bucket: string, path: string, file: File): Promise<string> {
+    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  async deleteFile(bucket: string, path: string) {
+    const { error } = await supabase.storage.from(bucket).remove([path]);
+    if (error) throw error;
+  },
+};
