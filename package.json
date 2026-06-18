@@ -7,6 +7,7 @@
     "node": "22.x"
   },
   "scripts": {
+    "postinstall": "node scripts/ensure-native-bindings.mjs",
     "dev": "npm run dev --workspace=client",
     "build": "npm run build --workspace=client",
     "preview": "npm run preview --workspace=client",
