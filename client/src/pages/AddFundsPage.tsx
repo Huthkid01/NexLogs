@@ -165,14 +165,14 @@ export default function AddFundsPage() {
                 </button>
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
                 <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr]">
-                  <div className="bg-[#1a2233] p-5 flex flex-col justify-between min-h-[300px]">
+                  <div className="flex min-h-[180px] flex-col justify-between bg-[#1a2233] p-5 sm:min-h-[300px]">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-[#f26522] mb-5">
                         Base Currency
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <span className="text-[32px] font-bold text-white leading-none shrink-0">$</span>
                         <input
                           type="text"
@@ -181,17 +181,17 @@ export default function AddFundsPage() {
                           onChange={(e) => handleBaseUsdChange(e.target.value)}
                           onBlur={handleBaseUsdBlur}
                           aria-label="USD amount"
-                          className="w-[88px] text-2xl font-bold leading-none bg-white text-gray-900 rounded-md border-2 border-[#f26522] px-2.5 py-1.5 focus:outline-none focus:ring-0"
+                          className="min-w-0 flex-1 rounded-md border border-[#2f3a53] bg-[#253047] px-3 py-2 text-2xl font-bold leading-none text-white focus:outline-none focus:ring-0 focus:border-[#f26522]"
                         />
                       </div>
-                      <p className="text-sm text-gray-400 mt-3">United States Dollar</p>
+                      <p className="mt-3 text-sm text-gray-400">United States Dollar</p>
                     </div>
-                    <span className="inline-flex w-fit mt-8 px-2.5 py-1 rounded-md bg-[#243044] text-xs font-medium text-gray-300">
+                    <span className="mt-6 inline-flex w-fit rounded-md bg-[#243044] px-2.5 py-1 text-xs font-medium text-gray-300 sm:mt-8">
                       USD
                     </span>
                   </div>
 
-                  <div className="p-4 space-y-3 bg-white">
+                  <div className="space-y-3 bg-white p-4">
                     {ratesLoading ? (
                       Array.from({ length: 6 }).map((_, index) => (
                         <Skeleton key={index} className="h-[62px] w-full rounded-lg" />
@@ -200,7 +200,7 @@ export default function AddFundsPage() {
                       convertedRates.map((item) => (
                         <div
                           key={item.code}
-                          className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3.5"
+                          className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                         >
                           <div>
                             <p className="text-sm font-bold text-gray-900">{item.code}</p>
