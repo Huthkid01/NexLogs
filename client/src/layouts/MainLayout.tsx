@@ -13,7 +13,9 @@ export function MainLayout() {
   const { user } = useAuth();
   const { content } = useSiteContent();
   const location = useLocation();
-  const hideAuthLink = ['/login', '/register'].includes(location.pathname);
+  const authPages = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const hideAuthLink = authPages.includes(location.pathname);
+  const hideFloatingActions = authPages.includes(location.pathname);
   const socialIcons = [Send, PlayCircle, Link2];
   const trustIcons = [CheckCircle, Lock, Clock];
 
@@ -119,8 +121,7 @@ export function MainLayout() {
           </div>
         </footer>
       </div>
-
-      <FloatingActions />
+      {!hideFloatingActions ? <FloatingActions /> : null}
     </div>
   );
 }
