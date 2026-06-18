@@ -9,7 +9,7 @@
   "scripts": {
     "postinstall": "node scripts/ensure-native-bindings.mjs",
     "dev": "npm run dev --workspace=client",
-    "build": "npm run build --workspace=client",
+    "build": "npm run build --workspace=client && node scripts/sync-vercel-dist.mjs",
     "preview": "npm run preview --workspace=client",
     "lint": "npm run lint --workspace=client"
   },

@@ -3,7 +3,7 @@
   "framework": "vite",
   "installCommand": "npm install --include=optional",
   "buildCommand": "npm run build",
-  "outputDirectory": "client/dist",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
