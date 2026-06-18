@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { APP_NAME } from '@/constants';
+import { getAdminLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { Input } from '@/components/ui/input';
 import { openErrorReport } from '@/lib/error-report';
 import { DEMO_ADMIN_LOGIN, isMockMode } from '@/lib/mock-mode';
@@ -75,14 +76,17 @@ export default function AdminLoginPage() {
       const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
       navigate(from?.startsWith('/admin') ? from : '/admin', { replace: true });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Admin login failed';
-      toast.error('We could not sign you in to the admin dashboard.');
-      openErrorReport({
-        title: 'Error while signing in',
-        message: 'We could not sign you in to the admin dashboard.',
-        source: 'login',
-        errorMessage: message,
-      });
+      const message = normalizeAuthErrorMessage(err);
+      toast.error(getAdminLoginMessage(message));
+
+      if (!isExpectedUserAuthError(message)) {
+        openErrorReport({
+          title: 'Error while signing in',
+          message: 'We could not sign you in to the admin dashboard.',
+          source: 'login',
+          errorMessage: message,
+        });
+      }
     } finally {
       setLoading(false);
     }

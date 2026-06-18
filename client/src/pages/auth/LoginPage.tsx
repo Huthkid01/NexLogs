@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { authService } from '@/services/auth.service';
 import { APP_NAME } from '@/constants';
 import { isMockMode, DEMO_LOGIN, DEMO_ADMIN_LOGIN } from '@/lib/mock-mode';
+import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 
 const loginSchema = z.object({
@@ -36,14 +37,17 @@ export default function LoginPage() {
       const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
       navigate(from && from !== '/login' ? from : '/', { replace: true });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Login failed';
-      toast.error('We could not sign you in.');
-      openErrorReport({
-        title: 'Error while signing in',
-        message: 'We could not sign you in.',
-        source: 'login',
-        errorMessage: message,
-      });
+      const message = normalizeAuthErrorMessage(err);
+      toast.error(getUserLoginMessage(message));
+
+      if (!isExpectedUserAuthError(message)) {
+        openErrorReport({
+          title: 'Error while signing in',
+          message: 'We could not sign you in.',
+          source: 'login',
+          errorMessage: message,
+        });
+      }
     } finally {
       setLoading(false);
     }
