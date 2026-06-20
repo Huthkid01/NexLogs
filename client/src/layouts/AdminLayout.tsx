@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, Mail, FileText, RotateCcw, Images, ArrowUpDown,
+  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, Mail, FileText, RotateCcw, Images, ArrowUpDown,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,7 +41,7 @@ export function AdminLayout() {
   const [hoverTooltip, setHoverTooltip] = useState<{ label: string; top: number; showStateIcon?: boolean } | null>(null);
   const [contentFlyoutTop, setContentFlyoutTop] = useState<number | null>(null);
   const { profile, signOut } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isDark = theme === 'dark';
   const contentMenuActive = location.pathname.startsWith('/admin/content');
@@ -359,6 +359,26 @@ export function AdminLayout() {
           </button>
           <h1 className={cn('admin-heading text-xl font-semibold', isDark ? 'text-slate-50' : 'text-slate-900')}>Admin Dashboard</h1>
           <div className="flex-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              isDark ? 'border-[#22324a] bg-[#0a1628] text-slate-100 hover:bg-[#10213a]' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+            )}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="h-4 w-4" />
+                Light Mode
+              </>
+            ) : (
+              <>
+                <Moon className="h-4 w-4" />
+                Dark Mode
+              </>
+            )}
+          </Button>
         </header>
         <main className="flex-1 bg-transparent p-4 lg:p-8">
           <Outlet />
