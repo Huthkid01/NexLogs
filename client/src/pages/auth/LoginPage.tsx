@@ -56,8 +56,8 @@ export default function LoginPage() {
     try {
       await authService.signInWithGoogle();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Google login failed';
-      toast.error('We could not sign you in with Google.');
+      const message = normalizeAuthErrorMessage(err);
+      toast.error(message.includes('demo mode') ? 'Google sign-in requires Supabase env vars on this deployment.' : 'We could not sign you in with Google.');
       openErrorReport({
         title: 'Error while signing in',
         message: 'We could not sign you in with Google.',

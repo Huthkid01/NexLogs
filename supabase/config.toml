@@ -1,0 +1,2 @@
+[functions.flutterwave-verify]
+verify_jwt = true

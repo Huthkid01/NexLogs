@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpDown, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
+import { isFlutterwaveConfigured, isFlutterwaveTestMode } from '@/lib/flutterwave-config';
 import { isMockMode } from '@/lib/mock-mode';
-import { supabase } from '@/lib/supabase';
+import { startFlutterwaveDeposit } from '@/services/payment.service';
 import {
   convertUsdToCurrency,
   DISPLAY_RATE_CURRENCIES,
@@ -44,7 +45,8 @@ function formatRate(value: number) {
 }
 
 export default function AddFundsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]['code']>('NGN');
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -121,6 +123,11 @@ export default function AddFundsPage() {
       return;
     }
 
+    if (paymentMethod === 'crypto') {
+      toast.info('Cryptocurrency deposits are not available yet');
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (isMockMode()) {
@@ -128,16 +135,36 @@ export default function AddFundsPage() {
         return;
       }
 
-      const { error } = await supabase.rpc('wallet_deposit', {
-        p_amount_usd: Number(usdEquivalent),
-        p_original_amount: value,
-        p_currency: currency,
-        p_payment_method: paymentMethod,
-      } as never);
+      if (!isFlutterwaveConfigured()) {
+        toast.error('Flutterwave is not configured. Add VITE_FLUTTERWAVE_PUBLIC_KEY to your environment.');
+        return;
+      }
 
-      if (error) throw error;
-      toast.success('Funds added to your wallet');
+      if (!user.email) {
+        toast.error('Your account email is required for payment');
+        return;
+      }
+
+      await startFlutterwaveDeposit({
+        userId: user.id,
+        email: user.email,
+        name: profile?.full_name,
+        amount: value,
+        currency,
+        amountUsd: Number(usdEquivalent),
+        paymentMethod: paymentMethod === 'card' ? 'flutterwave_card' : 'flutterwave',
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
+      await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
+      toast.success('Payment successful. Funds added to your wallet.');
       setAmount('');
+      setPaymentMethod('');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Payment failed';
+      if (message !== 'Payment cancelled') {
+        toast.error(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -252,9 +279,18 @@ export default function AddFundsPage() {
 
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Choose amount and payment method</p>
 
+              {isFlutterwaveTestMode() && (
+                <div className="flex items-start gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
+                  <Info className="h-4 w-4 text-[#f26522] shrink-0 mt-0.5" />
+                  <p className="text-sm text-gray-800">
+                    Flutterwave test mode is active. Use test card <span className="font-mono">5531886652142950</span>, CVV <span className="font-mono">564</span>, expiry <span className="font-mono">09/32</span>, PIN <span className="font-mono">3310</span>, OTP <span className="font-mono">12345</span>.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-start gap-2 rounded-lg bg-[#fff8e6] dark:bg-[#f26522] border border-[#f5e6b8] dark:border-[#f26522] px-3 py-2.5 mb-6">
                 <Info className="h-4 w-4 text-amber-700 dark:text-white shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-900 dark:text-white">We do not store your personal details.</p>
+                <p className="text-sm text-amber-900 dark:text-white">Payments are processed securely by Flutterwave. We do not store your card details.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
