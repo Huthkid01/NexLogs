@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authService } from '@/services/auth.service';
 import { APP_NAME } from '@/constants';
+import { getSupabaseConfigError } from '@/lib/mock-mode';
 import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 
@@ -53,11 +54,23 @@ export default function LoginPage() {
   };
 
   const handleGoogle = async () => {
+    const configError = getSupabaseConfigError();
+    if (configError) {
+      toast.error(configError);
+      openErrorReport({
+        title: 'Error while signing in',
+        message: 'Google sign-in is not configured on this deployment.',
+        source: 'login',
+        errorMessage: configError,
+      });
+      return;
+    }
+
     try {
       await authService.signInWithGoogle();
     } catch (err: unknown) {
       const message = normalizeAuthErrorMessage(err);
-      toast.error(message.includes('demo mode') ? 'Google sign-in requires Supabase env vars on this deployment.' : 'We could not sign you in with Google.');
+      toast.error(message.includes('demo mode') ? getSupabaseConfigError() ?? 'Google sign-in requires Supabase env vars on this deployment.' : 'We could not sign you in with Google.');
       openErrorReport({
         title: 'Error while signing in',
         message: 'We could not sign you in with Google.',
