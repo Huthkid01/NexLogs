@@ -1,46 +1,49 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/auth.service';
 import { THEME_STORAGE_KEY, ThemeContext, type Theme } from '@/contexts/theme';
 
-function getStoredTheme(): Theme | null {
-  const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  if (stored === 'light' || stored === 'dark') return stored;
-  return null;
-}
-
-function applyTheme(theme: Theme, persist: boolean) {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
+function applyLightMode(persist: boolean) {
+  document.documentElement.classList.remove('dark');
   if (persist) {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
   }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
-  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() ?? 'light');
-  const effectiveTheme = user ? theme : 'light';
+
+  useEffect(() => {
+    const { data: { subscription } } = authService.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        applyLightMode(true);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (loading) {
-      applyTheme('light', false);
+      applyLightMode(false);
       return;
     }
 
-    applyTheme(effectiveTheme, Boolean(user));
-  }, [effectiveTheme, loading, user]);
+    applyLightMode(Boolean(user));
+  }, [user?.id, loading, user]);
 
-  const setTheme = (next: Theme) => {
-    if (!user) return;
-    setThemeState(next);
+  const setTheme = (_next: Theme) => {
+    applyLightMode(Boolean(user));
   };
 
   const toggleTheme = () => {
-    if (!user) return;
-    setThemeState((current) => (current === 'light' ? 'dark' : 'light'));
+    applyLightMode(Boolean(user));
   };
 
   return (
-    <ThemeContext.Provider value={{ theme: effectiveTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme: 'light', setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

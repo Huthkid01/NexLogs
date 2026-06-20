@@ -16,6 +16,40 @@ interface VerifyRequestBody {
   payment_method: string;
 }
 
+const DEFAULT_WALLET_EXCHANGE_RATES: Record<string, number> = {
+  NGN: 1500,
+  USD: 1,
+  EUR: 0.92,
+  GBP: 0.79,
+  GHS: 11.67,
+  KES: 134.56,
+  ZAR: 16.52,
+  XOF: 565.62,
+  XAF: 565.62,
+};
+
+function normalizeWalletExchangeRates(rates?: Record<string, number> | null) {
+  return {
+    ...DEFAULT_WALLET_EXCHANGE_RATES,
+    ...(rates ?? {}),
+  };
+}
+
+function convertCurrencyToUsd(
+  amount: number,
+  currency: string,
+  rates: Record<string, number>,
+) {
+  const code = currency.toUpperCase();
+  const rate = rates[code];
+
+  if (!rate || rate <= 0 || Number.isNaN(amount) || amount <= 0) {
+    throw new Error(`Unsupported currency: ${currency}`);
+  }
+
+  return Math.round((amount / rate) * 100) / 100;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -115,8 +149,26 @@ Deno.serve(async (req) => {
       throw new Error('Amount mismatch');
     }
 
+    const { data: walletContent } = await supabase
+      .from('site_content_blocks')
+      .select('value')
+      .eq('key', 'wallet')
+      .maybeSingle();
+
+    const walletValue = walletContent?.value as { exchangeRates?: Record<string, number> } | null;
+    const exchangeRates = normalizeWalletExchangeRates(walletValue?.exchangeRates);
+    const computedAmountUsd = convertCurrencyToUsd(
+      Number(original_amount),
+      original_currency,
+      exchangeRates,
+    );
+
+    if (Math.abs(computedAmountUsd - Number(amount_usd)) > 0.02) {
+      throw new Error('USD conversion mismatch');
+    }
+
     const { data: depositId, error: depositError } = await supabase.rpc('wallet_deposit', {
-      p_amount_usd: amount_usd,
+      p_amount_usd: computedAmountUsd,
       p_original_amount: original_amount,
       p_currency: original_currency,
       p_payment_method: payment_method || 'flutterwave',

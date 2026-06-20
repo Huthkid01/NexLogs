@@ -16,6 +16,8 @@ import {
 import { formatPrice } from '@/lib/utils';
 import { getProductVariants } from '@/lib/product-variants';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSiteContent } from '@/hooks/useSiteContent';
+import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
 import { orderService, profileService } from '@/services';
 import type { Product } from '@/types';
 
@@ -28,6 +30,7 @@ interface ProductVariantsModalProps {
 export function ProductVariantsModal({ product, open, onClose }: ProductVariantsModalProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { content } = useSiteContent();
   const { user } = useAuth();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState('');
@@ -131,7 +134,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   };
 
   const handleCheckRate = () => {
-    toast.info('Current rate: 1 USD = 1500 NGN');
+    const ngnRate = content.wallet.exchangeRates.NGN;
+    toast.info(formatRatePerUsd('NGN', ngnRate));
   };
 
   const handleDetailsClose = () => {

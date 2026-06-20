@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowUpDown, Info } from 'lucide-react';
 import { toast } from 'sonner';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSiteContent } from '@/hooks/useSiteContent';
 import { isFlutterwaveConfigured, isFlutterwaveTestMode } from '@/lib/flutterwave-config';
 import { isMockMode } from '@/lib/mock-mode';
-import { completeFlutterwaveRedirect, startFlutterwaveDeposit } from '@/services/payment.service';
 import {
+  convertCurrencyToUsd,
   convertUsdToCurrency,
   DISPLAY_RATE_CURRENCIES,
-  fetchUsdExchangeRates,
-  getFallbackUsdExchangeRates,
-} from '@/services/exchange-rate.service';
+} from '@/lib/wallet-exchange-rates';
+import { completeFlutterwaveRedirect, startFlutterwaveDeposit } from '@/services/payment.service';
 
 const CURRENCIES = [
   { code: 'NGN', label: 'NGN' },
@@ -28,13 +27,6 @@ const PAYMENT_METHODS = [
   { value: 'crypto', label: 'Cryptocurrency' },
 ] as const;
 
-const DEPOSIT_FALLBACK_RATES: Record<string, number> = {
-  NGN: 1500,
-  USD: 1,
-  EUR: 0.92,
-  GBP: 0.79,
-};
-
 const inputClassName =
   'w-full h-10 rounded-md border border-gray-300 dark:border-dm-input-border bg-white dark:bg-dm-input px-3 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-0 focus:border-gray-300 dark:focus:border-dm-input-border';
 
@@ -47,6 +39,7 @@ function formatRate(value: number) {
 
 export default function AddFundsPage() {
   const { user, profile } = useAuth();
+  const { content } = useSiteContent();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [amount, setAmount] = useState('');
@@ -83,22 +76,7 @@ export default function AddFundsPage() {
     })();
   }, [user?.id, searchParams, setSearchParams, queryClient, verifyingRedirect]);
 
-  const { data: liveRates, isLoading: ratesLoading, isError: ratesError } = useQuery({
-    queryKey: ['usd-exchange-rates'],
-    queryFn: fetchUsdExchangeRates,
-    staleTime: 1000 * 60 * 30,
-    retry: 1,
-  });
-
-  const rates = liveRates ?? (ratesError ? getFallbackUsdExchangeRates() : null);
-
-  const depositRates = useMemo(() => {
-    if (!rates) return DEPOSIT_FALLBACK_RATES;
-    return {
-      ...DEPOSIT_FALLBACK_RATES,
-      NGN: rates.rates.NGN,
-    };
-  }, [rates]);
+  const exchangeRates = content.wallet.exchangeRates;
 
   const parsedBaseUsd = useMemo(() => {
     const value = parseFloat(baseUsdAmount);
@@ -119,20 +97,19 @@ export default function AddFundsPage() {
   };
 
   const convertedRates = useMemo(() => {
-    if (!rates || parsedBaseUsd <= 0) return [];
+    if (parsedBaseUsd <= 0) return [];
 
     return DISPLAY_RATE_CURRENCIES.map((item) => ({
       ...item,
-      converted: convertUsdToCurrency(parsedBaseUsd, rates.rates[item.code]),
+      converted: convertUsdToCurrency(parsedBaseUsd, exchangeRates[item.code] ?? 0),
     }));
-  }, [rates, parsedBaseUsd]);
+  }, [exchangeRates, parsedBaseUsd]);
 
   const usdEquivalent = useMemo(() => {
     const value = parseFloat(amount);
     if (!amount || Number.isNaN(value) || value <= 0) return '0.00';
-    const rate = depositRates[currency] ?? 1;
-    return (value / rate).toFixed(2);
-  }, [amount, currency, depositRates]);
+    return convertCurrencyToUsd(value, currency, exchangeRates).toFixed(2);
+  }, [amount, currency, exchangeRates]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +185,7 @@ export default function AddFundsPage() {
               <div className="flex items-start justify-between gap-4 mb-5">
                 <div>
                   <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Exchange Rates</h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Live USD conversions</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Admin-set USD conversions</p>
                 </div>
                 <button
                   type="button"
@@ -247,35 +224,23 @@ export default function AddFundsPage() {
                   </div>
 
                   <div className="space-y-3 bg-white p-4">
-                    {ratesLoading ? (
-                      Array.from({ length: 6 }).map((_, index) => (
-                        <Skeleton key={index} className="h-[62px] w-full rounded-lg" />
-                      ))
-                    ) : (
-                      convertedRates.map((item) => (
-                        <div
-                          key={item.code}
-                          className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-                        >
-                          <div>
-                            <p className="text-sm font-bold text-gray-900">{item.code}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{item.name}</p>
-                          </div>
-                          <p className="text-lg font-bold text-gray-900 tabular-nums">
-                            {formatRate(item.converted)}
-                          </p>
+                    {convertedRates.map((item) => (
+                      <div
+                        key={item.code}
+                        className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{item.code}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{item.name}</p>
                         </div>
-                      ))
-                    )}
-
-                    {ratesError && (
-                      <p className="text-xs text-amber-600">
-                        Could not load live rates. Showing fallback values.
-                      </p>
-                    )}
+                        <p className="text-lg font-bold text-gray-900 tabular-nums">
+                          {formatRate(item.converted)}
+                        </p>
+                      </div>
+                    ))}
 
                     <p className="text-xs text-gray-500 pt-1">
-                      Rates include the same conversion markup used during checkout.
+                      Rates are set by the admin and used when adding funds to your wallet.
                     </p>
                   </div>
                 </div>

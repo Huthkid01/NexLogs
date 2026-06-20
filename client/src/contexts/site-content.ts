@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import { APP_NAME } from '@/constants';
+import { normalizeWalletExchangeRates } from '@/lib/wallet-exchange-rates';
 
 export interface SiteContent {
   slides: Array<{
@@ -83,6 +84,9 @@ export interface SiteContent {
       label: string;
       href: string;
     }>;
+  };
+  wallet: {
+    exchangeRates: Record<string, number>;
   };
 }
 
@@ -268,6 +272,19 @@ export const defaultSiteContent: SiteContent = {
       { label: 'Link', href: '#' },
     ],
   },
+  wallet: {
+    exchangeRates: {
+      NGN: 1500,
+      USD: 1,
+      EUR: 0.92,
+      GBP: 0.79,
+      GHS: 11.67,
+      KES: 134.56,
+      ZAR: 16.52,
+      XOF: 565.62,
+      XAF: 565.62,
+    },
+  },
 };
 
 export interface SiteContentContextType {
@@ -343,6 +360,9 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
       ...content?.footer,
       trustItems: content?.footer?.trustItems ?? defaultSiteContent.footer.trustItems,
       socialLinks: content?.footer?.socialLinks ?? defaultSiteContent.footer.socialLinks,
+    },
+    wallet: {
+      exchangeRates: normalizeWalletExchangeRates(content?.wallet?.exchangeRates),
     },
   };
 }

@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Moon, Sun, User } from 'lucide-react';
+import { ChevronDown, Sun, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/hooks/useTheme';
 import { profileService } from '@/services/profile.service';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +10,6 @@ export function UserMenuDropdown() {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { user, profile, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const { data: stats } = useQuery({
@@ -105,24 +103,10 @@ export function UserMenuDropdown() {
 
           <div className="h-px bg-gray-200 dark:bg-dm-border" />
 
-          <button
-            type="button"
-            role="menuitem"
-            onClick={toggleTheme}
-            className="w-full bg-gray-50 dark:bg-dm-input px-4 py-2.5 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-dm-surface transition-colors"
-          >
-            {theme === 'light' ? (
-              <>
-                <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                Light Mode
-              </>
-            ) : (
-              <>
-                <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                Dark Mode
-              </>
-            )}
-          </button>
+          <div className="bg-gray-50 px-4 py-2.5 flex items-center gap-2 text-sm text-gray-700">
+            <Sun className="h-4 w-4 text-gray-500" />
+            Light Mode
+          </div>
         </div>
       )}
     </div>

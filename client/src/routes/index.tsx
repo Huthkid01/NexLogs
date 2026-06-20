@@ -34,6 +34,7 @@ import AdminActivityLogsPage from '@/pages/admin/AdminActivityLogsPage';
 import AdminContentPage from '@/pages/admin/AdminContentPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 import AdminSlidesPage from '@/pages/admin/AdminSlidesPage';
+import AdminExchangeRatesPage from '@/pages/admin/AdminExchangeRatesPage';
 
 const router = createBrowserRouter([
   {
@@ -78,6 +79,7 @@ const router = createBrowserRouter([
       { path: 'tickets', element: <AdminTicketsPage /> },
       { path: 'activity', element: <AdminActivityLogsPage /> },
       { path: 'slides', element: <AdminSlidesPage /> },
+      { path: 'exchange-rates', element: <AdminExchangeRatesPage /> },
       { path: 'blog', element: <Navigate to="/admin" replace /> },
       { path: 'content', element: <Navigate to="/admin/content/homepage" replace /> },
       { path: 'content/:section', element: <AdminContentPage /> },
