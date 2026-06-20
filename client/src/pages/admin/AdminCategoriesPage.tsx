@@ -13,6 +13,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { categoryService } from '@/services';
 import { isMockMode } from '@/lib/mock-mode';
 import { getCategoryIconPath, getPlatformFromCategory } from '@/lib/platform-icons';
+import {
+  adminActionIconButtonClass,
+  adminIconButtonClass,
+  adminInputClass,
+  adminMainCardClass,
+  adminModalClass,
+  adminModalOverlayClass,
+  adminModalSectionClass,
+  adminMutedTextClass,
+  adminOutlineButtonClass,
+  adminPageClass,
+  adminPlatformIconWrapClass,
+  adminStatCardClass,
+  adminStrongTextClass,
+  adminSubtleTextClass,
+} from '@/lib/admin-theme';
+import { useTheme } from '@/hooks/useTheme';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { Category } from '@/types';
 
@@ -57,6 +75,8 @@ const CATEGORY_TABLE_GRID =
 
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -158,7 +178,7 @@ export default function AdminCategoriesPage() {
 
   return (
     <>
-      <div className="space-y-6 text-slate-100">
+      <div className={cn('space-y-6', adminPageClass(isDark))}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">Category management</h1>
@@ -171,44 +191,44 @@ export default function AdminCategoriesPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Card className="admin-panel rounded-2xl border-[#18263b] bg-[#0b1628] text-slate-100">
+          <Card className={adminStatCardClass(isDark)}>
             <CardContent className="flex items-center gap-4 p-5">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
                 <FolderKanban className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Total Categories</p>
-                <p className="text-2xl font-semibold text-slate-50">{total}</p>
+                <p className={cn('text-sm', adminMutedTextClass(isDark))}>Total Categories</p>
+                <p className={cn('text-2xl font-semibold', adminStrongTextClass(isDark))}>{total}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="admin-panel rounded-2xl border-[#18263b] bg-[#0b1628] text-slate-100">
+          <Card className={adminStatCardClass(isDark)}>
             <CardContent className="flex items-center gap-4 p-5">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
                 <Layers3 className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Active Categories</p>
-                <p className="text-2xl font-semibold text-slate-50">{active}</p>
+                <p className={cn('text-sm', adminMutedTextClass(isDark))}>Active Categories</p>
+                <p className={cn('text-2xl font-semibold', adminStrongTextClass(isDark))}>{active}</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="admin-panel min-w-0 overflow-hidden rounded-2xl border-[#18263b] bg-[#091427] text-slate-100">
+        <Card className={adminMainCardClass(isDark)}>
           <CardContent className="space-y-5 p-6">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Organization</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-50">Marketplace categories</p>
-                <p className="mt-1 text-sm text-slate-400">Keep category names, visibility, and sorting clean for the storefront.</p>
+                <p className={cn('text-xs font-semibold uppercase tracking-[0.18em]', adminSubtleTextClass(isDark))}>Organization</p>
+                <p className={cn('mt-2 text-2xl font-semibold', adminStrongTextClass(isDark))}>Marketplace categories</p>
+                <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>Keep category names, visibility, and sorting clean for the storefront.</p>
               </div>
               <div className="flex items-end">
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search categories"
-                  className="admin-input border-[#22324a] bg-[#06101d] text-slate-100 placeholder:text-slate-500"
+                  className={adminInputClass(isDark)}
                 />
               </div>
             </div>
@@ -220,9 +240,9 @@ export default function AdminCategoriesPage() {
               emptyState={
                 !filteredCategories.length ? (
                   <div className="px-5 py-12 text-center">
-                    <FolderKanban className="mx-auto h-10 w-10 text-slate-600" />
-                    <p className="mt-4 text-lg font-medium text-slate-200">No categories found</p>
-                    <p className="mt-2 text-sm text-slate-500">Try another search or create a new category.</p>
+                    <FolderKanban className={cn('mx-auto h-10 w-10', isDark ? 'text-slate-600' : 'text-slate-400')} />
+                    <p className={cn('mt-4 text-lg font-medium', adminStrongTextClass(isDark))}>No categories found</p>
+                    <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>Try another search or create a new category.</p>
                   </div>
                 ) : null
               }
@@ -231,7 +251,7 @@ export default function AdminCategoriesPage() {
                 <AdminScrollTableRow key={category.id} gridClassName={CATEGORY_TABLE_GRID}>
                   <div className="min-w-[180px]">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0d1d33] text-blue-300">
+                      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center', adminPlatformIconWrapClass(isDark), 'text-blue-300')}>
                         {getPlatformFromCategory(category.slug || category.name) ? (
                           <PlatformIcon platform={getPlatformFromCategory(category.slug || category.name)!} size="sm" className="h-8 w-8" />
                         ) : (
@@ -239,17 +259,17 @@ export default function AdminCategoriesPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-slate-50">{category.name}</p>
-                        <p className="mt-1 text-sm text-slate-400">/{category.slug}</p>
+                        <p className={cn('font-medium', adminStrongTextClass(isDark))}>{category.name}</p>
+                        <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>/{category.slug}</p>
                       </div>
                     </div>
                   </div>
 
-                  <p className="min-w-[220px] text-sm leading-6 text-slate-400">
+                  <p className={cn('min-w-[220px] text-sm leading-6', adminMutedTextClass(isDark))}>
                     {category.description || 'No category description added yet.'}
                   </p>
 
-                  <p className="min-w-[80px] text-sm font-medium text-slate-200">{category.sort_order}</p>
+                  <p className={cn('min-w-[80px] text-sm font-medium', isDark ? 'text-slate-200' : 'text-slate-700')}>{category.sort_order}</p>
 
                   <div className="min-w-[100px]">
                     <Badge
@@ -264,7 +284,7 @@ export default function AdminCategoriesPage() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-9 w-9 rounded-xl border border-[#22324a] bg-[#0b1628] text-slate-200 hover:bg-[#10213a]"
+                      className={cn(adminActionIconButtonClass(isDark), 'h-9 w-9')}
                       onClick={() => openEditModal(category)}
                     >
                       <Pencil className="h-4 w-4" />
@@ -286,17 +306,17 @@ export default function AdminCategoriesPage() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#020817]/70 p-4 backdrop-blur-sm">
-          <div className="admin-panel flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[1.75rem] border-[#1f2e46] bg-[#081324] text-slate-100">
-            <div className="flex items-start justify-between gap-4 border-b border-[#18263b] px-6 py-5">
+        <div className={adminModalOverlayClass(isDark)}>
+          <div className={cn(adminModalClass(isDark), 'flex max-h-[90vh] flex-col overflow-hidden')}>
+            <div className={cn('flex items-start justify-between gap-4 border-b px-6 py-5', isDark ? 'border-[#18263b]' : 'border-slate-200')}>
               <div>
                 <h2 className="admin-heading text-3xl font-semibold">{editingCategory ? 'Edit category' : 'Add category'}</h2>
-                <p className="mt-1 text-sm text-slate-400">Control category names, visibility, and ordering from this modal.</p>
+                <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>Control category names, visibility, and ordering from this modal.</p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#22324a] bg-[#0a1628] text-slate-400 hover:text-slate-100"
+                className={adminIconButtonClass(isDark)}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -304,14 +324,17 @@ export default function AdminCategoriesPage() {
 
             <form onSubmit={submitCategory} className="flex-1 overflow-y-auto">
               <div className="space-y-5 px-6 py-6">
-                <section className="rounded-2xl border border-[#18263b] bg-[#06111f] p-5">
-                  <h3 className="text-sm font-semibold text-slate-100">Category details</h3>
+                <section className={adminModalSectionClass(isDark)}>
+                  <h3 className={cn('text-sm font-semibold', adminStrongTextClass(isDark))}>Category details</h3>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm text-slate-400">Category icon</label>
-                      <div className="rounded-2xl border border-[#22324a] bg-[#06101d] p-4">
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Category icon</label>
+                      <div className={cn('rounded-2xl border p-4', isDark ? 'border-[#22324a] bg-[#06101d]' : 'border-slate-200 bg-white')}>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#22324a] bg-[#081624] text-blue-300">
+                          <div className={cn(
+                            'flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border text-blue-300',
+                            isDark ? 'border-[#22324a] bg-[#081624]' : 'border-slate-200 bg-slate-50',
+                          )}>
                             {categoryPlatform ? (
                               <PlatformIcon platform={categoryPlatform} size="md" className="h-11 w-11" />
                             ) : (
@@ -319,14 +342,14 @@ export default function AdminCategoriesPage() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-200">Social icon preview</p>
-                            <p className="mt-1 text-sm text-slate-400">The matching social icon is saved automatically and shown on the website.</p>
+                            <p className={cn('text-sm font-medium', isDark ? 'text-slate-200' : 'text-slate-800')}>Social icon preview</p>
+                            <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>The matching social icon is saved automatically and shown on the website.</p>
                           </div>
                         </div>
                       </div>
                     </div>
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm text-slate-400">Category name</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Category name</label>
                       <Input
                         value={form.name}
                         onChange={(event) => setForm((current) => ({ ...current, name: event.target.value, slug: slugify(event.target.value) }))}
@@ -335,7 +358,7 @@ export default function AdminCategoriesPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Slug</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Slug</label>
                       <Input
                         value={form.slug}
                         onChange={(event) => setForm((current) => ({ ...current, slug: slugify(event.target.value) }))}
@@ -344,7 +367,7 @@ export default function AdminCategoriesPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Sort order</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Sort order</label>
                       <Input
                         type="number"
                         min="0"
@@ -355,7 +378,7 @@ export default function AdminCategoriesPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm text-slate-400">Description</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Description</label>
                       <Textarea
                         value={form.description}
                         onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
@@ -365,20 +388,26 @@ export default function AdminCategoriesPage() {
                     </div>
                   </div>
 
-                  <label className="mt-5 flex items-center gap-3 rounded-xl border border-[#18263b] bg-[#081624] px-4 py-3">
+                  <label className={cn(
+                    'mt-5 flex items-center gap-3 rounded-xl border px-4 py-3',
+                    isDark ? 'border-[#18263b] bg-[#081624]' : 'border-slate-200 bg-white',
+                  )}>
                     <input
                       type="checkbox"
                       checked={form.is_active}
                       onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))}
-                      className="h-4 w-4 rounded border-[#22324a] bg-[#06101d]"
+                      className={cn('h-4 w-4 rounded', isDark ? 'border-[#22324a] bg-[#06101d]' : 'border-slate-300 bg-white')}
                     />
-                    <span className="text-sm text-slate-200">Show this category on the website</span>
+                    <span className={cn('text-sm', isDark ? 'text-slate-200' : 'text-slate-700')}>Show this category on the website</span>
                   </label>
                 </section>
               </div>
 
-              <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-[#18263b] bg-[#081324] px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
-                <Button type="button" variant="outline" className="border-[#22324a] bg-[#081624] text-slate-100 hover:bg-[#10213a]" onClick={closeModal}>
+              <div className={cn(
+                'sticky bottom-0 flex flex-col-reverse gap-3 border-t px-6 py-4 sm:flex-row sm:items-center sm:justify-end',
+                isDark ? 'border-[#18263b] bg-[#081324]' : 'border-slate-200 bg-white',
+              )}>
+                <Button type="button" variant="outline" className={adminOutlineButtonClass(isDark)} onClick={closeModal}>
                   Cancel
                 </Button>
                 <Button type="submit" className="bg-[#f26522] hover:bg-[#d94e0f]" loading={saveCategory.isPending}>

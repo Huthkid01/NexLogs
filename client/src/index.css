@@ -167,12 +167,23 @@ textarea {
 }
 
 .admin-panel {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.dark .admin-panel {
   border: 1px solid #18263b;
   background: rgba(10, 22, 40, 0.92);
   box-shadow: 0 18px 50px rgba(2, 6, 23, 0.32);
 }
 
 .admin-panel-soft {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.dark .admin-panel-soft {
   border: 1px solid #18263b;
   background: rgba(8, 18, 34, 0.86);
 }
@@ -183,6 +194,10 @@ textarea {
 }
 
 .admin-muted {
+  color: #64748b;
+}
+
+.dark .admin-muted {
   color: #94a3b8;
 }
 
@@ -191,10 +206,18 @@ textarea {
 .admin-textarea {
   width: 100%;
   border-radius: 0.75rem;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dark .admin-input,
+.dark .admin-select,
+.dark .admin-textarea {
   border: 1px solid #22324a;
   background: #06101d;
   color: #e2e8f0;
-  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .admin-input,
@@ -211,6 +234,11 @@ textarea {
 
 .admin-input::placeholder,
 .admin-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.dark .admin-input::placeholder,
+.dark .admin-textarea::placeholder {
   color: #64748b;
 }
 

@@ -1,4 +1,12 @@
 import type { ReactNode } from 'react';
+import { useTheme } from '@/hooks/useTheme';
+import {
+  adminSubtleTextClass,
+  adminTableBodyClass,
+  adminTableHeaderClass,
+  adminTableRowHoverClass,
+  adminTableShellClass,
+} from '@/lib/admin-theme';
 import { cn } from '@/lib/utils';
 
 interface AdminScrollTableProps {
@@ -16,17 +24,17 @@ export function AdminScrollTable({
   children,
   emptyState,
 }: AdminScrollTableProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500 lg:hidden">Swipe sideways to view all columns.</p>
-      <div className="overflow-x-auto rounded-2xl border border-[#18263b] [-webkit-overflow-scrolling:touch]">
+      <p className={cn('text-xs lg:hidden', adminSubtleTextClass(isDark))}>
+        Swipe sideways to view all columns.
+      </p>
+      <div className={adminTableShellClass(isDark)}>
         <div className={minWidthClassName}>
-          <div
-            className={cn(
-              'grid gap-4 border-b border-[#18263b] bg-[#0c1830] px-5 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500',
-              gridClassName,
-            )}
-          >
+          <div className={cn('grid gap-4', adminTableHeaderClass(isDark), gridClassName)}>
             {columns.map((column) => (
               <span key={column} className="whitespace-nowrap">
                 {column}
@@ -34,7 +42,7 @@ export function AdminScrollTable({
             ))}
           </div>
 
-          <div className="divide-y divide-[#18263b] bg-[#07111f]">
+          <div className={adminTableBodyClass(isDark)}>
             {children}
             {emptyState}
           </div>
@@ -50,10 +58,14 @@ interface AdminScrollTableRowProps {
 }
 
 export function AdminScrollTableRow({ gridClassName, children }: AdminScrollTableRowProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   return (
     <div
       className={cn(
-        'grid items-center gap-4 px-5 py-4 transition-colors hover:bg-[#0b1a30]',
+        'grid items-center gap-4 px-5 py-4 transition-colors',
+        adminTableRowHoverClass(isDark),
         gridClassName,
       )}
     >

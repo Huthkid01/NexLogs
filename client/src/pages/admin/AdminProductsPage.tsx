@@ -15,7 +15,23 @@ import { isMockMode } from '@/lib/mock-mode';
 import { supabase } from '@/lib/supabase';
 import { getPlatformIconPath } from '@/lib/platform-icons';
 import { countProductDetailLines, formatProductDetailsForEditor, parseProductDetailLines, serializeProductDetailLines } from '@/lib/product-details';
-import { formatPrice } from '@/lib/utils';
+import {
+  adminActionIconButtonClass,
+  adminIconButtonClass,
+  adminInputClass,
+  adminMainCardClass,
+  adminModalClass,
+  adminModalOverlayClass,
+  adminModalSectionClass,
+  adminMutedTextClass,
+  adminOutlineButtonClass,
+  adminPageClass,
+  adminPlatformIconWrapClass,
+  adminStrongTextClass,
+  adminSubtleTextClass,
+} from '@/lib/admin-theme';
+import { useTheme } from '@/hooks/useTheme';
+import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { PlatformType, Product } from '@/types';
 
@@ -119,6 +135,8 @@ const PRODUCT_TABLE_GRID =
 
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -240,7 +258,7 @@ export default function AdminProductsPage() {
 
   return (
     <>
-      <div className="space-y-6 text-slate-100">
+      <div className={cn('space-y-6', adminPageClass(isDark))}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">Product management</h1>
@@ -252,20 +270,20 @@ export default function AdminProductsPage() {
           </Button>
         </div>
 
-        <Card className="admin-panel min-w-0 overflow-hidden rounded-2xl border-[#18263b] bg-[#091427] text-slate-100">
+        <Card className={adminMainCardClass(isDark)}>
           <CardContent className="space-y-5 p-6">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Catalog</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-50">{filteredProducts.length}</p>
-                <p className="mt-1 text-sm text-slate-400">Products currently visible in this admin list.</p>
+                <p className={cn('text-xs font-semibold uppercase tracking-[0.18em]', adminSubtleTextClass(isDark))}>Catalog</p>
+                <p className={cn('mt-2 text-2xl font-semibold', adminStrongTextClass(isDark))}>{filteredProducts.length}</p>
+                <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>Products currently visible in this admin list.</p>
               </div>
               <div className="flex items-end">
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by title, slug, platform, or category"
-                  className="admin-input border-[#22324a] bg-[#06101d] text-slate-100 placeholder:text-slate-500"
+                  className={adminInputClass(isDark)}
                 />
               </div>
             </div>
@@ -277,9 +295,9 @@ export default function AdminProductsPage() {
               emptyState={
                 !filteredProducts.length ? (
                   <div className="px-5 py-12 text-center">
-                    <Package2 className="mx-auto h-10 w-10 text-slate-600" />
-                    <p className="mt-4 text-lg font-medium text-slate-200">No products found</p>
-                    <p className="mt-2 text-sm text-slate-500">Try a different search or add a new product.</p>
+                    <Package2 className={cn('mx-auto h-10 w-10', isDark ? 'text-slate-600' : 'text-slate-400')} />
+                    <p className={cn('mt-4 text-lg font-medium', adminStrongTextClass(isDark))}>No products found</p>
+                    <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>Try a different search or add a new product.</p>
                   </div>
                 ) : null
               }
@@ -287,14 +305,14 @@ export default function AdminProductsPage() {
               {filteredProducts.map((product) => (
                 <AdminScrollTableRow key={product.id} gridClassName={PRODUCT_TABLE_GRID}>
                   <div className="flex min-w-[240px] items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0d1d33] text-slate-100">
+                    <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center', adminPlatformIconWrapClass(isDark))}>
                       <PlatformIcon platform={product.platform} size="md" className="h-7 w-7" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-50">{product.title}</p>
-                      <p className="mt-1 text-sm text-slate-400">{product.slug}</p>
+                      <p className={cn('font-medium', adminStrongTextClass(isDark))}>{product.title}</p>
+                      <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>{product.slug}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <Badge variant="outline" className="border-[#26354c] bg-[#0d1b2d] text-slate-200">
+                        <Badge variant="outline" className={isDark ? 'border-[#26354c] bg-[#0d1b2d] text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}>
                           {product.platform}
                         </Badge>
                         {product.featured && (
@@ -312,19 +330,19 @@ export default function AdminProductsPage() {
                   </div>
 
                   <div className="min-w-[120px]">
-                    <p className="text-sm font-medium text-slate-200">{product.category?.name ?? 'Unassigned'}</p>
-                    <p className="mt-1 text-xs text-slate-500">Stock: {product.stock}</p>
+                    <p className={cn('text-sm font-medium', isDark ? 'text-slate-200' : 'text-slate-700')}>{product.category?.name ?? 'Unassigned'}</p>
+                    <p className={cn('mt-1 text-xs', adminSubtleTextClass(isDark))}>Stock: {product.stock}</p>
                   </div>
 
                   <div className="min-w-[100px] whitespace-nowrap">
-                    <p className="font-medium text-slate-50">{formatPrice(product.price)}</p>
-                    <p className="mt-1 text-xs text-slate-500">{product.country ?? 'Global'}</p>
+                    <p className={cn('font-medium', adminStrongTextClass(isDark))}>{formatPrice(product.price)}</p>
+                    <p className={cn('mt-1 text-xs', adminSubtleTextClass(isDark))}>{product.country ?? 'Global'}</p>
                   </div>
 
                   <div className="min-w-[100px]">
                     <Badge
                       variant="outline"
-                      className={product.is_active ? 'border-blue-500/30 bg-blue-500/10 text-blue-200' : 'border-slate-600 bg-slate-700/20 text-slate-300'}
+                      className={product.is_active ? 'border-blue-500/30 bg-blue-500/10 text-blue-200' : isDark ? 'border-slate-600 bg-slate-700/20 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}
                     >
                       {product.is_active ? 'Active' : 'Draft'}
                     </Badge>
@@ -334,7 +352,7 @@ export default function AdminProductsPage() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-9 w-9 rounded-xl border border-[#22324a] bg-[#0b1628] text-slate-200 hover:bg-[#10213a]"
+                      className={cn(adminActionIconButtonClass(isDark), 'h-9 w-9')}
                       onClick={() => openEditModal(product)}
                     >
                       <Pencil className="h-4 w-4" />
@@ -356,41 +374,47 @@ export default function AdminProductsPage() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#020817]/70 p-4 backdrop-blur-sm">
-          <div className="admin-panel w-full max-w-4xl rounded-[1.75rem] border-[#1f2e46] bg-[#081324] text-slate-100">
-            <div className="flex items-start justify-between gap-4 border-b border-[#18263b] px-6 py-5">
+        <div className={adminModalOverlayClass(isDark)}>
+          <div className={cn(adminModalClass(isDark), 'max-h-[85vh] overflow-y-auto')}>
+            <div className={cn('flex items-start justify-between gap-4 border-b px-6 py-5', isDark ? 'border-[#18263b]' : 'border-slate-200')}>
               <div>
                 <h2 className="admin-heading text-3xl font-semibold">{editingProduct ? 'Edit product' : 'Add product'}</h2>
-                <p className="mt-1 text-sm text-slate-400">Manage title, pricing, platform, and listing details from this modal.</p>
+                <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>Manage title, pricing, platform, and listing details from this modal.</p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#22324a] bg-[#0a1628] text-slate-400 hover:text-slate-100"
+                className={adminIconButtonClass(isDark)}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={submitProduct} className="max-h-[85vh] overflow-y-auto">
+            <form onSubmit={submitProduct}>
               <div className="space-y-5 px-6 py-6">
-                <section className="rounded-2xl border border-[#18263b] bg-[#06111f] p-5">
-                  <h3 className="text-sm font-semibold text-slate-100">Basic information</h3>
+                <section className={adminModalSectionClass(isDark)}>
+                  <h3 className={cn('text-sm font-semibold', adminStrongTextClass(isDark))}>Basic information</h3>
                   <div className="mt-4">
-                    <label className="mb-2 block text-sm text-slate-400">Product icon</label>
+                    <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Product icon</label>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-[#22324a] bg-[#06101d]">
+                      <div className={cn(
+                        'flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border',
+                        isDark ? 'border-[#22324a] bg-[#06101d]' : 'border-slate-200 bg-slate-50',
+                      )}>
                         <PlatformIcon platform={form.platform} size="md" className="h-10 w-10" />
                       </div>
-                      <div className="rounded-2xl border border-[#22324a] bg-[#06101d] px-4 py-3 text-sm text-slate-300">
+                      <div className={cn(
+                        'rounded-2xl border px-4 py-3 text-sm',
+                        isDark ? 'border-[#22324a] bg-[#06101d] text-slate-300' : 'border-slate-200 bg-white text-slate-600',
+                      )}>
                         The product uses the selected platform icon automatically.
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-slate-500">This icon shows in admin and across the website instead of a full image.</p>
+                    <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>This icon shows in admin and across the website instead of a full image.</p>
                   </div>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm text-slate-400">Product title</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Product title</label>
                       <Input
                         value={form.title}
                         onChange={(event) => setForm((current) => ({ ...current, title: event.target.value, slug: slugify(event.target.value) }))}
@@ -399,7 +423,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Slug</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Slug</label>
                       <Input
                         value={form.slug}
                         onChange={(event) => setForm((current) => ({ ...current, slug: slugify(event.target.value) }))}
@@ -408,7 +432,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Category</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Category</label>
                       <select
                         value={form.category_id}
                         onChange={(event) => setForm((current) => ({ ...current, category_id: event.target.value }))}
@@ -423,7 +447,7 @@ export default function AdminProductsPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Platform</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Platform</label>
                       <select
                         value={form.platform}
                         onChange={(event) => setForm((current) => ({ ...current, platform: event.target.value as PlatformType }))}
@@ -437,7 +461,7 @@ export default function AdminProductsPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Price</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Price</label>
                       <Input
                         type="number"
                         min="0"
@@ -449,7 +473,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Stock</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Stock</label>
                       <Input
                         type="number"
                         min="0"
@@ -460,13 +484,13 @@ export default function AdminProductsPage() {
                         readOnly={detailLineCount > 0}
                       />
                       {detailLineCount > 0 ? (
-                        <p className="mt-2 text-xs text-slate-500">
+                        <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
                           Stock is synced to the number of buyer copy lines.
                         </p>
                       ) : null}
                     </div>
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm text-slate-400">Description</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Description</label>
                       <Textarea
                         value={form.description}
                         onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
@@ -476,10 +500,13 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="md:col-span-2">
                       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <label className="block text-sm text-slate-400">
+                        <label className={cn('block text-sm', adminMutedTextClass(isDark))}>
                           Product details for buyer copy
                         </label>
-                        <span className="rounded-full border border-[#1f3550] bg-[#0a1628] px-3 py-1 text-xs text-slate-300">
+                        <span className={cn(
+                          'rounded-full border px-3 py-1 text-xs',
+                          isDark ? 'border-[#1f3550] bg-[#0a1628] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
+                        )}>
                           {detailLineCount} {detailLineCount === 1 ? 'line' : 'lines'}
                         </span>
                       </div>
@@ -497,18 +524,18 @@ export default function AdminProductsPage() {
                         className="admin-textarea min-h-[280px] text-sm leading-6"
                         placeholder={'1. Username: john / Password: secret123 / Email: john@mail.com\n\n2. Access link: https://example.com/account/abc123\n\n3. Any text format works — one numbered item per buyer'}
                       />
-                      <p className="mt-2 text-xs text-slate-500">
+                      <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
                         Number each item (1., 2., 3.). Each numbered block is delivered to one buyer when purchased. Use any format — not just username:password.
                       </p>
                     </div>
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-[#18263b] bg-[#06111f] p-5">
-                  <h3 className="text-sm font-semibold text-slate-100">Additional details</h3>
+                <section className={adminModalSectionClass(isDark)}>
+                  <h3 className={cn('text-sm font-semibold', adminStrongTextClass(isDark))}>Additional details</h3>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Country</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Country</label>
                       <Input
                         value={form.country}
                         onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))}
@@ -517,7 +544,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Niche</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Niche</label>
                       <Input
                         value={form.niche}
                         onChange={(event) => setForm((current) => ({ ...current, niche: event.target.value }))}
@@ -526,7 +553,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Account age</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Account age</label>
                       <Input
                         value={form.account_age}
                         onChange={(event) => setForm((current) => ({ ...current, account_age: event.target.value }))}
@@ -535,7 +562,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Followers</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Followers</label>
                       <Input
                         type="number"
                         min="0"
@@ -546,7 +573,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm text-slate-400">Following</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Following</label>
                       <Input
                         type="number"
                         min="0"
@@ -564,22 +591,28 @@ export default function AdminProductsPage() {
                       { key: 'verified', label: 'Verified account' },
                       { key: 'is_active', label: 'Visible on site' },
                     ].map((option) => (
-                      <label key={option.key} className="flex items-center gap-3 rounded-xl border border-[#18263b] bg-[#081624] px-4 py-3">
+                      <label key={option.key} className={cn(
+                        'flex items-center gap-3 rounded-xl border px-4 py-3',
+                        isDark ? 'border-[#18263b] bg-[#081624]' : 'border-slate-200 bg-white',
+                      )}>
                         <input
                           type="checkbox"
                           checked={form[option.key as keyof ProductFormState] as boolean}
                           onChange={(event) => setForm((current) => ({ ...current, [option.key]: event.target.checked }))}
-                          className="h-4 w-4 rounded border-[#22324a] bg-[#06101d]"
+                          className={cn('h-4 w-4 rounded', isDark ? 'border-[#22324a] bg-[#06101d]' : 'border-slate-300 bg-white')}
                         />
-                        <span className="text-sm text-slate-200">{option.label}</span>
+                        <span className={cn('text-sm', isDark ? 'text-slate-200' : 'text-slate-700')}>{option.label}</span>
                       </label>
                     ))}
                   </div>
                 </section>
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-[#18263b] px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
-                <Button type="button" variant="outline" className="border-[#22324a] bg-[#081624] text-slate-100 hover:bg-[#10213a]" onClick={closeModal}>
+              <div className={cn(
+                'flex flex-col-reverse gap-3 border-t px-6 py-4 sm:flex-row sm:items-center sm:justify-end',
+                isDark ? 'border-[#18263b]' : 'border-slate-200',
+              )}>
+                <Button type="button" variant="outline" className={adminOutlineButtonClass(isDark)} onClick={closeModal}>
                   Cancel
                 </Button>
                 <Button type="submit" className="bg-[#f26522] hover:bg-[#d94e0f]" loading={saveProduct.isPending}>
