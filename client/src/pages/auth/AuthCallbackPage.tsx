@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { isMockMode } from '@/lib/mock-mode';
+import { resetThemeForLogin } from '@/contexts/theme';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMockMode() && session?.user?.id) {
+        resetThemeForLogin();
         supabase
           .from('activity_logs')
           .insert({

@@ -7,6 +7,7 @@ import { Building2, Lock, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
+import { resetThemeForLogin } from '@/contexts/theme';
 import { APP_NAME } from '@/constants';
 import { getAdminLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { Input } from '@/components/ui/input';
@@ -70,6 +71,7 @@ export default function AdminLoginPage() {
         throw new Error('ADMIN_ACCESS_NOT_GRANTED');
       }
 
+      resetThemeForLogin();
       const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
       navigate(from?.startsWith('/admin') ? from : '/admin', { replace: true });
     } catch (err: unknown) {

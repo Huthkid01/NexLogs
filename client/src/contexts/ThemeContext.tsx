@@ -1,7 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { authService } from '@/services/auth.service';
-import { THEME_STORAGE_KEY, ThemeContext, type Theme } from '@/contexts/theme';
+import {
+  THEME_LOGIN_RESET_EVENT,
+  THEME_STORAGE_KEY,
+  ThemeContext,
+  type Theme,
+} from '@/contexts/theme';
 
 function getStoredTheme(): Theme | null {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -19,28 +23,43 @@ function applyTheme(theme: Theme, persist: boolean) {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() ?? 'light');
-  const effectiveTheme = user ? theme : 'light';
 
-  useEffect(() => {
-    const { data: { subscription } } = authService.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        setThemeState('light');
-      }
-    });
+  useLayoutEffect(() => {
+    if (loading) return;
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (loading) {
+    if (!user) {
       applyTheme('light', false);
       return;
     }
 
-    applyTheme(effectiveTheme, Boolean(user));
-  }, [effectiveTheme, loading, user]);
+    applyTheme(theme, true);
+  }, [theme, user, loading]);
+
+  useEffect(() => {
+    const handleLoginReset = () => {
+      setThemeState('light');
+    };
+
+    window.addEventListener(THEME_LOGIN_RESET_EVENT, handleLoginReset);
+    return () => {
+      window.removeEventListener(THEME_LOGIN_RESET_EVENT, handleLoginReset);
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncStoredTheme = () => {
+      if (document.visibilityState !== 'visible' || !user) return;
+
+      const stored = getStoredTheme();
+      if (!stored || stored === theme) return;
+      setThemeState(stored);
+    };
+
+    document.addEventListener('visibilitychange', syncStoredTheme);
+    return () => {
+      document.removeEventListener('visibilitychange', syncStoredTheme);
+    };
+  }, [user, theme]);
 
   const setTheme = (next: Theme) => {
     if (!user) return;
@@ -51,6 +70,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setThemeState((current) => (current === 'light' ? 'dark' : 'light'));
   };
+
+  const effectiveTheme = user ? theme : 'light';
 
   return (
     <ThemeContext.Provider value={{ theme: effectiveTheme, setTheme, toggleTheme }}>

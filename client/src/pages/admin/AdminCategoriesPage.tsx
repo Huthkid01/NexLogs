@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderKanban, Layers3, Pencil, Plus, Tag, Trash2, X } from 'lucide-react';
+import { FolderKanban, Layers3, Pencil, Plus, Tag, Trash2, Upload, X } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
 import { AdminScrollTable, AdminScrollTableRow } from '@/components/admin/AdminScrollTable';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { categoryService } from '@/services';
+import { categoryService, storageService } from '@/services';
 import { isMockMode } from '@/lib/mock-mode';
 import { getCategoryIconPath, getPlatformFromCategory } from '@/lib/platform-icons';
 import {
@@ -40,6 +40,7 @@ interface CategoryFormState {
   description: string;
   sort_order: string;
   is_active: boolean;
+  image_url: string;
 }
 
 function slugify(value: string) {
@@ -57,6 +58,7 @@ function createEmptyCategoryForm(sortOrder: number): CategoryFormState {
     description: '',
     sort_order: String(sortOrder),
     is_active: true,
+    image_url: '',
   };
 }
 
@@ -67,6 +69,7 @@ function createFormFromCategory(category: Category): CategoryFormState {
     description: category.description ?? '',
     sort_order: String(category.sort_order),
     is_active: category.is_active,
+    image_url: category.image_url ?? '',
   };
 }
 
@@ -82,6 +85,8 @@ export default function AdminCategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryPendingDelete, setCategoryPendingDelete] = useState<Category | null>(null);
   const [form, setForm] = useState<CategoryFormState>(() => createEmptyCategoryForm(1));
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null);
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ['admin-categories'],
@@ -97,9 +102,19 @@ export default function AdminCategoriesPage() {
   }, [categories, search]);
 
   const saveCategory = useMutation({
-    mutationFn: async ({ payload }: { payload: Partial<Category> }) => {
-      const iconUrl = getCategoryIconPath({ name: payload.name, slug: payload.slug });
-      const payloadWithIcon = { ...payload, image_url: iconUrl };
+    mutationFn: async ({ payload, iconFile: uploadFile }: { payload: Partial<Category>; iconFile: File | null }) => {
+      const slug = payload.slug ?? slugify(String(payload.name ?? ''));
+      let imageUrl = payload.image_url || getCategoryIconPath({ name: payload.name, slug }) || null;
+
+      if (uploadFile) {
+        imageUrl = await storageService.uploadFile(
+          'category-icons',
+          `${slug}/${Date.now()}-${uploadFile.name}`,
+          uploadFile,
+        );
+      }
+
+      const payloadWithIcon = { ...payload, image_url: imageUrl };
 
       if (isMockMode()) {
         if (editingCategory) return categoryService.update(editingCategory.id, payloadWithIcon as never);
@@ -118,6 +133,8 @@ export default function AdminCategoriesPage() {
       toast.success(editingCategory ? 'Category updated' : 'Category created');
       setIsModalOpen(false);
       setEditingCategory(null);
+      setIconFile(null);
+      setIconPreviewUrl(null);
     },
   });
 
@@ -140,12 +157,16 @@ export default function AdminCategoriesPage() {
   const openCreateModal = () => {
     setEditingCategory(null);
     setForm(createEmptyCategoryForm((categories?.length ?? 0) + 1));
+    setIconFile(null);
+    setIconPreviewUrl(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (category: Category) => {
     setEditingCategory(category);
     setForm(createFormFromCategory(category));
+    setIconFile(null);
+    setIconPreviewUrl(category.image_url || null);
     setIsModalOpen(true);
   };
 
@@ -153,6 +174,21 @@ export default function AdminCategoriesPage() {
     if (saveCategory.isPending) return;
     setIsModalOpen(false);
     setEditingCategory(null);
+    setIconFile(null);
+    setIconPreviewUrl(null);
+  };
+
+  const handleIconUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file.');
+      return;
+    }
+
+    setIconFile(file);
+    setIconPreviewUrl(URL.createObjectURL(file));
   };
 
   const submitCategory = (event: { preventDefault: () => void }) => {
@@ -170,11 +206,14 @@ export default function AdminCategoriesPage() {
         description: form.description.trim() || null,
         sort_order: Number(form.sort_order || 0),
         is_active: form.is_active,
+        image_url: form.image_url || null,
       },
+      iconFile,
     });
   };
 
   const categoryPlatform = getPlatformFromCategory(form.slug || form.name || '');
+  const previewIconUrl = iconPreviewUrl || form.image_url || null;
 
   return (
     <>
@@ -252,8 +291,12 @@ export default function AdminCategoriesPage() {
                   <div className="min-w-[180px]">
                     <div className="flex items-center gap-3">
                       <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center', adminPlatformIconWrapClass(isDark), 'text-blue-300')}>
-                        {getPlatformFromCategory(category.slug || category.name) ? (
-                          <PlatformIcon platform={getPlatformFromCategory(category.slug || category.name)!} size="sm" className="h-8 w-8" />
+                        {getPlatformFromCategory(category.slug || category.name) || category.image_url ? (
+                          category.image_url ? (
+                            <img src={category.image_url} alt="" className="h-8 w-8 rounded-lg object-contain" />
+                          ) : (
+                            <PlatformIcon platform={getPlatformFromCategory(category.slug || category.name)!} size="sm" className="h-8 w-8" />
+                          )
                         ) : (
                           <Tag className="h-5 w-5" />
                         )}
@@ -335,15 +378,29 @@ export default function AdminCategoriesPage() {
                             'flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border text-blue-300',
                             isDark ? 'border-[#22324a] bg-[#081624]' : 'border-slate-200 bg-slate-50',
                           )}>
-                            {categoryPlatform ? (
+                            {previewIconUrl ? (
+                              <img src={previewIconUrl} alt="" className="h-12 w-12 object-contain" />
+                            ) : categoryPlatform ? (
                               <PlatformIcon platform={categoryPlatform} size="md" className="h-11 w-11" />
                             ) : (
                               <Tag className="h-6 w-6" />
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <p className={cn('text-sm font-medium', isDark ? 'text-slate-200' : 'text-slate-800')}>Social icon preview</p>
-                            <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>The matching social icon is saved automatically and shown on the website.</p>
+                          <div className="min-w-0 flex-1 space-y-3">
+                            <div>
+                              <p className={cn('text-sm font-medium', isDark ? 'text-slate-200' : 'text-slate-800')}>Upload category icon</p>
+                              <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>
+                                Products in this category will use this icon automatically.
+                              </p>
+                            </div>
+                            <label className={cn(
+                              'inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors',
+                              isDark ? 'border-[#22324a] bg-[#081624] text-slate-200 hover:bg-[#10213a]' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
+                            )}>
+                              <Upload className="h-4 w-4" />
+                              Choose image
+                              <input type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
+                            </label>
                           </div>
                         </div>
                       </div>

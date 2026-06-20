@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
+import { ProductBuyerDetailsEditor } from '@/components/admin/ProductBuyerDetailsEditor';
 import { AdminScrollTable, AdminScrollTableRow } from '@/components/admin/AdminScrollTable';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { Card, CardContent } from '@/components/ui/card';
@@ -154,6 +155,9 @@ export default function AdminProductsPage() {
     queryFn: categoryService.getAllAdmin,
   });
 
+  const selectedCategory = categories?.find((category) => category.id === form.category_id);
+  const productIconUrl = selectedCategory?.image_url || getPlatformIconPath(form.platform);
+
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return products ?? [];
@@ -169,7 +173,8 @@ export default function AdminProductsPage() {
 
   const saveProduct = useMutation({
     mutationFn: async ({ payload }: { payload: ReturnType<typeof buildProductPayload> }) => {
-      const iconUrl = getPlatformIconPath(payload.platform);
+      const selectedCategory = categories?.find((category) => category.id === payload.category_id);
+      const iconUrl = selectedCategory?.image_url || getPlatformIconPath(payload.platform);
 
       if (isMockMode()) {
         const payloadWithImage = iconUrl
@@ -401,16 +406,22 @@ export default function AdminProductsPage() {
                         'flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border',
                         isDark ? 'border-[#22324a] bg-[#06101d]' : 'border-slate-200 bg-slate-50',
                       )}>
-                        <PlatformIcon platform={form.platform} size="md" className="h-10 w-10" />
+                        {productIconUrl ? (
+                          <img src={productIconUrl} alt="" className="h-10 w-10 object-contain" />
+                        ) : (
+                          <PlatformIcon platform={form.platform} size="md" className="h-10 w-10" />
+                        )}
                       </div>
                       <div className={cn(
                         'rounded-2xl border px-4 py-3 text-sm',
                         isDark ? 'border-[#22324a] bg-[#06101d] text-slate-300' : 'border-slate-200 bg-white text-slate-600',
                       )}>
-                        The product uses the selected platform icon automatically.
+                        {selectedCategory?.image_url
+                          ? 'Uses the icon uploaded on the selected category.'
+                          : 'Uses the platform icon until the category has a custom upload.'}
                       </div>
                     </div>
-                    <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>This icon shows in admin and across the website instead of a full image.</p>
+                    <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>Choose a category with an uploaded icon, or fall back to the platform icon.</p>
                   </div>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
@@ -445,6 +456,11 @@ export default function AdminProductsPage() {
                           </option>
                         ))}
                       </select>
+                      {selectedCategory?.image_url ? (
+                        <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
+                          Category icon will be used on this product.
+                        </p>
+                      ) : null}
                     </div>
                     <div>
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Platform</label>
@@ -499,34 +515,17 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <label className={cn('block text-sm', adminMutedTextClass(isDark))}>
-                          Product details for buyer copy
-                        </label>
-                        <span className={cn(
-                          'rounded-full border px-3 py-1 text-xs',
-                          isDark ? 'border-[#1f3550] bg-[#0a1628] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
-                        )}>
-                          {detailLineCount} {detailLineCount === 1 ? 'line' : 'lines'}
-                        </span>
-                      </div>
-                      <Textarea
+                      <ProductBuyerDetailsEditor
                         value={form.product_details}
-                        onChange={(event) => {
-                          const product_details = event.target.value;
-                          const lineCount = countProductDetailLines(product_details);
+                        onChange={(product_details, lineCount) => {
                           setForm((current) => ({
                             ...current,
                             product_details,
                             stock: lineCount > 0 ? String(lineCount) : current.stock,
                           }));
                         }}
-                        className="admin-textarea min-h-[280px] text-sm leading-6"
-                        placeholder={'1. Username: john / Password: secret123 / Email: john@mail.com\n\n2. Access link: https://example.com/account/abc123\n\n3. Any text format works — one numbered item per buyer'}
+                        isDark={isDark}
                       />
-                      <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
-                        Number each item (1., 2., 3.). Each numbered block is delivered to one buyer when purchased. Use any format — not just username:password.
-                      </p>
                     </div>
                   </div>
                 </section>

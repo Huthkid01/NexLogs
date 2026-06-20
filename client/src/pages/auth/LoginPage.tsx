@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authService } from '@/services/auth.service';
+import { resetThemeForLogin } from '@/contexts/theme';
 import { APP_NAME } from '@/constants';
 import { getSupabaseConfigError } from '@/lib/mock-mode';
 import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
@@ -34,6 +35,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await authService.signIn(data.email, data.password);
+      resetThemeForLogin();
       const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
       navigate(from && from !== '/login' ? from : '/', { replace: true });
     } catch (err: unknown) {
