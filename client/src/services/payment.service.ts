@@ -16,6 +16,34 @@ export interface StartDepositParams {
   paymentMethod: string;
 }
 
+interface PendingDeposit {
+  txRef: string;
+  amount: number;
+  currency: string;
+  amountUsd: number;
+  paymentMethod: string;
+}
+
+const PENDING_DEPOSIT_KEY = 'nexlogs_pending_deposit';
+
+function savePendingDeposit(pending: PendingDeposit) {
+  sessionStorage.setItem(PENDING_DEPOSIT_KEY, JSON.stringify(pending));
+}
+
+function clearPendingDeposit() {
+  sessionStorage.removeItem(PENDING_DEPOSIT_KEY);
+}
+
+function getPendingDeposit(): PendingDeposit | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_DEPOSIT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PendingDeposit;
+  } catch {
+    return null;
+  }
+}
+
 function loadFlutterwaveScript() {
   if (window.FlutterwaveCheckout) {
     return Promise.resolve();
@@ -41,7 +69,7 @@ function loadFlutterwaveScript() {
 
 async function verifyFlutterwaveDeposit(
   response: FlutterwaveCheckoutResponse,
-  params: StartDepositParams,
+  params: Pick<StartDepositParams, 'amount' | 'currency' | 'amountUsd' | 'paymentMethod'>,
   txRef: string,
 ) {
   const { data, error } = await supabase.functions.invoke('flutterwave-verify', {
@@ -58,7 +86,11 @@ async function verifyFlutterwaveDeposit(
   });
 
   if (error) {
-    throw new Error(error.message || 'Payment verification failed');
+    const message =
+      (data && typeof data === 'object' && 'error' in data && String(data.error)) ||
+      error.message ||
+      'Payment verification failed';
+    throw new Error(message);
   }
 
   if (data && typeof data === 'object' && 'error' in data && data.error) {
@@ -66,6 +98,33 @@ async function verifyFlutterwaveDeposit(
   }
 
   return data;
+}
+
+export async function completeFlutterwaveRedirect(searchParams: URLSearchParams) {
+  const status = searchParams.get('status');
+  const txRef = searchParams.get('tx_ref');
+  const transactionId = searchParams.get('transaction_id');
+
+  if (!txRef || !transactionId) return false;
+  if (status !== 'successful' && status !== 'completed') return false;
+
+  const pending = getPendingDeposit();
+  if (!pending || pending.txRef !== txRef) {
+    throw new Error('Payment session expired. If you were charged, contact support with reference: ' + txRef);
+  }
+
+  await verifyFlutterwaveDeposit(
+    {
+      status: 'successful',
+      transaction_id: Number(transactionId),
+      tx_ref: txRef,
+    },
+    pending,
+    txRef,
+  );
+
+  clearPendingDeposit();
+  return true;
 }
 
 export async function startFlutterwaveDeposit(params: StartDepositParams) {
@@ -82,6 +141,14 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
   const publicKey = getFlutterwavePublicKey()!;
   const txRef = createDepositTxRef(params.userId);
 
+  savePendingDeposit({
+    txRef,
+    amount: params.amount,
+    currency: params.currency,
+    amountUsd: params.amountUsd,
+    paymentMethod: params.paymentMethod,
+  });
+
   return new Promise<void>((resolve, reject) => {
     let settled = false;
 
@@ -97,7 +164,7 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
       amount: params.amount,
       currency: params.currency,
       payment_options: 'card,banktransfer,ussd',
-      redirect_url: `${window.location.origin}/add-funds?status=success`,
+      redirect_url: `${window.location.origin}/add-funds`,
       customer: {
         email: params.email,
         name: params.name || params.email,
@@ -115,6 +182,7 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
             }
 
             await verifyFlutterwaveDeposit(response, params, txRef);
+            clearPendingDeposit();
             finish(() => resolve());
           } catch (err) {
             finish(() => reject(err instanceof Error ? err : new Error('Payment verification failed')));
@@ -122,7 +190,12 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
         })();
       },
       onclose: () => {
-        finish(() => reject(new Error('Payment cancelled')));
+        // Flutterwave may close the modal before redirect; redirect handler completes payment.
+        setTimeout(() => {
+          if (!settled) {
+            finish(() => reject(new Error('Payment cancelled')));
+          }
+        }, 1500);
       },
     });
   });

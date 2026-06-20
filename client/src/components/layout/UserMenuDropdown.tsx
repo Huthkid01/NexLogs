@@ -18,6 +18,7 @@ export function UserMenuDropdown() {
     queryKey: ['wallet-balance', user?.id],
     queryFn: () => profileService.getStats(user!.id),
     enabled: !!user?.id,
+    refetchOnWindowFocus: true,
   });
   const balance = stats?.balance ?? 0;
   const profileHref = profile?.role === 'admin' ? '/admin' : '/profile';

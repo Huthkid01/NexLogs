@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpDown, Info } from 'lucide-react';
 import { toast } from 'sonner';
@@ -6,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFlutterwaveConfigured, isFlutterwaveTestMode } from '@/lib/flutterwave-config';
 import { isMockMode } from '@/lib/mock-mode';
-import { startFlutterwaveDeposit } from '@/services/payment.service';
+import { completeFlutterwaveRedirect, startFlutterwaveDeposit } from '@/services/payment.service';
 import {
   convertUsdToCurrency,
   DISPLAY_RATE_CURRENCIES,
@@ -47,12 +48,40 @@ function formatRate(value: number) {
 export default function AddFundsPage() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]['code']>('NGN');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [showRates, setShowRates] = useState(false);
   const [baseUsdAmount, setBaseUsdAmount] = useState('1');
   const [submitting, setSubmitting] = useState(false);
+  const [verifyingRedirect, setVerifyingRedirect] = useState(false);
+  const redirectHandled = useRef(false);
+
+  useEffect(() => {
+    if (!user?.id || redirectHandled.current || verifyingRedirect) return;
+    if (!searchParams.get('transaction_id') || !searchParams.get('tx_ref')) return;
+
+    redirectHandled.current = true;
+    setVerifyingRedirect(true);
+    void (async () => {
+      try {
+        const completed = await completeFlutterwaveRedirect(searchParams);
+        if (!completed) return;
+
+        await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
+        await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
+        toast.success('Payment successful. Funds added to your wallet.');
+        setSearchParams({}, { replace: true });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Payment verification failed';
+        toast.error(message);
+        setSearchParams({}, { replace: true });
+      } finally {
+        setVerifyingRedirect(false);
+      }
+    })();
+  }, [user?.id, searchParams, setSearchParams, queryClient, verifyingRedirect]);
 
   const { data: liveRates, isLoading: ratesLoading, isError: ratesError } = useQuery({
     queryKey: ['usd-exchange-rates'],
@@ -309,7 +338,7 @@ export default function AddFundsPage() {
                       onChange={(e) => setAmount(e.target.value)}
                       className={`${inputClassName} placeholder:text-gray-400`}
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">≈ {usdEquivalent} USD</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">≈ ${usdEquivalent} USD added to wallet</p>
                   </div>
 
                   <div>
