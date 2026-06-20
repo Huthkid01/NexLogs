@@ -11,7 +11,6 @@ import { APP_NAME } from '@/constants';
 import { getAdminLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { Input } from '@/components/ui/input';
 import { openErrorReport } from '@/lib/error-report';
-import { DEMO_ADMIN_LOGIN, isMockMode } from '@/lib/mock-mode';
 
 const adminLoginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -36,12 +35,10 @@ export default function AdminLoginPage() {
   const location = useLocation();
   const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
-  const mockMode = isMockMode();
-  const adminEmail = mockMode ? DEMO_ADMIN_LOGIN.email : (import.meta.env.VITE_ADMIN_EMAIL as string | undefined);
-  const adminPassword = mockMode ? DEMO_ADMIN_LOGIN.password : (import.meta.env.VITE_ADMIN_PASSWORD as string | undefined);
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
+  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD as string | undefined;
   const { register, handleSubmit, formState: { errors } } = useForm<AdminLoginForm>({
     resolver: zodResolver(adminLoginSchema),
-    defaultValues: mockMode ? { email: DEMO_ADMIN_LOGIN.email, password: DEMO_ADMIN_LOGIN.password } : undefined,
   });
 
   if (isAdmin) {

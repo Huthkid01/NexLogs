@@ -87,7 +87,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   };
 
   const handlePreview = () => {
-    toast.info('Preview is not available in demo mode');
+    toast.info('Preview is not available yet');
   };
 
   const handleCheckRate = () => {

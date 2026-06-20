@@ -124,8 +124,7 @@ export default function AddFundsPage() {
     setSubmitting(true);
     try {
       if (isMockMode()) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        toast.success('Redirecting to payment gateway...');
+        toast.error('Wallet deposits require Supabase. Set VITE_USE_MOCK_DATA=false and add your Supabase keys.');
         return;
       }
 

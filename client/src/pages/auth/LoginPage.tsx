@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authService } from '@/services/auth.service';
 import { APP_NAME } from '@/constants';
-import { isMockMode, DEMO_LOGIN, DEMO_ADMIN_LOGIN } from '@/lib/mock-mode';
 import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 
@@ -76,15 +75,6 @@ export default function LoginPage() {
           <CardDescription>Sign in to your {APP_NAME} account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isMockMode() && (
-            <div className="rounded-lg border border-[#fde0cc] bg-[#fff3eb] p-3 text-sm space-y-2">
-              <p className="font-semibold text-[#f26522]">Demo mode — use these credentials</p>
-              <div className="text-gray-700 space-y-1">
-                <p><span className="font-medium">User:</span> {DEMO_LOGIN.email} / {DEMO_LOGIN.password}</p>
-                <p><span className="font-medium">Admin:</span> {DEMO_ADMIN_LOGIN.email} / {DEMO_ADMIN_LOGIN.password}</p>
-              </div>
-            </div>
-          )}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>

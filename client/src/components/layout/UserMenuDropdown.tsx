@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Moon, Sun, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
-import { isMockMode } from '@/lib/mock-mode';
-import { getMockBalance } from '@/mocks/mock-auth';
+import { profileService } from '@/services/profile.service';
 import { cn } from '@/lib/utils';
 
 export function UserMenuDropdown() {
@@ -14,7 +14,12 @@ export function UserMenuDropdown() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  const balance = user && isMockMode() ? getMockBalance(user.id) : 0;
+  const { data: stats } = useQuery({
+    queryKey: ['wallet-balance', user?.id],
+    queryFn: () => profileService.getStats(user!.id),
+    enabled: !!user?.id,
+  });
+  const balance = stats?.balance ?? 0;
   const profileHref = profile?.role === 'admin' ? '/admin' : '/profile';
 
   useEffect(() => {

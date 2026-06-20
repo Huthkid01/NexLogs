@@ -52,7 +52,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-xl sm:text-2xl font-bold">User Management</h1>
-        <p className="text-sm text-muted-foreground">Mock users help you review list density and admin actions on mobile and desktop.</p>
+        <p className="text-sm text-muted-foreground">Manage registered users, roles, and account status.</p>
       </div>
       <div className="space-y-3">
         {users?.map((user) => (

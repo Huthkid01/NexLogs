@@ -177,7 +177,7 @@ export default function AdminDashboardPage() {
             <div className="mb-5">
               <h2 className="admin-heading text-2xl font-semibold">Recent Orders</h2>
               <p className={cn('mt-1 text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
-                Latest activity from the seeded marketplace data.
+                Latest orders from your marketplace.
               </p>
             </div>
           {stats?.recentOrders?.length ? (

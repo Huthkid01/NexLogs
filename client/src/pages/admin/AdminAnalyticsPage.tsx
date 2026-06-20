@@ -21,7 +21,7 @@ export default function AdminAnalyticsPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-xl sm:text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-muted-foreground">Use this seeded overview to shape charts, cards, and reporting layout.</p>
+        <p className="text-sm text-muted-foreground">Overview of sales, revenue, and marketplace activity.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

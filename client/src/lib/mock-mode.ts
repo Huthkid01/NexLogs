@@ -11,13 +11,3 @@ const hasSupabaseConfig = Boolean(
 
 /** Frontend-only mock data when Supabase is not configured or mock flag is on. */
 export const isMockMode = () => useMockFlag || !hasSupabaseConfig;
-
-export const DEMO_LOGIN = {
-  email: 'demo@nexlogs.com',
-  password: 'Demo1234!',
-} as const;
-
-export const DEMO_ADMIN_LOGIN = {
-  email: 'admin@nexlogs.com',
-  password: 'Admin1234!',
-} as const;
