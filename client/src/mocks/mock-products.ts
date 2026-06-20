@@ -20,7 +20,7 @@ function filterProducts(filters: ProductFilters): Product[] {
 
   switch (sort) {
     case 'oldest':
-      results.sort((a, b) => a.created_at.localeCompare(b.created_at));
+      results.sort((a, b) => b.sort_order - a.sort_order || a.id.localeCompare(b.id));
       break;
     case 'price_asc':
       results.sort((a, b) => a.price - b.price);
@@ -32,7 +32,7 @@ function filterProducts(filters: ProductFilters): Product[] {
       results.sort((a, b) => (b.followers ?? 0) - (a.followers ?? 0));
       break;
     default:
-      results.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      results.sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id));
   }
 
   return results;

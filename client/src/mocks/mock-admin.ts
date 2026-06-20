@@ -66,6 +66,7 @@ const extraProducts: Product[] = [
     featured: false,
     category_id: 'cat-instagram',
     is_active: false,
+    sort_order: 12,
     created_at: '2026-06-12T07:30:00.000Z',
     updated_at: now,
     category: MOCK_CATEGORIES[0],
@@ -88,6 +89,7 @@ const extraProducts: Product[] = [
     featured: true,
     category_id: 'cat-facebook',
     is_active: true,
+    sort_order: 13,
     created_at: '2026-06-09T11:00:00.000Z',
     updated_at: now,
     category: MOCK_CATEGORIES[1],
@@ -139,7 +141,7 @@ let adminUsers: Profile[] = [...MOCK_USERS.map((user) => ({ ...user.profile })),
 );
 
 let adminProducts: Product[] = [...MOCK_PRODUCTS.map((product) => ({ ...product })), ...extraProducts].sort(
-  (a, b) => b.created_at.localeCompare(a.created_at)
+  (a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id),
 );
 
 const baseOrders = [
@@ -402,12 +404,18 @@ export const mockAdminService = {
   },
 
   async getProducts(): Promise<Product[]> {
-    return [...adminProducts];
+    return [...adminProducts].sort(
+      (a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id),
+    );
   },
 
   async createProduct(product: Partial<Product>): Promise<Product> {
     const now = new Date().toISOString();
     const category = adminCategories.find((item) => item.id === product.category_id);
+    const nextSortOrder = adminProducts.reduce(
+      (min, item) => Math.min(min, item.sort_order),
+      adminProducts[0]?.sort_order ?? 1,
+    ) - 1;
     const created: Product = {
       id: product.id ?? `product-${crypto.randomUUID()}`,
       title: product.title ?? 'Untitled Product',
@@ -426,13 +434,14 @@ export const mockAdminService = {
       featured: Boolean(product.featured),
       category_id: product.category_id ?? adminCategories[0]?.id ?? '',
       is_active: product.is_active ?? true,
+      sort_order: nextSortOrder,
       created_at: now,
       updated_at: now,
       category,
       product_images: product.product_images ?? [],
     };
 
-    adminProducts = [created, ...adminProducts];
+    adminProducts = [...adminProducts, created];
     return created;
   },
 
@@ -442,12 +451,14 @@ export const mockAdminService = {
 
     const categoryId = updates.category_id ?? adminProducts[index].category_id;
     const category = adminCategories.find((item) => item.id === categoryId);
+    const { sort_order: _ignored, ...safeUpdates } = updates;
 
     adminProducts[index] = {
       ...adminProducts[index],
-      ...updates,
+      ...safeUpdates,
       category_id: categoryId,
       category,
+      sort_order: adminProducts[index].sort_order,
       updated_at: new Date().toISOString(),
     };
     return adminProducts[index];

@@ -10,7 +10,7 @@ export const MOCK_CATEGORIES: Category[] = [
   { id: 'cat-tiktok', name: 'TikTok', slug: 'tiktok', description: null, image_url: getCategoryIconPath({ name: 'TikTok', slug: 'tiktok' }), is_active: true, sort_order: 4, created_at: now, updated_at: now },
 ];
 
-export const MOCK_PRODUCTS: Product[] = [
+const mockProductSeed: Omit<Product, 'sort_order'>[] = [
   {
     id: 'prod-1', title: '1-5 MONTHS OLD USA TELEGRAM ACCOUNT', slug: 'usa-telegram-account',
     description: 'USA Telegram account aged 1-5 months • ready for marketing • clean history',
@@ -108,6 +108,11 @@ export const MOCK_PRODUCTS: Product[] = [
     category: MOCK_CATEGORIES[1], product_images: [{ id: 'img-12', product_id: 'prod-12', image_url: getPlatformIconPath('facebook'), sort_order: 0, created_at: now }],
   },
 ];
+
+export const MOCK_PRODUCTS: Product[] = mockProductSeed.map((product, index) => ({
+  ...product,
+  sort_order: index,
+}));
 
 export interface MockUserRecord {
   id: string;

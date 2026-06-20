@@ -77,6 +77,7 @@ export interface Database {
           featured: boolean;
           category_id: string;
           is_active: boolean;
+          sort_order: number;
           created_at: string;
           updated_at: string;
         };
@@ -97,6 +98,7 @@ export interface Database {
           featured?: boolean;
           category_id: string;
           is_active?: boolean;
+          sort_order?: number;
         };
         Update: {
           title?: string;
@@ -115,6 +117,7 @@ export interface Database {
           featured?: boolean;
           category_id?: string;
           is_active?: boolean;
+          sort_order?: number;
         };
       };
       product_images: {

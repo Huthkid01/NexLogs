@@ -4,6 +4,18 @@ import { mockAdminService } from '@/mocks/mock-admin';
 import { mockProductService } from '@/mocks/mock-products';
 import type { Product, ProductFilters, PaginatedResponse } from '@/types';
 
+async function getNextProductSortOrder(): Promise<number> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('sort_order')
+    .order('sort_order', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data?.sort_order ?? 1) - 1;
+}
+
 export const productService = {
   async getProducts(filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> {
     if (isMockMode()) return mockProductService.getProducts(filters);
@@ -23,12 +35,14 @@ export const productService = {
     if (categoryId) query = query.eq('category_id', categoryId);
 
     switch (sort) {
-      case 'oldest': query = query.order('created_at', { ascending: true }); break;
+      case 'oldest': query = query.order('sort_order', { ascending: false }); break;
       case 'price_asc': query = query.order('price', { ascending: true }); break;
       case 'price_desc': query = query.order('price', { ascending: false }); break;
       case 'popular': query = query.order('followers', { ascending: false, nullsFirst: false }); break;
-      default: query = query.order('created_at', { ascending: false });
+      default: query = query.order('sort_order', { ascending: true });
     }
+
+    query = query.order('id', { ascending: true });
 
     const from = (page - 1) * limit;
     query = query.range(from, from + limit - 1);
@@ -52,7 +66,8 @@ export const productService = {
       .select('*, category:categories(*), product_images(*)')
       .eq('is_active', true)
       .eq('featured', true)
-      .order('created_at', { ascending: false })
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })
       .limit(limit);
     if (error) throw error;
     return (data || []) as Product[];
@@ -78,6 +93,8 @@ export const productService = {
       .eq('category_id', categoryId)
       .eq('is_active', true)
       .neq('id', productId)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })
       .limit(limit);
     if (error) throw error;
     return (data || []) as Product[];
@@ -88,21 +105,24 @@ export const productService = {
     const { data, error } = await supabase
       .from('products')
       .select('*, category:categories(*), product_images(*)')
-      .order('created_at', { ascending: false });
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
     if (error) throw error;
     return (data || []) as Product[];
   },
 
   async create(product: Partial<Product>) {
     if (isMockMode()) return mockAdminService.createProduct(product);
-    const { data, error } = await supabase.from('products').insert(product as never).select().single();
+    const sort_order = await getNextProductSortOrder();
+    const { data, error } = await supabase.from('products').insert({ ...product, sort_order } as never).select().single();
     if (error) throw error;
     return data as Product;
   },
 
   async update(id: string, updates: Partial<Product>) {
     if (isMockMode()) return mockAdminService.updateProduct(id, updates);
-    const { data, error } = await supabase.from('products').update(updates as never).eq('id', id).select().single();
+    const { sort_order: _ignored, ...safeUpdates } = updates;
+    const { data, error } = await supabase.from('products').update(safeUpdates as never).eq('id', id).select().single();
     if (error) throw error;
     return data as Product;
   },

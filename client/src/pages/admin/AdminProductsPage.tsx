@@ -13,7 +13,7 @@ import { categoryService, productService } from '@/services';
 import { isMockMode } from '@/lib/mock-mode';
 import { supabase } from '@/lib/supabase';
 import { getPlatformIconPath } from '@/lib/platform-icons';
-import { countProductDetailLines } from '@/lib/product-details';
+import { countProductDetailLines, formatProductDetailsForEditor, parseProductDetailLines, serializeProductDetailLines } from '@/lib/product-details';
 import { formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { PlatformType, Product } from '@/types';
@@ -82,7 +82,7 @@ function createFormFromProduct(product: Product): ProductFormState {
     followers: product.followers != null ? String(product.followers) : '',
     following: product.following != null ? String(product.following) : '',
     description: product.description,
-    product_details: product.product_details ?? '',
+    product_details: formatProductDetailsForEditor(product.product_details),
     featured: product.featured,
     verified: product.verified,
     is_active: product.is_active,
@@ -106,7 +106,7 @@ function buildProductPayload(form: ProductFormState) {
     followers: form.followers ? Number(form.followers) : null,
     following: form.following ? Number(form.following) : null,
     description: form.description.trim(),
-    product_details: form.product_details.trim(),
+    product_details: serializeProductDetailLines(parseProductDetailLines(form.product_details)),
     featured: form.featured,
     verified: form.verified,
     is_active: form.is_active,
@@ -181,6 +181,8 @@ export default function AdminProductsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['home-products'] });
+      queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       toast.success(editingProduct ? 'Product updated' : 'Product created');
       setIsModalOpen(false);
       setEditingProduct(null);
@@ -496,11 +498,11 @@ export default function AdminProductsPage() {
                             stock: lineCount > 0 ? String(lineCount) : current.stock,
                           }));
                         }}
-                        className="admin-textarea min-h-[280px] font-mono text-sm leading-6"
-                        placeholder={'username:password:email:email-password:2fa\nusername2:password2:email2:email-password2:2fa\nusername3:password3:email3:email-password3:2fa'}
+                        className="admin-textarea min-h-[280px] text-sm leading-6"
+                        placeholder={'1. Username: john / Password: secret123 / Email: john@mail.com\n\n2. Access link: https://example.com/account/abc123\n\n3. Any text format works — one numbered item per buyer'}
                       />
                       <p className="mt-2 text-xs text-slate-500">
-                        Paste one account per line. Each line is delivered to one buyer and removed from stock after purchase.
+                        Number each item (1., 2., 3.). Each numbered block is delivered to one buyer when purchased. Use any format — not just username:password.
                       </p>
                     </div>
                   </div>

@@ -44,6 +44,7 @@ export interface Product {
   featured: boolean;
   category_id: string;
   is_active: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
   category?: Category;
