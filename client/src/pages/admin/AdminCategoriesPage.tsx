@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FolderKanban, Layers3, Pencil, Plus, Tag, Trash2, X } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
+import { AdminScrollTable, AdminScrollTableRow } from '@/components/admin/AdminScrollTable';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,9 @@ function createFormFromCategory(category: Category): CategoryFormState {
     is_active: category.is_active,
   };
 }
+
+const CATEGORY_TABLE_GRID =
+  'grid-cols-[minmax(180px,1.2fr)_minmax(220px,1.5fr)_80px_100px_100px]';
 
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
@@ -191,7 +195,7 @@ export default function AdminCategoriesPage() {
           </Card>
         </div>
 
-        <Card className="admin-panel rounded-2xl border-[#18263b] bg-[#091427] text-slate-100">
+        <Card className="admin-panel min-w-0 overflow-hidden rounded-2xl border-[#18263b] bg-[#091427] text-slate-100">
           <CardContent className="space-y-5 p-6">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div>
@@ -209,82 +213,74 @@ export default function AdminCategoriesPage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-[#18263b]">
-              <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_100px_120px_120px] gap-4 border-b border-[#18263b] bg-[#0c1830] px-5 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 md:grid">
-                <span>Category</span>
-                <span>Description</span>
-                <span>Sort</span>
-                <span>Status</span>
-                <span>Actions</span>
-              </div>
-
-              <div className="divide-y divide-[#18263b] bg-[#07111f]">
-                {filteredCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="grid gap-4 px-5 py-4 transition-colors hover:bg-[#0b1a30] md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_100px_120px_120px] md:items-center"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0d1d33] text-blue-300">
-                          {getPlatformFromCategory(category.slug || category.name) ? (
-                            <PlatformIcon platform={getPlatformFromCategory(category.slug || category.name)!} size="sm" className="h-8 w-8" />
-                          ) : (
-                            <Tag className="h-5 w-5" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-50">{category.name}</p>
-                          <p className="mt-1 text-sm text-slate-400">/{category.slug}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="text-sm leading-6 text-slate-400">
-                      {category.description || 'No category description added yet.'}
-                    </p>
-
-                    <p className="text-sm font-medium text-slate-200">{category.sort_order}</p>
-
-                    <div>
-                      <Badge
-                        variant="outline"
-                        className={category.is_active ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-600 bg-slate-700/20 text-slate-300'}
-                      >
-                        {category.is_active ? 'Active' : 'Hidden'}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-2 md:justify-end">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-9 w-9 rounded-xl border border-[#22324a] bg-[#0b1628] text-slate-200 hover:bg-[#10213a]"
-                        onClick={() => openEditModal(category)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-9 w-9 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 hover:bg-red-500/20"
-                        onClick={() => setCategoryPendingDelete(category)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                {!filteredCategories.length && (
+            <AdminScrollTable
+              columns={['Category', 'Description', 'Sort', 'Status', 'Actions']}
+              gridClassName={CATEGORY_TABLE_GRID}
+              minWidthClassName="min-w-[48rem]"
+              emptyState={
+                !filteredCategories.length ? (
                   <div className="px-5 py-12 text-center">
                     <FolderKanban className="mx-auto h-10 w-10 text-slate-600" />
                     <p className="mt-4 text-lg font-medium text-slate-200">No categories found</p>
                     <p className="mt-2 text-sm text-slate-500">Try another search or create a new category.</p>
                   </div>
-                )}
-              </div>
-            </div>
+                ) : null
+              }
+            >
+              {filteredCategories.map((category) => (
+                <AdminScrollTableRow key={category.id} gridClassName={CATEGORY_TABLE_GRID}>
+                  <div className="min-w-[180px]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0d1d33] text-blue-300">
+                        {getPlatformFromCategory(category.slug || category.name) ? (
+                          <PlatformIcon platform={getPlatformFromCategory(category.slug || category.name)!} size="sm" className="h-8 w-8" />
+                        ) : (
+                          <Tag className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-50">{category.name}</p>
+                        <p className="mt-1 text-sm text-slate-400">/{category.slug}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="min-w-[220px] text-sm leading-6 text-slate-400">
+                    {category.description || 'No category description added yet.'}
+                  </p>
+
+                  <p className="min-w-[80px] text-sm font-medium text-slate-200">{category.sort_order}</p>
+
+                  <div className="min-w-[100px]">
+                    <Badge
+                      variant="outline"
+                      className={category.is_active ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-600 bg-slate-700/20 text-slate-300'}
+                    >
+                      {category.is_active ? 'Active' : 'Hidden'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex min-w-[100px] items-center justify-end gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-xl border border-[#22324a] bg-[#0b1628] text-slate-200 hover:bg-[#10213a]"
+                      onClick={() => openEditModal(category)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                      onClick={() => setCategoryPendingDelete(category)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </AdminScrollTableRow>
+              ))}
+            </AdminScrollTable>
           </CardContent>
         </Card>
       </div>

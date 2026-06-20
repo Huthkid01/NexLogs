@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
+import { AdminScrollTable, AdminScrollTableRow } from '@/components/admin/AdminScrollTable';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -112,6 +113,9 @@ function buildProductPayload(form: ProductFormState) {
     is_active: form.is_active,
   };
 }
+
+const PRODUCT_TABLE_GRID =
+  'grid-cols-[minmax(240px,2fr)_minmax(120px,1fr)_minmax(100px,0.9fr)_minmax(100px,0.9fr)_100px]';
 
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
@@ -248,7 +252,7 @@ export default function AdminProductsPage() {
           </Button>
         </div>
 
-        <Card className="admin-panel rounded-2xl border-[#18263b] bg-[#091427] text-slate-100">
+        <Card className="admin-panel min-w-0 overflow-hidden rounded-2xl border-[#18263b] bg-[#091427] text-slate-100">
           <CardContent className="space-y-5 p-6">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
               <div>
@@ -266,95 +270,87 @@ export default function AdminProductsPage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-[#18263b]">
-              <div className="hidden grid-cols-[minmax(0,2fr)_1fr_0.9fr_0.9fr_120px] gap-4 border-b border-[#18263b] bg-[#0c1830] px-5 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 md:grid">
-                <span>Product</span>
-                <span>Category</span>
-                <span>Price</span>
-                <span>Status</span>
-                <span>Actions</span>
-              </div>
-
-              <div className="divide-y divide-[#18263b] bg-[#07111f]">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className="grid gap-4 px-5 py-4 transition-colors hover:bg-[#0b1a30] md:grid-cols-[minmax(0,2fr)_1fr_0.9fr_0.9fr_120px] md:items-center"
-                  >
-                    <div className="flex min-w-0 items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0d1d33] text-slate-100">
-                        <PlatformIcon platform={product.platform} size="md" className="h-7 w-7" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-50">{product.title}</p>
-                        <p className="mt-1 text-sm text-slate-400">{product.slug}</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Badge variant="outline" className="border-[#26354c] bg-[#0d1b2d] text-slate-200">
-                            {product.platform}
-                          </Badge>
-                          {product.featured && (
-                            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">
-                              Featured
-                            </Badge>
-                          )}
-                          {product.verified && (
-                            <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
-                              Verified
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-medium text-slate-200">{product.category?.name ?? 'Unassigned'}</p>
-                      <p className="mt-1 text-xs text-slate-500">Stock: {product.stock}</p>
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-slate-50">{formatPrice(product.price)}</p>
-                      <p className="mt-1 text-xs text-slate-500">{product.country ?? 'Global'}</p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge
-                        variant="outline"
-                        className={product.is_active ? 'border-blue-500/30 bg-blue-500/10 text-blue-200' : 'border-slate-600 bg-slate-700/20 text-slate-300'}
-                      >
-                        {product.is_active ? 'Active' : 'Draft'}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-2 md:justify-end">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-9 w-9 rounded-xl border border-[#22324a] bg-[#0b1628] text-slate-200 hover:bg-[#10213a]"
-                        onClick={() => openEditModal(product)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-9 w-9 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 hover:bg-red-500/20"
-                        onClick={() => setProductPendingDelete(product)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                {!filteredProducts.length && (
+            <AdminScrollTable
+              columns={['Product', 'Category', 'Price', 'Status', 'Actions']}
+              gridClassName={PRODUCT_TABLE_GRID}
+              minWidthClassName="min-w-[52rem]"
+              emptyState={
+                !filteredProducts.length ? (
                   <div className="px-5 py-12 text-center">
                     <Package2 className="mx-auto h-10 w-10 text-slate-600" />
                     <p className="mt-4 text-lg font-medium text-slate-200">No products found</p>
                     <p className="mt-2 text-sm text-slate-500">Try a different search or add a new product.</p>
                   </div>
-                )}
-              </div>
-            </div>
+                ) : null
+              }
+            >
+              {filteredProducts.map((product) => (
+                <AdminScrollTableRow key={product.id} gridClassName={PRODUCT_TABLE_GRID}>
+                  <div className="flex min-w-[240px] items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0d1d33] text-slate-100">
+                      <PlatformIcon platform={product.platform} size="md" className="h-7 w-7" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-50">{product.title}</p>
+                      <p className="mt-1 text-sm text-slate-400">{product.slug}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge variant="outline" className="border-[#26354c] bg-[#0d1b2d] text-slate-200">
+                          {product.platform}
+                        </Badge>
+                        {product.featured && (
+                          <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">
+                            Featured
+                          </Badge>
+                        )}
+                        {product.verified && (
+                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
+                            Verified
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="min-w-[120px]">
+                    <p className="text-sm font-medium text-slate-200">{product.category?.name ?? 'Unassigned'}</p>
+                    <p className="mt-1 text-xs text-slate-500">Stock: {product.stock}</p>
+                  </div>
+
+                  <div className="min-w-[100px] whitespace-nowrap">
+                    <p className="font-medium text-slate-50">{formatPrice(product.price)}</p>
+                    <p className="mt-1 text-xs text-slate-500">{product.country ?? 'Global'}</p>
+                  </div>
+
+                  <div className="min-w-[100px]">
+                    <Badge
+                      variant="outline"
+                      className={product.is_active ? 'border-blue-500/30 bg-blue-500/10 text-blue-200' : 'border-slate-600 bg-slate-700/20 text-slate-300'}
+                    >
+                      {product.is_active ? 'Active' : 'Draft'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex min-w-[100px] items-center justify-end gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-xl border border-[#22324a] bg-[#0b1628] text-slate-200 hover:bg-[#10213a]"
+                      onClick={() => openEditModal(product)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                      onClick={() => setProductPendingDelete(product)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </AdminScrollTableRow>
+              ))}
+            </AdminScrollTable>
           </CardContent>
         </Card>
       </div>
