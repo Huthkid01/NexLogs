@@ -13,6 +13,7 @@ import { categoryService, productService } from '@/services';
 import { isMockMode } from '@/lib/mock-mode';
 import { supabase } from '@/lib/supabase';
 import { getPlatformIconPath } from '@/lib/platform-icons';
+import { countProductDetailLines } from '@/lib/product-details';
 import { formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { PlatformType, Product } from '@/types';
@@ -89,13 +90,16 @@ function createFormFromProduct(product: Product): ProductFormState {
 }
 
 function buildProductPayload(form: ProductFormState) {
+  const detailLineCount = countProductDetailLines(form.product_details);
+  const stockValue = detailLineCount > 0 ? detailLineCount : Number(form.stock);
+
   return {
     title: form.title.trim(),
     slug: slugify(form.slug || form.title),
     platform: form.platform,
     category_id: form.category_id,
     price: Number(form.price),
-    stock: Number(form.stock),
+    stock: stockValue,
     country: form.country.trim() || null,
     niche: form.niche.trim() || null,
     account_age: form.account_age.trim() || null,
@@ -116,6 +120,7 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productPendingDelete, setProductPendingDelete] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(() => createEmptyForm());
+  const detailLineCount = countProductDetailLines(form.product_details);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -211,8 +216,8 @@ export default function AdminProductsPage() {
   const submitProduct = (event: { preventDefault: () => void }) => {
     event.preventDefault();
 
-    if (!form.title.trim() || !form.category_id || !form.price || !form.stock || !form.description.trim() || !form.product_details.trim()) {
-      toast.error('Fill in the required product details first.');
+    if (!form.title.trim() || !form.category_id || !form.price || !form.description.trim() || detailLineCount === 0) {
+      toast.error('Fill in the required product details first. Add at least one buyer copy line.');
       return;
     }
 
@@ -450,11 +455,17 @@ export default function AdminProductsPage() {
                       <Input
                         type="number"
                         min="0"
-                        value={form.stock}
+                        value={detailLineCount > 0 ? String(detailLineCount) : form.stock}
                         onChange={(event) => setForm((current) => ({ ...current, stock: event.target.value }))}
                         className="admin-input"
                         placeholder="12"
+                        readOnly={detailLineCount > 0}
                       />
+                      {detailLineCount > 0 ? (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Stock is synced to the number of buyer copy lines.
+                        </p>
+                      ) : null}
                     </div>
                     <div className="md:col-span-2">
                       <label className="mb-2 block text-sm text-slate-400">Description</label>
@@ -466,13 +477,31 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm text-slate-400">Product details for buyer copy</label>
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <label className="block text-sm text-slate-400">
+                          Product details for buyer copy
+                        </label>
+                        <span className="rounded-full border border-[#1f3550] bg-[#0a1628] px-3 py-1 text-xs text-slate-300">
+                          {detailLineCount} {detailLineCount === 1 ? 'line' : 'lines'}
+                        </span>
+                      </div>
                       <Textarea
                         value={form.product_details}
-                        onChange={(event) => setForm((current) => ({ ...current, product_details: event.target.value }))}
-                        className="admin-textarea min-h-[160px]"
-                        placeholder={"username:password:email:email-password:2fa\n\nAdd the exact product details the buyer should copy after purchase."}
+                        onChange={(event) => {
+                          const product_details = event.target.value;
+                          const lineCount = countProductDetailLines(product_details);
+                          setForm((current) => ({
+                            ...current,
+                            product_details,
+                            stock: lineCount > 0 ? String(lineCount) : current.stock,
+                          }));
+                        }}
+                        className="admin-textarea min-h-[280px] font-mono text-sm leading-6"
+                        placeholder={'username:password:email:email-password:2fa\nusername2:password2:email2:email-password2:2fa\nusername3:password3:email3:email-password3:2fa'}
                       />
+                      <p className="mt-2 text-xs text-slate-500">
+                        Paste one account per line. Each line is delivered to one buyer and removed from stock after purchase.
+                      </p>
                     </div>
                   </div>
                 </section>

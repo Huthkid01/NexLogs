@@ -165,9 +165,23 @@ export interface Database {
         };
       };
       order_items: {
-        Row: { id: string; order_id: string; product_id: string; quantity: number; price: number; created_at: string };
-        Insert: { order_id: string; product_id: string; quantity?: number; price: number };
-        Update: { quantity?: number; price?: number };
+        Row: {
+          id: string;
+          order_id: string;
+          product_id: string;
+          quantity: number;
+          price: number;
+          delivered_details: string | null;
+          created_at: string;
+        };
+        Insert: {
+          order_id: string;
+          product_id: string;
+          quantity?: number;
+          price: number;
+          delivered_details?: string | null;
+        };
+        Update: { quantity?: number; price?: number; delivered_details?: string | null };
       };
       wishlists: {
         Row: { id: string; user_id: string; product_id: string; created_at: string };

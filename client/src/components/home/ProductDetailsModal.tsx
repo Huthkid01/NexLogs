@@ -9,6 +9,7 @@ interface ProductDetailsModalProps {
   product: Product | null;
   orderDate: string;
   logSeed: string;
+  deliveredDetails?: string | null;
   open: boolean;
   onClose: () => void;
 }
@@ -17,12 +18,13 @@ export function ProductDetailsModal({
   product,
   orderDate,
   logSeed,
+  deliveredDetails,
   open,
   onClose,
 }: ProductDetailsModalProps) {
   const [copied, setCopied] = useState(false);
 
-  const logContent = product ? getProductLog(product, logSeed) : '';
+  const logContent = product ? getProductLog(product, logSeed, deliveredDetails) : '';
 
   useEffect(() => {
     if (!open) return;

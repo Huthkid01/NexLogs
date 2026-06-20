@@ -6,6 +6,13 @@ import { toast } from 'sonner';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { openErrorReport } from '@/lib/error-report';
+import { isMockMode } from '@/lib/mock-mode';
+import { parseProductDetailLines } from '@/lib/product-details';
+import {
+  getPurchaseErrorMessage,
+  isInsufficientFundsError,
+  isOutOfStockError,
+} from '@/lib/purchase-errors';
 import { formatPrice } from '@/lib/utils';
 import { getProductVariants } from '@/lib/product-variants';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +32,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState('');
   const [logSeed, setLogSeed] = useState('');
+  const [deliveredDetails, setDeliveredDetails] = useState<string | null>(null);
   const [insufficientOpen, setInsufficientOpen] = useState(false);
   const [requiredAmount, setRequiredAmount] = useState(0);
   const [purchasing, setPurchasing] = useState(false);
@@ -46,11 +54,17 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
 
   const variants = product ? getProductVariants(product) : [];
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['profile-stats', user?.id],
     queryFn: () => profileService.getStats(user!.id),
     enabled: !!user,
   });
+
+  const showInsufficientBalance = (price: number) => {
+    setRequiredAmount(price);
+    setInsufficientOpen(true);
+    toast.error('Insufficient balance');
+  };
 
   const handleBuy = async (variantId: string, price: number) => {
     if (!product) return;
@@ -60,23 +74,46 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       return;
     }
 
+    if (!statsLoading) {
+      const balance = stats?.balance ?? 0;
+      if (balance < price) {
+        showInsufficientBalance(price);
+        return;
+      }
+    }
+
     setPurchasing(true);
     try {
-      await orderService.purchaseWithWallet(product.id, 1);
+      const orderId = await orderService.purchaseWithWallet(product.id, 1);
+      let purchasedDetails: string | null = null;
+      if (isMockMode()) {
+        const lines = parseProductDetailLines(product.product_details);
+        purchasedDetails = lines[0] ?? product.product_details ?? null;
+      } else {
+        const order = await orderService.getOrderById(orderId);
+        purchasedDetails = order?.order_items?.[0]?.delivered_details ?? null;
+      }
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       setLogSeed(variantId);
       setPurchaseDate(new Date().toISOString());
+      setDeliveredDetails(purchasedDetails);
       setDetailsOpen(true);
       onClose();
       toast.success('Purchase successful');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Purchase failed';
-      if (message.toUpperCase().includes('INSUFFICIENT_FUNDS')) {
-        setRequiredAmount(price);
-        setInsufficientOpen(true);
+      if (isInsufficientFundsError(err)) {
+        showInsufficientBalance(price);
         return;
       }
+
+      const message = getPurchaseErrorMessage(err);
+
+      if (isOutOfStockError(err)) {
+        toast.error('This product is out of stock.');
+        return;
+      }
+
       toast.error('We could not complete this purchase.');
       openErrorReport({
         title: 'Error while purchasing',
@@ -101,6 +138,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     setDetailsOpen(false);
     setLogSeed('');
     setPurchaseDate('');
+    setDeliveredDetails(null);
   };
 
   return (
@@ -212,9 +250,9 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
             aria-label="Close"
           />
           <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-dm-surface p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Insufficient funds</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Insufficient balance</h3>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Your wallet balance is not enough to buy this product.
+              Your wallet balance is not enough to buy this product. Add funds to continue.
             </p>
             <div className="mt-4 space-y-1 text-sm text-gray-700 dark:text-gray-200">
               <p>Required: <span className="font-semibold">{formatPrice(requiredAmount)}</span></p>
@@ -247,6 +285,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
         product={product}
         orderDate={purchaseDate || new Date().toISOString()}
         logSeed={logSeed}
+        deliveredDetails={deliveredDetails}
         open={detailsOpen && !!product && !!logSeed}
         onClose={handleDetailsClose}
       />

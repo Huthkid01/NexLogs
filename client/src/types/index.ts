@@ -98,6 +98,7 @@ export interface OrderItem {
   product_id: string;
   quantity: number;
   price: number;
+  delivered_details?: string | null;
   created_at: string;
   product?: Product;
 }

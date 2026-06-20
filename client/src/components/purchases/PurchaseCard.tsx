@@ -18,7 +18,8 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
   const [copied, setCopied] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const product = order.order_items?.[0]?.product;
+  const orderItem = order.order_items?.[0];
+  const product = orderItem?.product;
   const orderId = getDisplayOrderId(order.order_number);
 
   const handleCopyOrderId = async () => {
@@ -89,6 +90,7 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
           product={product}
           orderDate={order.created_at}
           logSeed={`${order.id}-credentials`}
+          deliveredDetails={orderItem?.delivered_details}
           open={detailsOpen}
           onClose={() => setDetailsOpen(false)}
         />

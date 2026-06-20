@@ -1,3 +1,4 @@
+import { parseProductDetailLines } from '@/lib/product-details';
 import type { Product } from '@/types';
 
 export interface AccountDetailField {
@@ -120,9 +121,21 @@ function getProfileUrl(platform: Product['platform'], uid: string): string {
   }
 }
 
-export function getProductLog(product: Product, seed: string): string {
+export function getProductLog(
+  product: Product,
+  seed: string,
+  deliveredDetails?: string | null,
+): string {
+  const purchasedDetails = deliveredDetails?.trim();
+  if (purchasedDetails) return purchasedDetails;
+
   const savedDetails = product.product_details?.trim();
-  if (savedDetails) return savedDetails;
+  if (savedDetails) {
+    const lines = parseProductDetailLines(savedDetails);
+    if (lines.length === 1) return lines[0];
+    if (lines.length > 1) return lines.join('\n\n');
+    return savedDetails;
+  }
 
   const hash = hashSeed(`${product.id}-${seed}`);
   const uid = (600000000000 + (hash % 99999999999)).toString();
