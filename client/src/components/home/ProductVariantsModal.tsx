@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
@@ -20,6 +20,7 @@ interface ProductVariantsModalProps {
 
 export function ProductVariantsModal({ product, open, onClose }: ProductVariantsModalProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState('');
@@ -62,6 +63,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     setPurchasing(true);
     try {
       await orderService.purchaseWithWallet(product.id, 1);
+      await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
+      await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       setLogSeed(variantId);
       setPurchaseDate(new Date().toISOString());
       setDetailsOpen(true);
