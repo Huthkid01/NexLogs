@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -18,48 +19,72 @@ interface ProductBuyerDetailsEditorProps {
 
 export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBuyerDetailsEditorProps) {
   const items = useMemo(() => parseProductDetailLines(value), [value]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [draft, setDraft] = useState('');
+  const [editIndex, setEditIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    if (items.length === 0) {
-      setSelectedIndex(0);
-      return;
-    }
-
-    if (selectedIndex > items.length - 1) {
-      setSelectedIndex(items.length - 1);
-    }
-  }, [items.length, selectedIndex]);
+    setEditIndex(null);
+    setDraft('');
+  }, [value]);
 
   const updateItems = (nextItems: string[]) => {
     const serialized = serializeProductDetailLines(nextItems);
     onChange(serialized, nextItems.length);
   };
 
-  const handleItemChange = (text: string) => {
-    if (items.length === 0) {
-      updateItems(text.trim() ? [text.trim()] : []);
-      return;
-    }
+  const startEditing = (index: number) => {
+    setEditIndex(index);
+    setDraft(items[index] ?? '');
+  };
 
-    const nextItems = items.map((item, index) => (index === selectedIndex ? text : item));
-    updateItems(nextItems);
+  const cancelEditing = () => {
+    setEditIndex(null);
+    setDraft('');
   };
 
   const handleAddItem = () => {
-    const nextItems = [...items, ''];
-    updateItems(nextItems);
-    setSelectedIndex(nextItems.length - 1);
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      toast.error('Enter buyer details before adding an item.');
+      return;
+    }
+
+    updateItems([...items, trimmed]);
+    setDraft('');
+    setEditIndex(null);
+    toast.success(`Item ${items.length + 1} added.`);
   };
 
-  const handleRemoveItem = () => {
-    if (items.length === 0) return;
-    const nextItems = items.filter((_, index) => index !== selectedIndex);
+  const handleSaveChanges = () => {
+    if (editIndex === null) return;
+
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      toast.error('Buyer details cannot be empty.');
+      return;
+    }
+
+    const nextItems = items.map((item, index) => (index === editIndex ? trimmed : item));
     updateItems(nextItems);
-    setSelectedIndex(Math.max(0, selectedIndex - 1));
+    setEditIndex(null);
+    setDraft('');
+    toast.success(`Item ${editIndex + 1} updated.`);
   };
 
-  const selectedItem = items[selectedIndex] ?? '';
+  const handleRemoveItem = (index: number) => {
+    const nextItems = items.filter((_, itemIndex) => itemIndex !== index);
+    updateItems(nextItems);
+
+    if (editIndex === index) {
+      setEditIndex(null);
+      setDraft('');
+    } else if (editIndex !== null && editIndex > index) {
+      setEditIndex(editIndex - 1);
+    }
+  };
+
+  const isEditing = editIndex !== null;
+  const nextItemNumber = items.length + 1;
 
   return (
     <div className="space-y-3">
@@ -71,99 +96,115 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
           'rounded-full border px-3 py-1 text-xs',
           isDark ? 'border-[#1f3550] bg-[#0a1628] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
         )}>
-          {items.length} {items.length === 1 ? 'item' : 'items'}
+          {items.length} {items.length === 1 ? 'item' : 'items'} saved
         </span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[220px_1fr]">
+      <div className="grid gap-3 md:grid-cols-[240px_1fr]">
         <div className="space-y-2">
           <label className={cn('block text-xs font-medium uppercase tracking-wide', adminSubtleTextClass(isDark))}>
-            Select item
+            Saved items
           </label>
-          <select
-            value={items.length === 0 ? '' : String(selectedIndex)}
-            onChange={(event) => setSelectedIndex(Number(event.target.value))}
-            className="admin-select w-full"
-            disabled={items.length === 0}
-          >
+
+          <div className={cn(
+            'max-h-[280px] space-y-2 overflow-y-auto rounded-xl border p-2',
+            isDark ? 'border-[#18263b] bg-[#081624]' : 'border-slate-200 bg-slate-50',
+          )}>
             {items.length === 0 ? (
-              <option value="">No items yet</option>
+              <p className={cn('px-2 py-4 text-center text-xs', adminSubtleTextClass(isDark))}>
+                No items yet. Type details on the right and click Add item.
+              </p>
             ) : (
               items.map((item, index) => (
-                <option key={index} value={String(index)}>
-                  Item {index + 1}
-                  {item.trim() ? `: ${item.trim().slice(0, 40)}${item.trim().length > 40 ? '…' : ''}` : ' (empty)'}
-                </option>
+                <div
+                  key={index}
+                  className={cn(
+                    'rounded-lg border px-3 py-2',
+                    editIndex === index
+                      ? isDark
+                        ? 'border-[#f26522] bg-[#10213a]'
+                        : 'border-[#f26522] bg-white shadow-sm'
+                      : isDark
+                        ? 'border-[#22324a] bg-[#06101d]'
+                        : 'border-slate-200 bg-white',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEditing(index)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className={cn('text-xs font-semibold', adminStrongTextClass(isDark))}>
+                        Item {index + 1}
+                      </p>
+                      <p className={cn('mt-1 line-clamp-2 text-xs', adminMutedTextClass(isDark))}>
+                        {item.trim()}
+                      </p>
+                    </button>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => startEditing(index)}
+                        className={cn(
+                          'rounded-md p-1.5 transition-colors',
+                          isDark ? 'text-slate-400 hover:bg-[#0b1728] hover:text-slate-100' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+                        )}
+                        aria-label={`Edit item ${index + 1}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(index)}
+                        className="rounded-md p-1.5 text-red-500 transition-colors hover:bg-red-500/10"
+                        aria-label={`Remove item ${index + 1}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))
             )}
-          </select>
-
-          <div className="flex flex-col gap-2">
-            <Button type="button" variant="outline" className={cn('justify-start', isDark ? 'border-[#22324a]' : '')} onClick={handleAddItem}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add item
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className={cn('justify-start text-red-500 hover:text-red-600', isDark ? 'border-[#22324a]' : '')}
-              onClick={handleRemoveItem}
-              disabled={items.length === 0}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Remove item
-            </Button>
           </div>
         </div>
 
         <div>
           <label className={cn('mb-2 block text-xs font-medium uppercase tracking-wide', adminSubtleTextClass(isDark))}>
-            Details for selected buyer
+            {isEditing ? `Edit item ${editIndex + 1}` : `Add item ${nextItemNumber}`}
           </label>
           <Textarea
-            value={selectedItem}
-            onChange={(event) => handleItemChange(event.target.value)}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
             className="admin-textarea min-h-[220px] text-sm leading-6"
-            placeholder={'Username: john\nPassword: secret123\nEmail: john@mail.com\n\nOr paste any buyer copy for this single item.'}
+            placeholder={'Username: john\nPassword: secret123\nEmail: john@mail.com\n\nEnter details for one buyer, then click Add item.'}
           />
           <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
-            Add one item at a time. Each item is delivered to one buyer when purchased. Stock matches the item count.
+            {isEditing
+              ? 'Update the selected item, or cancel to add a new one.'
+              : 'Type details for one buyer, click Add item, then repeat for the next buyer copy.'}
           </p>
-        </div>
-      </div>
 
-      {items.length > 0 ? (
-        <div className={cn(
-          'rounded-xl border px-4 py-3',
-          isDark ? 'border-[#18263b] bg-[#081624]' : 'border-slate-200 bg-slate-50',
-        )}>
-          <p className={cn('text-xs font-semibold uppercase tracking-wide', adminStrongTextClass(isDark))}>
-            Saved items preview
-          </p>
-          <div className="mt-2 space-y-1">
-            {items.map((item, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => setSelectedIndex(index)}
-                className={cn(
-                  'block w-full rounded-lg px-3 py-2 text-left text-xs transition-colors',
-                  index === selectedIndex
-                    ? isDark
-                      ? 'bg-[#10213a] text-slate-100'
-                      : 'bg-white text-slate-900 shadow-sm'
-                    : isDark
-                      ? 'text-slate-400 hover:bg-[#0b1728] hover:text-slate-200'
-                      : 'text-slate-600 hover:bg-white hover:text-slate-900',
-                )}
-              >
-                <span className="font-semibold">Item {index + 1}:</span>{' '}
-                {item.trim() || '(empty)'}
-              </button>
-            ))}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {isEditing ? (
+              <>
+                <Button type="button" className="bg-[#f26522] hover:bg-[#d94e0f]" onClick={handleSaveChanges}>
+                  Save changes
+                </Button>
+                <Button type="button" variant="outline" className={isDark ? 'border-[#22324a]' : ''} onClick={cancelEditing}>
+                  Cancel edit
+                </Button>
+              </>
+            ) : (
+              <Button type="button" className="bg-[#f26522] hover:bg-[#d94e0f]" onClick={handleAddItem}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add item
+              </Button>
+            )}
           </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
