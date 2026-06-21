@@ -20,7 +20,7 @@ import {
   isInsufficientFundsError,
 } from '@/lib/purchase-errors';
 import { cn } from '@/lib/utils';
-import { orderService, productService, profileService } from '@/services';
+import { orderService, profileService } from '@/services';
 
 const ORANGE_LIGHT = 'bg-[#fff4ef] text-[#c2410c] border-[#f26522] dark:bg-[#f26522]/10 dark:text-orange-200 dark:border-[#f26522]';
 
@@ -66,23 +66,18 @@ export default function PurchaseRdpPage() {
     }
 
     const productSlug = getRdpProductSlug(plan, selectedDuration);
+    const priceUsd = getPlanPriceUsd(plan, selectedDuration);
     setPurchasingPlanId(plan.id);
 
     try {
-      const product = await productService.getBySlug(productSlug);
-      if (!product) {
-        toast.error(`Product not set up yet. Create admin product with slug "${productSlug}".`);
-        return;
-      }
-
       const balance = stats?.balance ?? 0;
-      if (balance < product.price) {
+      if (balance < priceUsd) {
         toast.error('Insufficient wallet balance. Please add funds.');
         navigate('/add-funds');
         return;
       }
 
-      await orderService.purchaseRdpWithWallet(product.id, 1);
+      await orderService.purchaseRdpBySlug(productSlug, 1);
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });

@@ -23,6 +23,7 @@ import {
 } from '@/lib/rdp-catalog';
 import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
 import { AdminDualCurrencyPriceInput } from '@/components/admin/AdminDualCurrencyPriceInput';
+import { syncRdpCatalogProducts } from '@/lib/rdp-product-sync';
 import { cn } from '@/lib/utils';
 
 type PlanField = 'title' | 'ramLabel' | 'productSlug';
@@ -44,12 +45,18 @@ export default function AdminRdpPage() {
   );
   const ngnRate = content.wallet.exchangeRates.NGN ?? 1500;
 
-  const saveCatalog = () => {
+  const saveCatalog = async () => {
     setContent({
       ...content,
       rdp: catalog,
     });
-    toast.success('RDP catalog updated.');
+
+    try {
+      await syncRdpCatalogProducts(catalog);
+      toast.success('RDP catalog updated and products synced.');
+    } catch {
+      toast.success('RDP catalog saved. Run migration 024 on Supabase if purchases fail.');
+    }
   };
 
   const resetCatalog = () => {
@@ -226,14 +233,8 @@ export default function AdminRdpPage() {
         <CardHeader>
           <CardTitle>Locations</CardTitle>
           <CardDescription className={adminMutedTextClass(isDark)}>
-            Tab labels on the Purchase RDP page. Create matching products with slug
-            {' '}
-            <code>{'{productSlug}-{months}-month'}</code>
-            {' '}
-            (example:
-            {' '}
-            <code>forex-rdp-4gb-1-month</code>
-            ).
+            Tab labels on the Purchase RDP page. Products are created automatically when buyers purchase or when you
+            save this catalog.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

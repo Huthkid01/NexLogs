@@ -87,6 +87,19 @@ export const orderService = {
     return data as string;
   },
 
+  async purchaseRdpBySlug(productSlug: string, quantity = 1): Promise<string> {
+    if (isMockMode()) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return `order-${crypto.randomUUID()}`;
+    }
+    const { data, error } = await supabase.rpc('purchase_rdp_with_wallet_by_slug', {
+      p_product_slug: productSlug,
+      p_quantity: quantity,
+    } as never);
+    if (error) throw error;
+    return data as string;
+  },
+
   async updateOrderItemDeliveredDetails(
     orderItemId: string,
     deliveredDetails: string,

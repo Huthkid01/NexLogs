@@ -24,7 +24,8 @@ export const productService = {
     let query = supabase
       .from('products')
       .select('*, category:categories(*), product_images(*)', { count: 'exact' })
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .not('slug', 'like', '%-rdp-%');
 
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,niche.ilike.%${search}%`);
     if (platform) query = query.eq('platform', platform);
@@ -66,6 +67,7 @@ export const productService = {
       .select('*, category:categories(*), product_images(*)')
       .eq('is_active', true)
       .eq('featured', true)
+      .not('slug', 'like', '%-rdp-%')
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true })
       .limit(limit);

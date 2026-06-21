@@ -197,7 +197,12 @@ export const DEFAULT_RDP_LOCATIONS: RdpLocation[] = [
   { id: 'germany', label: 'Germany' },
 ];
 
-const DEPRECATED_PLAN_IDS = new Set(['netherlands-2gb', 'germany-2gb']);
+const DEPRECATED_PLAN_IDS = new Set([
+  'netherlands-2gb',
+  'germany-2gb',
+  'netherlands-16gb',
+  'germany-16gb',
+]);
 
 export const DEFAULT_RDP_CATALOG: RdpCatalog = {
   pageTitle: 'Purchase RDP',
@@ -209,8 +214,8 @@ export const DEFAULT_RDP_CATALOG: RdpCatalog = {
     ...buildCityPlans('miami-usa', 'miami', 'Miami Windows RDP'),
     ...buildCityPlans('atlanta-usa', 'atlanta', 'Atlanta Windows RDP'),
     ...buildCityPlans('la-usa', 'la', 'LA Windows RDP'),
-    ...buildCityPlans('netherlands', 'netherlands', 'Netherlands Windows RDP', ['2gb']),
-    ...buildCityPlans('germany', 'germany', 'Germany Windows RDP', ['2gb']),
+    ...buildCityPlans('netherlands', 'netherlands', 'Netherlands Windows RDP', ['2gb', '16gb']),
+    ...buildCityPlans('germany', 'germany', 'Germany Windows RDP', ['2gb', '16gb']),
   ],
 };
 

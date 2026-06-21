@@ -13,3 +13,5 @@ export {
   supportTicketService,
   storageService,
 } from './misc.service';
+export { siteVisitService } from './site-visit.service';
+export type { SiteSession, SitePageView, SiteVisitorStats } from './site-visit.service';
