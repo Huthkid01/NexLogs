@@ -52,20 +52,18 @@ export function parseProductDetailLines(value: string | null | undefined): strin
   }
 
   const numberedItems = parseNumberedBlocks(trimmed);
-  if (numberedItems.length > 0 && NUMBERED_LINE_PATTERN.test(trimmed)) {
+  if (numberedItems.length > 1 && NUMBERED_LINE_PATTERN.test(trimmed)) {
     return numberedItems;
   }
 
-  const blankLineBlocks = trimmed
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  if (blankLineBlocks.length > 1) {
-    return blankLineBlocks;
+  // Legacy one-line-per-buyer lists (no blank lines between entries).
+  if (!trimmed.includes('\n\n') && trimmed.includes('\n')) {
+    const lines = parseLegacyLines(trimmed);
+    if (lines.length > 1) return lines;
   }
 
-  return parseLegacyLines(trimmed);
+  // Multi-line buyer copy (guides with blank lines) is always one item.
+  return [trimmed];
 }
 
 export function countProductDetailLines(value: string | null | undefined): number {
@@ -73,10 +71,14 @@ export function countProductDetailLines(value: string | null | undefined): numbe
 }
 
 export function serializeProductDetailLines(lines: string[]): string {
-  return lines
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join(`\n${PRODUCT_DETAIL_DELIMITER}\n`);
+  const cleaned = lines.map((line) => line.trim()).filter(Boolean);
+  if (cleaned.length === 0) return '';
+
+  return cleaned.map((item) => `${PRODUCT_DETAIL_DELIMITER}\n${item}`).join('\n');
+}
+
+export function normalizeProductDetailsStorage(value: string | null | undefined): string {
+  return serializeProductDetailLines(parseProductDetailLines(value));
 }
 
 export function formatProductDetailsForEditor(value: string | null | undefined): string {

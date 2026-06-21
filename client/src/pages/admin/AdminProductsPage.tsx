@@ -15,7 +15,7 @@ import { categoryService, productService } from '@/services';
 import { isMockMode } from '@/lib/mock-mode';
 import { supabase } from '@/lib/supabase';
 import { getPlatformIconPath } from '@/lib/platform-icons';
-import { countProductDetailLines, formatProductDetailsForEditor, parseProductDetailLines, serializeProductDetailLines } from '@/lib/product-details';
+import { countProductDetailLines, normalizeProductDetailsStorage } from '@/lib/product-details';
 import {
   adminActionIconButtonClass,
   adminIconButtonClass,
@@ -100,7 +100,7 @@ function createFormFromProduct(product: Product): ProductFormState {
     followers: product.followers != null ? String(product.followers) : '',
     following: product.following != null ? String(product.following) : '',
     description: product.description,
-    product_details: formatProductDetailsForEditor(product.product_details),
+    product_details: normalizeProductDetailsStorage(product.product_details),
     featured: product.featured,
     verified: product.verified,
     is_active: product.is_active,
@@ -124,7 +124,7 @@ function buildProductPayload(form: ProductFormState) {
     followers: form.followers ? Number(form.followers) : null,
     following: form.following ? Number(form.following) : null,
     description: form.description.trim(),
-    product_details: serializeProductDetailLines(parseProductDetailLines(form.product_details)),
+    product_details: normalizeProductDetailsStorage(form.product_details),
     featured: form.featured,
     verified: form.verified,
     is_active: form.is_active,
@@ -516,6 +516,7 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="md:col-span-2">
                       <ProductBuyerDetailsEditor
+                        key={editingProduct?.id ?? 'new-product'}
                         value={form.product_details}
                         onChange={(product_details, lineCount) => {
                           setForm((current) => ({

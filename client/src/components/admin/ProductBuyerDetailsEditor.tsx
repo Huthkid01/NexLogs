@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -21,11 +21,6 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
   const items = useMemo(() => parseProductDetailLines(value), [value]);
   const [draft, setDraft] = useState('');
   const [editIndex, setEditIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    setEditIndex(null);
-    setDraft('');
-  }, [value]);
 
   const updateItems = (nextItems: string[]) => {
     const serialized = serializeProductDetailLines(nextItems);
