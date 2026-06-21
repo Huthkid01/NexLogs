@@ -21,9 +21,11 @@ import {
   type RdpCatalog,
   type RdpPlan,
 } from '@/lib/rdp-catalog';
+import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
+import { AdminDualCurrencyPriceInput } from '@/components/admin/AdminDualCurrencyPriceInput';
 import { cn } from '@/lib/utils';
 
-type PlanField = 'title' | 'ramLabel' | 'priceUsdMonthly' | 'productSlug';
+type PlanField = 'title' | 'ramLabel' | 'productSlug';
 
 export default function AdminRdpPage() {
   const { theme } = useTheme();
@@ -40,6 +42,7 @@ export default function AdminRdpPage() {
     () => catalog.plans.filter((plan) => plan.locationId === activeLocationId),
     [catalog.plans, activeLocationId],
   );
+  const ngnRate = content.wallet.exchangeRates.NGN ?? 1500;
 
   const saveCatalog = () => {
     setContent({
@@ -71,15 +74,18 @@ export default function AdminRdpPage() {
   const updatePlan = (planId: string, field: PlanField, value: string) => {
     setCatalog((current) => ({
       ...current,
-      plans: current.plans.map((plan) => {
-        if (plan.id !== planId) return plan;
+      plans: current.plans.map((plan) =>
+        plan.id === planId ? { ...plan, [field]: value } : plan,
+      ),
+    }));
+  };
 
-        if (field === 'priceUsdMonthly') {
-          return { ...plan, priceUsdMonthly: Number(value) || 0 };
-        }
-
-        return { ...plan, [field]: value };
-      }),
+  const updatePlanPrice = (planId: string, priceUsdMonthly: number) => {
+    setCatalog((current) => ({
+      ...current,
+      plans: current.plans.map((plan) =>
+        plan.id === planId ? { ...plan, priceUsdMonthly } : plan,
+      ),
     }));
   };
 
@@ -131,16 +137,18 @@ export default function AdminRdpPage() {
           />
         </div>
         <div>
-          <Label htmlFor={`${plan.id}-price`}>Monthly price (USD)</Label>
-          <Input
-            id={`${plan.id}-price`}
-            type="number"
-            min="0"
-            step="0.01"
-            value={plan.priceUsdMonthly}
-            onChange={(event) => updatePlan(plan.id, 'priceUsdMonthly', event.target.value)}
-            className={adminInputClass(isDark)}
+          <AdminDualCurrencyPriceInput
+            usdAmount={plan.priceUsdMonthly}
+            onUsdChange={(priceUsdMonthly) => updatePlanPrice(plan.id, priceUsdMonthly)}
+            rates={content.wallet.exchangeRates}
+            usdLabel="Monthly price (USD)"
+            ngnLabel="Monthly price (NGN)"
+            isDark={isDark}
+            className="md:col-span-2"
           />
+          <p className={cn('mt-2 text-xs', adminMutedTextClass(isDark))}>
+            Uses your exchange rate: {formatRatePerUsd('NGN', ngnRate)}. Wallet charges stay in USD.
+          </p>
         </div>
         <div>
           <Label htmlFor={`${plan.id}-slug`}>Product slug base</Label>
@@ -170,8 +178,8 @@ export default function AdminRdpPage() {
         <div>
           <h1 className={cn('text-2xl font-bold', adminStrongTextClass(isDark))}>RDP Plans</h1>
           <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>
-            Edit Forex and city RDP plans shown on the Purchase RDP page. Prices are stored in USD; NGN display uses
-            your Exchange Rates settings.
+            Edit Forex and city RDP plans. Set monthly prices in USD or NGN — the other amount updates using your
+            Exchange Rates settings.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

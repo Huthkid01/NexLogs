@@ -16,7 +16,7 @@ export interface SiteContent {
   }>;
   home: {
     subscriptionsTitle: string;
-    buyBulkLabel: string;
+    purchaseRdpLabel: string;
     buyNumbersLabel: string;
     categoriesLabel: string;
     catalogTitle: string;
@@ -115,7 +115,7 @@ export const defaultSiteContent: SiteContent = {
   ],
   home: {
     subscriptionsTitle: 'Subscriptions & others',
-    buyBulkLabel: 'Buy In Bulk',
+    purchaseRdpLabel: 'Purchase RDP',
     buyNumbersLabel: 'Buy Numbers',
     categoriesLabel: 'Shop by Categories',
     catalogTitle: 'Buy Logs',
@@ -318,13 +318,23 @@ function normalizeSlides(slides?: SiteContent['slides'] | null): SiteContent['sl
   });
 }
 
+function normalizeHomeContent(home?: Partial<SiteContent['home']> & { buyBulkLabel?: string } | null): SiteContent['home'] {
+  const legacyBulkLabel = home?.buyBulkLabel;
+  const purchaseRdpLabel =
+    home?.purchaseRdpLabel ??
+    (legacyBulkLabel && legacyBulkLabel !== 'Buy In Bulk' ? legacyBulkLabel : defaultSiteContent.home.purchaseRdpLabel);
+
+  return {
+    ...defaultSiteContent.home,
+    ...home,
+    purchaseRdpLabel,
+  };
+}
+
 export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteContent {
   return {
     slides: normalizeSlides(content?.slides),
-    home: {
-      ...defaultSiteContent.home,
-      ...content?.home,
-    },
+    home: normalizeHomeContent(content?.home),
     about: {
       ...defaultSiteContent.about,
       ...content?.about,

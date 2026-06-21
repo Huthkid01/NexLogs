@@ -13,7 +13,6 @@ const MENU_ITEMS = [
   { label: 'Purchase RDP', emoji: '🖥️', href: '/purchase-rdp', auth: true },
   { label: 'My Purchases', emoji: '🛒', href: '/purchases', auth: true },
   { label: 'Buy Numbers', emoji: '📱', href: '/marketplace?type=numbers', auth: true },
-  { label: 'Buy in bulk', emoji: '🛍️', href: '/marketplace', auth: true },
   { label: 'Need help?', emoji: '🕵️', href: '/support', auth: false },
 ] as const;
 

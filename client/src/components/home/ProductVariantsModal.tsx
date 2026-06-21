@@ -13,10 +13,10 @@ import {
   isInsufficientFundsError,
   isOutOfStockError,
 } from '@/lib/purchase-errors';
-import { formatPrice } from '@/lib/utils';
 import { getProductVariants } from '@/lib/product-variants';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
 import { orderService, profileService } from '@/services';
 import type { Product } from '@/types';
@@ -32,6 +32,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const queryClient = useQueryClient();
   const { content } = useSiteContent();
   const { user } = useAuth();
+  const { formatProductPrice } = useFormatDisplayPrice();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState('');
   const [logSeed, setLogSeed] = useState('');
@@ -206,7 +207,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                   <div className="py-4 px-5 sm:px-6">
                     <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
                       {variant.description}{' '}
-                      <span className="text-[#1b5e20] font-semibold">{formatPrice(variant.price)}</span>
+                      <span className="text-[#1b5e20] font-semibold">{formatProductPrice(variant.price)}</span>
                     </p>
 
                     <div className="flex items-center justify-between gap-3 mt-3">
@@ -259,8 +260,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
               Your wallet balance is not enough to buy this product. Add funds to continue.
             </p>
             <div className="mt-4 space-y-1 text-sm text-gray-700 dark:text-gray-200">
-              <p>Required: <span className="font-semibold">{formatPrice(requiredAmount)}</span></p>
-              <p>Balance: <span className="font-semibold">{formatPrice(stats?.balance ?? 0)}</span></p>
+              <p>Required: <span className="font-semibold">{formatProductPrice(requiredAmount)}</span></p>
+              <p>Balance: <span className="font-semibold">{formatProductPrice(stats?.balance ?? 0)}</span></p>
             </div>
             <div className="mt-6 flex gap-3">
               <button

@@ -3,7 +3,8 @@ import { Heart, ShoppingCart, MapPin, Users, BadgeCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
-import { formatPrice, formatNumber } from '@/lib/utils';
+import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
+import { formatNumber } from '@/lib/utils';
 import { PLATFORMS } from '@/constants';
 import type { Product } from '@/types';
 
@@ -16,6 +17,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onAddToCart, onToggleWishlist, isInWishlist }: ProductCardProps) {
   const platform = PLATFORMS.find((p) => p.value === product.platform);
+  const { formatProductPrice } = useFormatDisplayPrice();
 
   return (
     <div className="group overflow-hidden rounded-xl border border-gray-200 bg-white hover:border-[#f26522]/50 transition-all duration-300 hover:shadow-md">
@@ -60,7 +62,7 @@ export function ProductCard({ product, onAddToCart, onToggleWishlist, isInWishli
           )}
         </div>
         <div className="flex items-center justify-between pt-1">
-          <span className="text-xl font-bold text-[#f26522]">{formatPrice(product.price)}</span>
+          <span className="text-xl font-bold text-[#f26522]">{formatProductPrice(product.price)}</span>
           <div className="flex gap-2">
             {onToggleWishlist && (
               <Button

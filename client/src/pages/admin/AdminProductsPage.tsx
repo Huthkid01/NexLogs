@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
+import { AdminDualCurrencyPriceInput } from '@/components/admin/AdminDualCurrencyPriceInput';
 import { ProductBuyerDetailsEditor } from '@/components/admin/ProductBuyerDetailsEditor';
 import { AdminScrollTable, AdminScrollTableRow } from '@/components/admin/AdminScrollTable';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
@@ -32,6 +33,7 @@ import {
   adminSubtleTextClass,
 } from '@/lib/admin-theme';
 import { useTheme } from '@/hooks/useTheme';
+import { useSiteContent } from '@/hooks/useSiteContent';
 import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { PlatformType, Product } from '@/types';
@@ -138,6 +140,7 @@ export default function AdminProductsPage() {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { content } = useSiteContent();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -476,16 +479,14 @@ export default function AdminProductsPage() {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Price</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={form.price}
-                        onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
-                        className="admin-input"
-                        placeholder="25"
+                    <div className="md:col-span-2">
+                      <AdminDualCurrencyPriceInput
+                        usdAmount={Number(form.price) || 0}
+                        onUsdChange={(price) => setForm((current) => ({ ...current, price: String(price) }))}
+                        rates={content.wallet.exchangeRates}
+                        usdLabel="Price (USD)"
+                        ngnLabel="Price (NGN)"
+                        isDark={isDark}
                       />
                     </div>
                     <div>

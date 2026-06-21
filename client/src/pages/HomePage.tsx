@@ -118,10 +118,10 @@ export default function HomePage() {
 
       <div id="quick-actions" className="flex gap-3 justify-center flex-wrap">
         <Link
-          to={user ? '/marketplace' : '/login'}
+          to={user ? '/purchase-rdp' : '/login'}
           className="btn-orange px-7 sm:px-8 py-2.5 text-sm text-center min-w-[130px] sm:min-w-[150px]"
         >
-          {content.home.buyBulkLabel}
+          {content.home.purchaseRdpLabel}
         </Link>
         <Link
           to={user ? '/marketplace?type=numbers' : '/login'}

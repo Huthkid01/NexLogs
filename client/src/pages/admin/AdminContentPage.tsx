@@ -109,8 +109,8 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
             <Input id="home-categories" value={draft.home.categoriesLabel} onChange={(e) => setDraft({ ...draft, home: { ...draft.home, categoriesLabel: e.target.value } })} />
           </div>
           <div>
-            <Label htmlFor="home-buy-bulk">Buy In Bulk Button</Label>
-            <Input id="home-buy-bulk" value={draft.home.buyBulkLabel} onChange={(e) => setDraft({ ...draft, home: { ...draft.home, buyBulkLabel: e.target.value } })} />
+            <Label htmlFor="home-purchase-rdp">Purchase RDP Button</Label>
+            <Input id="home-purchase-rdp" value={draft.home.purchaseRdpLabel} onChange={(e) => setDraft({ ...draft, home: { ...draft.home, purchaseRdpLabel: e.target.value } })} />
           </div>
           <div>
             <Label htmlFor="home-buy-numbers">Buy Numbers Button</Label>

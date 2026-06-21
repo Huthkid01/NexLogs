@@ -49,11 +49,9 @@ export function MainLayout() {
             </div>
 
             <div className="flex items-center gap-3 ml-auto">
+              <CurrencySelector compact />
               {user ? (
-                <>
-                  <CurrencySelector compact />
-                  <UserMenuDropdown />
-                </>
+                <UserMenuDropdown />
               ) : !hideAuthLink ? (
                 <Link
                   to="/login"
@@ -61,8 +59,7 @@ export function MainLayout() {
                 >
                   Log in/Sign up
                 </Link>
-              ) : null
-              }
+              ) : null}
             </div>
           </div>
         </header>

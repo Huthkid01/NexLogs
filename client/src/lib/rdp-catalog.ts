@@ -163,8 +163,9 @@ function buildCityPlans(
   locationId: string,
   slugPrefix: string,
   title: string,
+  excludeRamKeys: string[] = [],
 ): RdpPlan[] {
-  return CITY_PLAN_TEMPLATES.map((template) => ({
+  return CITY_PLAN_TEMPLATES.filter((template) => !excludeRamKeys.includes(template.ramKey)).map((template) => ({
     id: `${slugPrefix}-${template.ramKey}`,
     locationId,
     title,
@@ -196,6 +197,8 @@ export const DEFAULT_RDP_LOCATIONS: RdpLocation[] = [
   { id: 'germany', label: 'Germany' },
 ];
 
+const DEPRECATED_PLAN_IDS = new Set(['netherlands-2gb', 'germany-2gb']);
+
 export const DEFAULT_RDP_CATALOG: RdpCatalog = {
   pageTitle: 'Purchase RDP',
   pageSubtitle: 'Choose the perfect plan for your needs.',
@@ -206,8 +209,8 @@ export const DEFAULT_RDP_CATALOG: RdpCatalog = {
     ...buildCityPlans('miami-usa', 'miami', 'Miami Windows RDP'),
     ...buildCityPlans('atlanta-usa', 'atlanta', 'Atlanta Windows RDP'),
     ...buildCityPlans('la-usa', 'la', 'LA Windows RDP'),
-    ...buildCityPlans('netherlands', 'netherlands', 'Netherlands Windows RDP'),
-    ...buildCityPlans('germany', 'germany', 'Germany Windows RDP'),
+    ...buildCityPlans('netherlands', 'netherlands', 'Netherlands Windows RDP', ['2gb']),
+    ...buildCityPlans('germany', 'germany', 'Germany Windows RDP', ['2gb']),
   ],
 };
 
@@ -218,7 +221,8 @@ export function mergeRdpCatalog(catalog?: Partial<RdpCatalog> | null): RdpCatalo
     return defaults;
   }
 
-  const savedPlanIds = new Set(catalog.plans.map((plan) => plan.id));
+  const savedPlans = catalog.plans.filter((plan) => !DEPRECATED_PLAN_IDS.has(plan.id));
+  const savedPlanIds = new Set(savedPlans.map((plan) => plan.id));
   const savedLocationIds = new Set((catalog.locations ?? []).map((location) => location.id));
   const missingPlans = defaults.plans.filter((plan) => !savedPlanIds.has(plan.id));
   const missingLocations = defaults.locations.filter((location) => !savedLocationIds.has(location.id));
@@ -230,7 +234,7 @@ export function mergeRdpCatalog(catalog?: Partial<RdpCatalog> | null): RdpCatalo
       ? [...catalog.locations, ...missingLocations]
       : defaults.locations,
     durations: defaults.durations,
-    plans: [...catalog.plans, ...missingPlans],
+    plans: [...savedPlans, ...missingPlans],
   };
 }
 

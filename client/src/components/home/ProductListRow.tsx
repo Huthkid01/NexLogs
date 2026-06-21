@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { ProductVariantsModal } from '@/components/home/ProductVariantsModal';
-import { formatPrice } from '@/lib/utils';
+import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import type { Product } from '@/types';
 
 interface ProductListRowProps {
@@ -10,6 +10,7 @@ interface ProductListRowProps {
 
 export function ProductListRow({ product }: ProductListRowProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const { formatProductPrice } = useFormatDisplayPrice();
 
   return (
     <>
@@ -24,7 +25,7 @@ export function ProductListRow({ product }: ProductListRowProps) {
               {product.description}
             </p>
             <p className="text-[#1b5e20] text-sm font-medium mt-2">
-              Starting from {formatPrice(product.price)}
+              Starting from {formatProductPrice(product.price)}
             </p>
           </div>
           <button
