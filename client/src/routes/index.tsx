@@ -22,6 +22,7 @@ import AuthCallbackPage from '@/pages/auth/AuthCallbackPage';
 import ProfilePage from '@/pages/ProfilePage';
 import MyPurchasesPage from '@/pages/MyPurchasesPage';
 import AddFundsPage from '@/pages/AddFundsPage';
+import PurchaseRdpPage from '@/pages/PurchaseRdpPage';
 
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
@@ -35,6 +36,7 @@ import AdminContentPage from '@/pages/admin/AdminContentPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 import AdminSlidesPage from '@/pages/admin/AdminSlidesPage';
 import AdminExchangeRatesPage from '@/pages/admin/AdminExchangeRatesPage';
+import AdminRdpPage from '@/pages/admin/AdminRdpPage';
 
 const router = createBrowserRouter([
   {
@@ -62,6 +64,7 @@ const router = createBrowserRouter([
       { path: 'profile', element: <ProtectedRoute><ProfilePage /></ProtectedRoute> },
       { path: 'purchases', element: <ProtectedRoute><MyPurchasesPage /></ProtectedRoute> },
       { path: 'add-funds', element: <ProtectedRoute><AddFundsPage /></ProtectedRoute> },
+      { path: 'purchase-rdp', element: <ProtectedRoute><PurchaseRdpPage /></ProtectedRoute> },
     ],
   },
   { path: '/admin/login', element: <AdminGuestRoute><AdminLoginPage /></AdminGuestRoute> },
@@ -80,6 +83,7 @@ const router = createBrowserRouter([
       { path: 'activity', element: <AdminActivityLogsPage /> },
       { path: 'slides', element: <AdminSlidesPage /> },
       { path: 'exchange-rates', element: <AdminExchangeRatesPage /> },
+      { path: 'rdp', element: <AdminRdpPage /> },
       { path: 'blog', element: <Navigate to="/admin" replace /> },
       { path: 'content', element: <Navigate to="/admin/content/homepage" replace /> },
       { path: 'content/:section', element: <AdminContentPage /> },

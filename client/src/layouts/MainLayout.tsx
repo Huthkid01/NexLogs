@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { APP_NAME } from '@/constants';
 import { SideMenu } from '@/components/layout/SideMenu';
 import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
+import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { FloatingActions } from '@/components/layout/FloatingActions';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
@@ -47,9 +48,12 @@ export function MainLayout() {
               )}
             </div>
 
-            <div className="flex items-center gap-4 ml-auto">
+            <div className="flex items-center gap-3 ml-auto">
               {user ? (
-                <UserMenuDropdown />
+                <>
+                  <CurrencySelector compact />
+                  <UserMenuDropdown />
+                </>
               ) : !hideAuthLink ? (
                 <Link
                   to="/login"

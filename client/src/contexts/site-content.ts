@@ -1,6 +1,7 @@
 import { createContext } from 'react';
 import { APP_NAME } from '@/constants';
 import { normalizeWalletExchangeRates } from '@/lib/wallet-exchange-rates';
+import { DEFAULT_RDP_CATALOG, mergeRdpCatalog, type RdpCatalog } from '@/lib/rdp-catalog';
 
 export interface SiteContent {
   slides: Array<{
@@ -88,6 +89,7 @@ export interface SiteContent {
   wallet: {
     exchangeRates: Record<string, number>;
   };
+  rdp: RdpCatalog;
 }
 
 export const STORAGE_KEY = 'nexlogs-site-content';
@@ -285,6 +287,7 @@ export const defaultSiteContent: SiteContent = {
       XAF: 565.62,
     },
   },
+  rdp: DEFAULT_RDP_CATALOG,
 };
 
 export interface SiteContentContextType {
@@ -364,5 +367,6 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
     wallet: {
       exchangeRates: normalizeWalletExchangeRates(content?.wallet?.exchangeRates),
     },
+    rdp: mergeRdpCatalog(content?.rdp),
   };
 }

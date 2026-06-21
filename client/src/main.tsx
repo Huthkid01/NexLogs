@@ -5,6 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { AppContent } from '@/AppContent';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { SiteContentProvider } from '@/contexts/SiteContentContext';
+import { DisplayCurrencyProvider } from '@/contexts/DisplayCurrencyContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import './index.css';
 
@@ -21,7 +22,9 @@ createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <ThemeProvider>
             <SiteContentProvider>
-              <AppContent />
+              <DisplayCurrencyProvider>
+                <AppContent />
+              </DisplayCurrencyProvider>
             </SiteContentProvider>
           </ThemeProvider>
         </AuthProvider>
