@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Monitor, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
@@ -22,6 +21,8 @@ import {
 } from '@/lib/purchase-errors';
 import { cn } from '@/lib/utils';
 import { orderService, productService, profileService } from '@/services';
+
+const ORANGE_LIGHT = 'bg-[#fff4ef] text-[#c2410c] border-[#f26522] dark:bg-[#f26522]/10 dark:text-orange-200 dark:border-[#f26522]';
 
 export default function PurchaseRdpPage() {
   const navigate = useNavigate();
@@ -74,11 +75,6 @@ export default function PurchaseRdpPage() {
         return;
       }
 
-      if (product.stock <= 0) {
-        toast.error('This plan is out of stock.');
-        return;
-      }
-
       const balance = stats?.balance ?? 0;
       if (balance < product.price) {
         toast.error('Insufficient wallet balance. Please add funds.');
@@ -86,10 +82,14 @@ export default function PurchaseRdpPage() {
         return;
       }
 
-      await orderService.purchaseWithWallet(product.id, 1);
+      await orderService.purchaseRdpWithWallet(product.id, 1);
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
-      toast.success('RDP purchased successfully. Check My Purchases for your details.');
+      await queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });
+      toast.success(
+        'Purchase completed. Check your purchase history within 5 to 10 mins for details.',
+        { duration: 8000 },
+      );
       navigate('/purchases');
     } catch (error: unknown) {
       if (isInsufficientFundsError(error)) {
@@ -106,17 +106,9 @@ export default function PurchaseRdpPage() {
   return (
     <div className="bg-gray-50 dark:bg-dm-bg min-h-full">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{catalog.pageTitle}</h1>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{catalog.pageSubtitle}</p>
-          </div>
-          <div className="flex flex-col items-start sm:items-end gap-2">
-            <CurrencySelector />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              NGN uses your admin exchange rate ({rates.NGN?.toLocaleString()} NGN = $1)
-            </p>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{catalog.pageTitle}</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{catalog.pageSubtitle}</p>
         </div>
 
         <section className="mb-8">
@@ -135,7 +127,7 @@ export default function PurchaseRdpPage() {
                 className={cn(
                   'rounded-xl border px-3 py-3 text-sm font-medium transition-colors',
                   locationId === location.id
-                    ? 'border-[#7c3aed] bg-[#f5f3ff] text-[#5b21b6] dark:bg-[#2e1065]/30 dark:text-violet-200 dark:border-violet-500'
+                    ? ORANGE_LIGHT
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dm-border dark:bg-dm-surface dark:text-gray-200',
                 )}
               >
@@ -163,14 +155,14 @@ export default function PurchaseRdpPage() {
 
                 return (
                   <div
-                    key={plan.id}
+                    key={`${plan.id}-${currency}-${durationId}`}
                     className={cn(
                       'rounded-2xl border bg-white dark:bg-dm-surface p-5 shadow-sm transition-colors',
-                      isSelected ? 'border-[#7c3aed] ring-1 ring-[#7c3aed]/30' : 'border-gray-200 dark:border-dm-border',
+                      isSelected ? 'border-[#f26522] ring-1 ring-[#f26522]/30' : 'border-gray-200 dark:border-dm-border',
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5f3ff] text-[#7c3aed] dark:bg-violet-950 dark:text-violet-300">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff4ef] text-[#f26522] dark:bg-[#f26522]/15 dark:text-orange-300">
                         <Zap className="h-5 w-5" />
                       </div>
                       <button
@@ -179,7 +171,7 @@ export default function PurchaseRdpPage() {
                         className={cn(
                           'rounded-full border px-2.5 py-1 text-[11px] font-medium',
                           isSelected
-                            ? 'border-[#7c3aed] text-[#7c3aed]'
+                            ? 'border-[#f26522] text-[#f26522]'
                             : 'border-gray-200 text-gray-500 dark:border-dm-border dark:text-gray-400',
                         )}
                       >
@@ -205,7 +197,7 @@ export default function PurchaseRdpPage() {
 
                     <Button
                       type="button"
-                      className="mt-6 w-full bg-[#7c3aed] hover:bg-[#6d28d9]"
+                      className="mt-6 w-full bg-[#f26522] hover:bg-[#d94e0f]"
                       disabled={isPurchasing}
                       onClick={() => handlePurchase(plan)}
                     >
@@ -225,6 +217,7 @@ export default function PurchaseRdpPage() {
           </section>
         )}
 
+        {catalog.durations.length > 1 && (
         <section className="rounded-2xl border border-gray-200 dark:border-dm-border bg-white dark:bg-dm-surface p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-3">
             Select Duration
@@ -238,7 +231,7 @@ export default function PurchaseRdpPage() {
                 className={cn(
                   'rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
                   durationId === duration.id
-                    ? 'border-[#7c3aed] bg-[#f5f3ff] text-[#5b21b6] dark:bg-[#2e1065]/30 dark:text-violet-200'
+                    ? ORANGE_LIGHT
                     : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 dark:border-dm-border dark:bg-dm-input dark:text-gray-200',
                 )}
               >
@@ -247,6 +240,7 @@ export default function PurchaseRdpPage() {
             ))}
           </div>
         </section>
+        )}
       </div>
     </div>
   );

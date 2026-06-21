@@ -27,7 +27,7 @@ export interface RdpCatalog {
   plans: RdpPlan[];
 }
 
-const SHARED_FEATURES = [
+const SHARED_CITY_FEATURES_TAIL = [
   'Admin Access',
   'Intel Xeon CPU',
   '1Gbps Internet Speed',
@@ -36,82 +36,201 @@ const SHARED_FEATURES = [
   '24x7 Live Chat Support',
 ];
 
-function atlantaPlans(): RdpPlan[] {
-  return [
-    {
-      id: 'atlanta-2gb',
-      locationId: 'atlanta-usa',
-      title: 'Atlanta Windows RDP',
-      ramLabel: '2 GB Ram',
-      priceUsdMonthly: 6.67,
-      productSlug: 'atlanta-rdp-2gb',
-      features: ['2 GB RAM', '40 GB SSD', '2 vCores', ...SHARED_FEATURES],
-    },
-    {
-      id: 'atlanta-4gb',
-      locationId: 'atlanta-usa',
-      title: 'Atlanta Windows RDP',
-      ramLabel: '4 GB RAM',
-      priceUsdMonthly: 10,
-      productSlug: 'atlanta-rdp-4gb',
-      features: ['4 GB RAM', '80 GB SSD', '4 vCores', ...SHARED_FEATURES],
-    },
-    {
-      id: 'atlanta-6gb',
-      locationId: 'atlanta-usa',
-      title: 'Atlanta Windows RDP',
-      ramLabel: '6 GB RAM',
-      priceUsdMonthly: 16.67,
-      productSlug: 'atlanta-rdp-6gb',
-      features: ['6 GB RAM', '100 GB SSD', '4 vCores', ...SHARED_FEATURES],
-    },
-    {
-      id: 'atlanta-8gb',
-      locationId: 'atlanta-usa',
-      title: 'Atlanta Windows RDP',
-      ramLabel: '8 GB Ram',
-      priceUsdMonthly: 26.67,
-      productSlug: 'atlanta-rdp-8gb',
-      features: ['8 GB RAM', '100 GB SSD', '6 vCores', ...SHARED_FEATURES],
-    },
-    {
-      id: 'atlanta-16gb',
-      locationId: 'atlanta-usa',
-      title: 'Atlanta Windows RDP',
-      ramLabel: '16 GB Ram',
-      priceUsdMonthly: 43.33,
-      productSlug: 'atlanta-rdp-16gb',
-      features: ['16 GB RAM', '100 GB SSD', '8 vCores', ...SHARED_FEATURES],
-    },
-  ];
+const FOREX_FEATURES_TAIL = [
+  'Admin Access',
+  '2Gbps Internet Speed',
+  'Unlimited Bandwidth',
+  'Renewable',
+  '24x7 Live Chat Support',
+];
+
+interface CityPlanTemplate {
+  ramKey: string;
+  ramLabel: string;
+  priceUsdMonthly: number;
+  ramFeature: string;
+  ssdFeature: string;
+  vCoresFeature?: string;
 }
+
+const CITY_PLAN_TEMPLATES: CityPlanTemplate[] = [
+  {
+    ramKey: '2gb',
+    ramLabel: '2 GB Ram',
+    priceUsdMonthly: 6.67,
+    ramFeature: '2 GB RAM',
+    ssdFeature: '40 GB SSD',
+    vCoresFeature: '2 vCores',
+  },
+  {
+    ramKey: '4gb',
+    ramLabel: '4 GB RAM',
+    priceUsdMonthly: 10,
+    ramFeature: '4 GB RAM',
+    ssdFeature: '80 GB SSD',
+    vCoresFeature: '4 vCores',
+  },
+  {
+    ramKey: '6gb',
+    ramLabel: '6 GB RAM',
+    priceUsdMonthly: 16.67,
+    ramFeature: '6 GB RAM',
+    ssdFeature: '100 GB SSD',
+    vCoresFeature: '4 vCores',
+  },
+  {
+    ramKey: '8gb',
+    ramLabel: '8 GB Ram',
+    priceUsdMonthly: 26.67,
+    ramFeature: '8 GB RAM',
+    ssdFeature: '100 GB SSD',
+    vCoresFeature: '6 vCores',
+  },
+  {
+    ramKey: '16gb',
+    ramLabel: '16 GB Ram',
+    priceUsdMonthly: 43.33,
+    ramFeature: '16 GB RAM',
+    ssdFeature: '100 GB SSD',
+    vCoresFeature: '8 vCores',
+  },
+];
+
+interface ForexPlanTemplate {
+  ramKey: string;
+  ramLabel: string;
+  priceUsdMonthly: number;
+  ramFeature: string;
+  ssdFeature: string;
+  vCoresFeature?: string;
+}
+
+const FOREX_PLAN_TEMPLATES: ForexPlanTemplate[] = [
+  {
+    ramKey: '4gb',
+    ramLabel: '4 GB RAM',
+    priceUsdMonthly: 16.67,
+    ramFeature: '4 GB RAM',
+    ssdFeature: '50 GB SSD',
+  },
+  {
+    ramKey: '6gb',
+    ramLabel: '6 GB RAM',
+    priceUsdMonthly: 26.67,
+    ramFeature: '6 GB RAM',
+    ssdFeature: '100 GB SSD',
+  },
+  {
+    ramKey: '8gb',
+    ramLabel: '8 GB RAM',
+    priceUsdMonthly: 37.33,
+    ramFeature: '8 GB RAM',
+    ssdFeature: '200 GB SSD',
+  },
+  {
+    ramKey: '16gb',
+    ramLabel: '16 GB RAM',
+    priceUsdMonthly: 73.33,
+    ramFeature: '16 GB RAM',
+    ssdFeature: '200 GB SSD',
+    vCoresFeature: '12 vCores',
+  },
+];
+
+function buildCityPlanFeatures(template: CityPlanTemplate): string[] {
+  return [
+    template.ramFeature,
+    template.ssdFeature,
+    template.vCoresFeature!,
+    ...SHARED_CITY_FEATURES_TAIL,
+  ].filter(Boolean);
+}
+
+function buildForexPlanFeatures(template: ForexPlanTemplate): string[] {
+  return [
+    'Optimised for trading',
+    'AMD Ryzen 7950X',
+    'Gen4 NVMe',
+    template.ramFeature,
+    'Located in Frankfurt, Germany',
+    template.ssdFeature,
+    template.vCoresFeature,
+    ...FOREX_FEATURES_TAIL,
+  ].filter(Boolean) as string[];
+}
+
+function buildCityPlans(
+  locationId: string,
+  slugPrefix: string,
+  title: string,
+): RdpPlan[] {
+  return CITY_PLAN_TEMPLATES.map((template) => ({
+    id: `${slugPrefix}-${template.ramKey}`,
+    locationId,
+    title,
+    ramLabel: template.ramLabel,
+    priceUsdMonthly: template.priceUsdMonthly,
+    productSlug: `${slugPrefix}-rdp-${template.ramKey}`,
+    features: buildCityPlanFeatures(template),
+  }));
+}
+
+function buildForexPlans(): RdpPlan[] {
+  return FOREX_PLAN_TEMPLATES.map((template) => ({
+    id: `forex-${template.ramKey}`,
+    locationId: 'forex-rdp',
+    title: 'Forex Windows RDP',
+    ramLabel: template.ramLabel,
+    priceUsdMonthly: template.priceUsdMonthly,
+    productSlug: `forex-rdp-${template.ramKey}`,
+    features: buildForexPlanFeatures(template),
+  }));
+}
+
+export const DEFAULT_RDP_LOCATIONS: RdpLocation[] = [
+  { id: 'forex-rdp', label: 'Forex RDP' },
+  { id: 'miami-usa', label: 'Miami, USA' },
+  { id: 'atlanta-usa', label: 'Atlanta, USA' },
+  { id: 'la-usa', label: 'LA, USA' },
+  { id: 'netherlands', label: 'Netherlands' },
+  { id: 'germany', label: 'Germany' },
+];
 
 export const DEFAULT_RDP_CATALOG: RdpCatalog = {
   pageTitle: 'Purchase RDP',
   pageSubtitle: 'Choose the perfect plan for your needs.',
-  locations: [
-    { id: 'forex-rdp', label: 'Forex RDP' },
-    { id: 'miami-usa', label: 'Miami, USA' },
-    { id: 'atlanta-usa', label: 'Atlanta, USA' },
-    { id: 'la-usa', label: 'LA, USA' },
-    { id: 'netherlands', label: 'Netherlands' },
-    { id: 'germany', label: 'Germany' },
+  locations: DEFAULT_RDP_LOCATIONS,
+  durations: [{ id: '1-month', label: '1 Month', months: 1 }],
+  plans: [
+    ...buildForexPlans(),
+    ...buildCityPlans('miami-usa', 'miami', 'Miami Windows RDP'),
+    ...buildCityPlans('atlanta-usa', 'atlanta', 'Atlanta Windows RDP'),
+    ...buildCityPlans('la-usa', 'la', 'LA Windows RDP'),
+    ...buildCityPlans('netherlands', 'netherlands', 'Netherlands Windows RDP'),
+    ...buildCityPlans('germany', 'germany', 'Germany Windows RDP'),
   ],
-  durations: [
-    { id: '1-month', label: '1 Month', months: 1 },
-    { id: '3-months', label: '3 Months', months: 3 },
-    { id: '6-months', label: '6 Months', months: 6 },
-  ],
-  plans: atlantaPlans(),
 };
 
 export function mergeRdpCatalog(catalog?: Partial<RdpCatalog> | null): RdpCatalog {
+  const defaults = DEFAULT_RDP_CATALOG;
+
+  if (!catalog?.plans?.length) {
+    return defaults;
+  }
+
+  const savedPlanIds = new Set(catalog.plans.map((plan) => plan.id));
+  const savedLocationIds = new Set((catalog.locations ?? []).map((location) => location.id));
+  const missingPlans = defaults.plans.filter((plan) => !savedPlanIds.has(plan.id));
+  const missingLocations = defaults.locations.filter((location) => !savedLocationIds.has(location.id));
+
   return {
-    pageTitle: catalog?.pageTitle ?? DEFAULT_RDP_CATALOG.pageTitle,
-    pageSubtitle: catalog?.pageSubtitle ?? DEFAULT_RDP_CATALOG.pageSubtitle,
-    locations: catalog?.locations?.length ? catalog.locations : DEFAULT_RDP_CATALOG.locations,
-    durations: catalog?.durations?.length ? catalog.durations : DEFAULT_RDP_CATALOG.durations,
-    plans: catalog?.plans?.length ? catalog.plans : DEFAULT_RDP_CATALOG.plans,
+    pageTitle: catalog.pageTitle ?? defaults.pageTitle,
+    pageSubtitle: catalog.pageSubtitle ?? defaults.pageSubtitle,
+    locations: catalog.locations?.length
+      ? [...catalog.locations, ...missingLocations]
+      : defaults.locations,
+    durations: defaults.durations,
+    plans: [...catalog.plans, ...missingPlans],
   };
 }
 
@@ -125,4 +244,8 @@ export function getPlanPriceUsd(plan: RdpPlan, duration: RdpDuration): number {
 
 export function getPlansForLocation(catalog: RdpCatalog, locationId: string): RdpPlan[] {
   return catalog.plans.filter((plan) => plan.locationId === locationId);
+}
+
+export function getLocationLabel(catalog: RdpCatalog, locationId: string): string {
+  return catalog.locations.find((location) => location.id === locationId)?.label ?? locationId;
 }

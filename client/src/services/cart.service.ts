@@ -74,6 +74,52 @@ export const orderService = {
     return data as string;
   },
 
+  async purchaseRdpWithWallet(productId: string, quantity = 1): Promise<string> {
+    if (isMockMode()) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return `order-${crypto.randomUUID()}`;
+    }
+    const { data, error } = await supabase.rpc('purchase_rdp_with_wallet', {
+      p_product_id: productId,
+      p_quantity: quantity,
+    } as never);
+    if (error) throw error;
+    return data as string;
+  },
+
+  async updateOrderItemDeliveredDetails(
+    orderItemId: string,
+    deliveredDetails: string,
+    orderId: string,
+  ): Promise<void> {
+    if (isMockMode()) return;
+
+    const trimmed = deliveredDetails.trim();
+    const { error: itemError } = await supabase
+      .from('order_items')
+      .update({ delivered_details: trimmed || null } as never)
+      .eq('id', orderItemId);
+    if (itemError) throw itemError;
+
+    if (trimmed) {
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: 'completed' } as never)
+        .eq('id', orderId);
+      if (orderError) throw orderError;
+
+      const order = await this.getOrderById(orderId);
+      if (order?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: order.user_id,
+          title: 'RDP Details Ready',
+          message: 'Your RDP details are now available in My Purchases.',
+          link: '/purchases',
+        } as never);
+      }
+    }
+  },
+
   async createOrder(userId: string, items: CartItem[], couponCode?: string): Promise<Order> {
     let discountAmount = 0;
     let couponId: string | null = null;
@@ -152,7 +198,7 @@ export const orderService = {
     if (isMockMode()) return mockAdminService.getOrders();
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, product:products(title)), profile:profiles(full_name, email)')
+      .select('*, order_items(*, product:products(title, slug)), profile:profiles(full_name, email)')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []) as Order[];

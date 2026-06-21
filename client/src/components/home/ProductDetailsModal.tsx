@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getProductLog } from '@/lib/account-details';
 import { formatPurchaseDate } from '@/lib/purchase-utils';
+import { isRdpProduct, RDP_PENDING_DETAILS_MESSAGE } from '@/lib/rdp-utils';
 import type { Product } from '@/types';
 
 interface ProductDetailsModalProps {
@@ -25,6 +26,8 @@ export function ProductDetailsModal({
   const [copied, setCopied] = useState(false);
 
   const logContent = product ? getProductLog(product, logSeed, deliveredDetails) : '';
+  const isPendingRdp =
+    product && isRdpProduct(product) && !deliveredDetails?.trim();
 
   useEffect(() => {
     if (!open) return;
@@ -104,20 +107,28 @@ export function ProductDetailsModal({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className="font-bold">Product details/Log:</span>
-              <button
-                type="button"
-                onClick={handleCopyLog}
-                className="text-xs font-medium bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
+              {!isPendingRdp && (
+                <button
+                  type="button"
+                  onClick={handleCopyLog}
+                  className="text-xs font-medium bg-[#f26522] text-white px-3 py-1 rounded hover:bg-[#d94e0f] transition-colors"
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              )}
             </div>
 
-            <div className="rounded border border-gray-300 dark:border-dm-border bg-white dark:bg-dm-product-row p-3 min-h-[180px] max-h-[320px] overflow-y-auto">
-              <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words font-sans leading-relaxed">
-                {logContent}
-              </pre>
-            </div>
+            {isPendingRdp ? (
+              <div className="rounded border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-amber-900 dark:text-amber-100">
+                {RDP_PENDING_DETAILS_MESSAGE}
+              </div>
+            ) : (
+              <div className="rounded border border-gray-300 dark:border-dm-border bg-white dark:bg-dm-product-row p-3 min-h-[180px] max-h-[320px] overflow-y-auto">
+                <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words font-sans leading-relaxed">
+                  {logContent}
+                </pre>
+              </div>
+            )}
           </div>
         </div>
 

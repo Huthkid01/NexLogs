@@ -1,3 +1,4 @@
+import { isRdpProduct, RDP_PENDING_DETAILS_MESSAGE } from '@/lib/rdp-utils';
 import { parseProductDetailLines } from '@/lib/product-details';
 import type { Product } from '@/types';
 
@@ -128,6 +129,10 @@ export function getProductLog(
 ): string {
   const purchasedDetails = deliveredDetails?.trim();
   if (purchasedDetails) return purchasedDetails;
+
+  if (isRdpProduct(product)) {
+    return RDP_PENDING_DETAILS_MESSAGE;
+  }
 
   const savedDetails = product.product_details?.trim();
   if (savedDetails) {
