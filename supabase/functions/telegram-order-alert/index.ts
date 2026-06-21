@@ -14,16 +14,21 @@ interface OrderItemRow {
     slug: string;
     niche: string | null;
     platform: string;
-  } | null;
+  } | {
+    title: string;
+    slug: string;
+    niche: string | null;
+    platform: string;
+  }[] | null;
 }
 
 interface OrderRow {
   id: string;
+  user_id: string;
   total_amount: number;
   status: string;
   payment_status: string;
   created_at: string;
-  profile: { full_name: string; email: string } | { full_name: string; email: string }[] | null;
   order_items: OrderItemRow[];
 }
 
@@ -42,19 +47,23 @@ function isRdpSlug(slug: string | null | undefined) {
   return Boolean(slug?.includes('-rdp-'));
 }
 
-function getProfile(order: OrderRow) {
-  if (!order.profile) return { full_name: 'Unknown buyer', email: 'unknown' };
-  return Array.isArray(order.profile) ? order.profile[0] : order.profile;
+function normalizeProduct(item: OrderItemRow) {
+  if (!item.product) return null;
+  return Array.isArray(item.product) ? item.product[0] ?? null : item.product;
 }
 
-function buildTelegramMessage(order: OrderRow, adminOrdersUrl: string) {
-  const buyer = getProfile(order);
+function buildTelegramMessage(
+  order: OrderRow,
+  buyer: { full_name: string; email: string },
+  adminOrdersUrl: string,
+) {
   const items = order.order_items ?? [];
-  const hasRdp = items.some((item) => isRdpSlug(item.product?.slug));
+  const hasRdp = items.some((item) => isRdpSlug(normalizeProduct(item)?.slug));
   const productLines = items.map((item) => {
-    const title = item.product?.title ?? 'Unknown product';
-    const slug = item.product?.slug ?? '';
-    const type = isRdpSlug(slug) ? 'RDP' : (item.product?.niche ?? item.product?.platform ?? 'Product');
+    const product = normalizeProduct(item);
+    const title = product?.title ?? 'Unknown product';
+    const slug = product?.slug ?? '';
+    const type = isRdpSlug(slug) ? 'RDP' : (product?.niche ?? product?.platform ?? 'Product');
     return `• ${escapeHtml(title)} (${escapeHtml(type)}) x${item.quantity} — ${formatUsd(item.price)}`;
   });
 
@@ -63,7 +72,7 @@ function buildTelegramMessage(order: OrderRow, adminOrdersUrl: string) {
     : '🛒 <b>New purchase on Nexlogs</b>';
 
   const actionLine = hasRdp
-    ? `\n\n⚠️ Paste RDP credentials for the buyer in Admin → Orders.`
+    ? '\n\n⚠️ Paste RDP credentials for the buyer in Admin → Orders.'
     : '';
 
   return [
@@ -88,7 +97,7 @@ async function sendTelegramMessage(text: string) {
   const chatId = Deno.env.get('TELEGRAM_ADMIN_CHAT_ID');
 
   if (!token || !chatId) {
-    throw new Error('TELEGRAM_BOT_TOKEN or TELEGRAM_ADMIN_CHAT_ID is not configured');
+    throw new Error('TELEGRAM_BOT_TOKEN or TELEGRAM_ADMIN_CHAT_ID is not configured in Edge Function secrets');
   }
 
   const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -134,22 +143,22 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Supabase service role is not configured');
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured in Edge Function secrets');
     }
 
     const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || '').replace(/\/$/, '');
     const adminOrdersUrl = appUrl ? `${appUrl}/admin/orders` : '/admin/orders';
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { data, error } = await supabase
+    const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
         id,
+        user_id,
         total_amount,
         status,
         payment_status,
         created_at,
-        profile:profiles(full_name, email),
         order_items(
           quantity,
           price,
@@ -160,11 +169,21 @@ Deno.serve(async (req) => {
       .eq('id', orderId)
       .single();
 
-    if (error || !data) {
-      throw error ?? new Error('Order not found');
+    if (orderError || !order) {
+      throw orderError ?? new Error('Order not found');
     }
 
-    const message = buildTelegramMessage(data as OrderRow, adminOrdersUrl);
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', order.user_id)
+      .single();
+
+    if (profileError || !profile) {
+      throw profileError ?? new Error('Buyer profile not found');
+    }
+
+    const message = buildTelegramMessage(order as OrderRow, profile, adminOrdersUrl);
     await sendTelegramMessage(message);
 
     return new Response(JSON.stringify({ ok: true }), {
