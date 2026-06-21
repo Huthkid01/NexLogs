@@ -3,25 +3,25 @@ import { BarChart3, Globe2, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/utils';
-import { mockAdminService } from '@/mocks/mock-admin';
+import { adminService } from '@/services';
 
 export default function AdminAnalyticsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-analytics'],
-    queryFn: mockAdminService.getAnalytics,
+    queryFn: adminService.getAnalytics,
   });
 
   if (isLoading) {
     return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>;
   }
 
-  const peakRevenue = Math.max(...(data?.revenueByWeek.map((item) => item.value) ?? [0]));
+  const peakRevenue = Math.max(...(data?.revenueByWeek.map((item) => item.value) ?? [0]), 0);
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-xl sm:text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-muted-foreground">Overview of sales, revenue, and marketplace activity.</p>
+        <p className="text-sm text-muted-foreground">Live overview of sales, revenue, and marketplace activity from your orders.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -65,7 +65,10 @@ export default function AdminAnalyticsPage() {
                   <span className="font-medium">{formatPrice(item.value)}</span>
                 </div>
                 <div className="h-2 rounded-full bg-secondary">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: `${(item.value / peakRevenue) * 100}%` }} />
+                  <div
+                    className="h-2 rounded-full bg-primary"
+                    style={{ width: `${peakRevenue > 0 ? (item.value / peakRevenue) * 100 : 0}%` }}
+                  />
                 </div>
               </div>
             ))}
@@ -75,36 +78,48 @@ export default function AdminAnalyticsPage() {
         <Card>
           <CardHeader><CardTitle>Platform Breakdown</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {data?.platformBreakdown.map((item) => (
-              <div key={item.label} className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3 text-sm">
-                <span>{item.label}</span>
-                <span className="font-semibold">{item.value}%</span>
-              </div>
-            ))}
+            {data?.platformBreakdown.length ? (
+              data.platformBreakdown.map((item) => (
+                <div key={item.label} className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3 text-sm">
+                  <span>{item.label}</span>
+                  <span className="font-semibold">{item.value}%</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">No paid orders yet.</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>Top Countries</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {data?.topCountries.map((item) => (
-              <div key={item.label} className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3 text-sm">
-                <span>{item.label}</span>
-                <span className="font-semibold">{item.value}%</span>
-              </div>
-            ))}
+            {data?.topCountries.length ? (
+              data.topCountries.map((item) => (
+                <div key={item.label} className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3 text-sm">
+                  <span>{item.label}</span>
+                  <span className="font-semibold">{item.value}%</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">No country data from orders yet.</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>Order Status Mix</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {data?.orderStatusBreakdown.map((item) => (
-              <div key={item.label} className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3 text-sm">
-                <span>{item.label}</span>
-                <span className="font-semibold">{item.value}</span>
-              </div>
-            ))}
+            {data?.orderStatusBreakdown.length ? (
+              data.orderStatusBreakdown.map((item) => (
+                <div key={item.label} className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3 text-sm">
+                  <span>{item.label}</span>
+                  <span className="font-semibold">{item.value}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">No orders yet.</p>
+            )}
           </CardContent>
         </Card>
       </div>

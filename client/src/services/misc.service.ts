@@ -2,7 +2,8 @@ import { supabase } from '@/lib/supabase';
 import { isMockMode } from '@/lib/mock-mode';
 import { MOCK_CATEGORIES } from '@/mocks/demo-data';
 import { mockAdminService } from '@/mocks/mock-admin';
-import type { Wishlist, Notification, Category, BlogPost, Faq, Testimonial, Profile, AdminStats, SupportTicket, ActivityLog } from '@/types';
+import type { Wishlist, Notification, Category, BlogPost, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog } from '@/types';
+import { buildAdminAnalyticsSnapshot, EMPTY_ADMIN_ANALYTICS } from '@/lib/admin-analytics';
 
 export const wishlistService = {
   async getWishlist(userId: string): Promise<Wishlist[]> {
@@ -223,6 +224,46 @@ export const adminService = {
       openTickets: ticketsRes.count || 0,
       recentOrders: (recentOrdersRes.data || []) as AdminStats['recentOrders'],
     };
+  },
+
+  async getAnalytics(): Promise<AdminAnalyticsSnapshot> {
+    if (isMockMode()) return mockAdminService.getAnalytics();
+
+    const [ordersRes, orderItemsRes] = await Promise.all([
+      supabase.from('orders').select('total_amount, status, payment_status, created_at'),
+      supabase
+        .from('order_items')
+        .select('quantity, price, product:products(platform, country, slug, title)'),
+    ]);
+
+    if (ordersRes.error) throw ordersRes.error;
+    if (orderItemsRes.error) throw orderItemsRes.error;
+
+    const orders = (ordersRes.data || []) as Array<{
+      total_amount: number;
+      status: AdminStats['recentOrders'][number]['status'];
+      payment_status: string;
+      created_at: string;
+    }>;
+    const orderItems = (orderItemsRes.data || []).map((row) => {
+      const item = row as {
+        quantity: number;
+        price: number;
+        product: { platform: string; country: string | null; slug: string; title: string } | { platform: string; country: string | null; slug: string; title: string }[] | null;
+      };
+      const product = Array.isArray(item.product) ? item.product[0] ?? null : item.product;
+      return {
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        product,
+      };
+    });
+
+    if (!orders.length && !orderItems.length) {
+      return EMPTY_ADMIN_ANALYTICS;
+    }
+
+    return buildAdminAnalyticsSnapshot(orders, orderItems);
   },
 
   async getUsers(): Promise<Profile[]> {

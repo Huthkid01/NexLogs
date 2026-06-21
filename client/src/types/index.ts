@@ -266,3 +266,10 @@ export interface AdminStats {
   openTickets: number;
   recentOrders: Order[];
 }
+
+export interface AdminAnalyticsSnapshot {
+  revenueByWeek: { label: string; value: number }[];
+  platformBreakdown: { label: string; value: number }[];
+  topCountries: { label: string; value: number }[];
+  orderStatusBreakdown: { label: string; value: number }[];
+}

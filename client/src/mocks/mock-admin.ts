@@ -1,4 +1,4 @@
-import type { ActivityLog, AdminStats, BlogPost, Category, Coupon, Order, Product, Profile, SupportTicket } from '@/types';
+import type { ActivityLog, AdminAnalyticsSnapshot, AdminStats, BlogPost, Category, Coupon, Order, Product, Profile, SupportTicket } from '@/types';
 import { MOCK_CATEGORIES, MOCK_PRODUCTS, MOCK_USERS } from '@/mocks/demo-data';
 import { getMockUserOrders } from '@/mocks/mock-orders';
 import { getPlatformIconPath } from '@/lib/platform-icons';
@@ -284,13 +284,6 @@ const adminCoupons: Coupon[] = [
     updated_at: now,
   },
 ];
-
-export interface AdminAnalyticsSnapshot {
-  revenueByWeek: { label: string; value: number }[];
-  platformBreakdown: { label: string; value: number }[];
-  topCountries: { label: string; value: number }[];
-  orderStatusBreakdown: { label: string; value: number }[];
-}
 
 const adminAnalytics: AdminAnalyticsSnapshot = {
   revenueByWeek: [
