@@ -1,8 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { isMockMode } from '@/lib/mock-mode';
-import { MOCK_CATEGORIES } from '@/mocks/demo-data';
-import { mockAdminService } from '@/mocks/mock-admin';
-import type { Wishlist, Notification, Category, BlogPost, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog } from '@/types';
+import type { Wishlist, Notification, Category, BlogPost, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog, Coupon } from '@/types';
 import { buildAdminAnalyticsSnapshot, EMPTY_ADMIN_ANALYTICS } from '@/lib/admin-analytics';
 
 export const wishlistService = {
@@ -72,7 +69,6 @@ export const notificationService = {
 
 export const activityLogService = {
   async create(log: Omit<ActivityLog, 'id' | 'created_at'> & Partial<Pick<ActivityLog, 'id' | 'created_at'>>) {
-    if (isMockMode()) return mockAdminService.createActivityLog(log);
     const { error } = await supabase.from('activity_logs').insert({
       user_id: log.user_id,
       action: log.action,
@@ -84,7 +80,6 @@ export const activityLogService = {
   },
 
   async getAllAdmin(): Promise<ActivityLog[]> {
-    if (isMockMode()) return mockAdminService.getActivityLogs();
     const { data, error } = await supabase
       .from('activity_logs')
       .select('*, profile:profiles(full_name, email)')
@@ -97,35 +92,30 @@ export const activityLogService = {
 
 export const categoryService = {
   async getAll(): Promise<Category[]> {
-    if (isMockMode()) return MOCK_CATEGORIES;
     const { data, error } = await supabase.from('categories').select('*').eq('is_active', true).order('sort_order');
     if (error) throw error;
     return (data || []) as Category[];
   },
 
   async getAllAdmin(): Promise<Category[]> {
-    if (isMockMode()) return mockAdminService.getCategories();
     const { data, error } = await supabase.from('categories').select('*').order('sort_order');
     if (error) throw error;
     return (data || []) as Category[];
   },
 
   async create(category: Partial<Category>) {
-    if (isMockMode()) return mockAdminService.createCategory(category);
     const { data, error } = await supabase.from('categories').insert(category as never).select().single();
     if (error) throw error;
     return data as Category;
   },
 
   async update(id: string, updates: Partial<Category>) {
-    if (isMockMode()) return mockAdminService.updateCategory(id, updates);
     const { data, error } = await supabase.from('categories').update(updates as never).eq('id', id).select().single();
     if (error) throw error;
     return data as Category;
   },
 
   async delete(id: string) {
-    if (isMockMode()) return mockAdminService.deleteCategory(id);
     const { error } = await supabase.from('categories').delete().eq('id', id);
     if (error) throw error;
   },
@@ -154,7 +144,6 @@ export const blogService = {
   },
 
   async getAllAdmin(): Promise<BlogPost[]> {
-    if (isMockMode()) return mockAdminService.getBlogPosts();
     const { data, error } = await supabase
       .from('blog_posts')
       .select('*, author:profiles(full_name)')
@@ -197,7 +186,6 @@ export const contentService = {
 
 export const adminService = {
   async getStats(): Promise<AdminStats> {
-    if (isMockMode()) return mockAdminService.getStats();
     const [usersRes, ordersRes, productsRes, recentOrdersRes, ticketsRes] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('orders').select('total_amount'),
@@ -227,8 +215,6 @@ export const adminService = {
   },
 
   async getAnalytics(): Promise<AdminAnalyticsSnapshot> {
-    if (isMockMode()) return mockAdminService.getAnalytics();
-
     const [ordersRes, orderItemsRes] = await Promise.all([
       supabase.from('orders').select('total_amount, status, payment_status, created_at'),
       supabase
@@ -267,21 +253,18 @@ export const adminService = {
   },
 
   async getUsers(): Promise<Profile[]> {
-    if (isMockMode()) return mockAdminService.getUsers();
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []) as Profile[];
   },
 
   async updateUser(id: string, updates: Partial<Profile>) {
-    if (isMockMode()) return mockAdminService.updateUser(id, updates);
     const { data, error } = await supabase.from('profiles').update(updates as never).eq('id', id).select().single();
     if (error) throw error;
     return data as Profile;
   },
 
   async deleteUser(id: string) {
-    if (isMockMode()) return mockAdminService.deleteUser(id);
     const { error } = await supabase.from('profiles').delete().eq('id', id);
     if (error) throw error;
   },
@@ -289,14 +272,12 @@ export const adminService = {
 
 export const supportTicketService = {
   async create(ticket: Partial<SupportTicket>) {
-    if (isMockMode()) return mockAdminService.createSupportTicket(ticket);
     const { data, error } = await supabase.from('support_tickets').insert(ticket as never).select().single();
     if (error) throw error;
     return data as SupportTicket;
   },
 
   async getAllAdmin() {
-    if (isMockMode()) return mockAdminService.getSupportTickets();
     const { data, error } = await supabase
       .from('support_tickets')
       .select('*')
@@ -306,10 +287,17 @@ export const supportTicketService = {
   },
 
   async update(id: string, updates: Partial<SupportTicket>) {
-    if (isMockMode()) return mockAdminService.updateSupportTicket(id, updates);
     const { data, error } = await supabase.from('support_tickets').update(updates as never).eq('id', id).select().single();
     if (error) throw error;
     return data as SupportTicket;
+  },
+};
+
+export const couponService = {
+  async getAllAdmin(): Promise<Coupon[]> {
+    const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as Coupon[];
   },
 };
 

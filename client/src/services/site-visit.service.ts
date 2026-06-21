@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase';
 import { getVisitorSessionId } from '@/lib/visitor-session';
-import { isMockMode } from '@/lib/mock-mode';
 
 export interface SiteSession {
   id: string;
@@ -98,8 +97,6 @@ function isTrackablePageView(visit: SitePageView) {
 
 export const siteVisitService = {
   async record(path: string): Promise<void> {
-    if (isMockMode()) return;
-
     const sessionId = getVisitorSessionId();
     const { error } = await supabase.rpc('record_site_visit', {
       p_session_id: sessionId,
@@ -113,16 +110,6 @@ export const siteVisitService = {
   },
 
   async getStats(): Promise<SiteVisitorStats> {
-    if (isMockMode()) {
-      return {
-        registeredUsers: 0,
-        activeVisitors: 0,
-        activeRegistered: 0,
-        activeGuests: 0,
-        visitsToday: 0,
-      };
-    }
-
     const activeSince = getActiveSinceIso();
     const todayStart = getTodayStartIso();
     const adminIds = await getAdminUserIds();
@@ -171,8 +158,6 @@ export const siteVisitService = {
   },
 
   async getActiveSessions(): Promise<SiteSession[]> {
-    if (isMockMode()) return [];
-
     const adminIds = await getAdminUserIds();
     const { data, error } = await excludeAdminSessions(
       supabase
@@ -189,8 +174,6 @@ export const siteVisitService = {
   },
 
   async getRecentPageViews(limit = 100): Promise<SitePageView[]> {
-    if (isMockMode()) return [];
-
     const adminIds = await getAdminUserIds();
     const { data, error } = await excludeAdminPageViews(
       supabase

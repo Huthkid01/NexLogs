@@ -3,12 +3,12 @@ import { Percent, Ticket } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { mockAdminService } from '@/mocks/mock-admin';
+import { couponService } from '@/services';
 
 export default function AdminCouponsPage() {
   const { data: coupons, isLoading } = useQuery({
     queryKey: ['admin-coupons'],
-    queryFn: mockAdminService.getCoupons,
+    queryFn: couponService.getAllAdmin,
   });
 
   if (isLoading) {

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { isMockMode } from '@/lib/mock-mode';
 import { siteVisitService } from '@/services/site-visit.service';
 
 const HEARTBEAT_MS = 2 * 60 * 1000;
@@ -18,7 +17,6 @@ export function useSiteVisitTracking() {
   const lastPathRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isMockMode()) return;
     if (!shouldTrackVisit(location.pathname, isAdmin)) return;
 
     const path = `${location.pathname}${location.search}`;
@@ -29,7 +27,6 @@ export function useSiteVisitTracking() {
   }, [location.pathname, location.search, isAdmin]);
 
   useEffect(() => {
-    if (isMockMode()) return;
     if (!shouldTrackVisit(location.pathname, isAdmin)) return;
 
     const heartbeat = window.setInterval(() => {

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SiteContentContext, defaultSiteContent, mergeSiteContent, STORAGE_KEY, type SiteContent } from '@/contexts/site-content';
-import { isMockMode } from '@/lib/mock-mode';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -60,7 +59,6 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (isMockMode()) return;
     let cancelled = false;
 
     void (async () => {
@@ -93,7 +91,6 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   const setContent = useCallback((next: SiteContent) => {
     setContentState(next);
 
-    if (isMockMode()) return;
     if (!isAdmin || !user) return;
 
     const entries = Object.entries(next) as Array<[string, unknown]>;

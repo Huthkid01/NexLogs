@@ -1,4 +1,5 @@
-import type { PlatformType } from '@/types';
+import type { PlatformType, Product } from '@/types';
+import { isRdpProduct } from '@/lib/rdp-utils';
 
 export const PLATFORM_ICON_PATHS: Record<PlatformType, string> = {
   instagram: '/images/platforms/instagram.png',
@@ -9,12 +10,24 @@ export const PLATFORM_ICON_PATHS: Record<PlatformType, string> = {
   snapchat: '/images/platforms/snapchat.svg',
 };
 
+export const RDP_ICON_PATH = '/images/platforms/rdp.svg';
+
 function normalizeValue(value: string) {
   return value.trim().toLowerCase();
 }
 
 export function getPlatformIconPath(platform: PlatformType) {
   return PLATFORM_ICON_PATHS[platform];
+}
+
+export function getProductIconPath(product: Pick<Product, 'slug' | 'platform'>) {
+  if (isRdpProduct(product)) return RDP_ICON_PATH;
+  return getPlatformIconPath(product.platform);
+}
+
+export function getProductIconPathFromSlug(slug: string, platform: PlatformType) {
+  if (slug.includes('-rdp-')) return RDP_ICON_PATH;
+  return getPlatformIconPath(platform);
 }
 
 export function getPlatformFromCategory(value: string): PlatformType | null {

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { isFlutterwaveConfigured, isFlutterwaveTestMode } from '@/lib/flutterwave-config';
-import { isMockMode } from '@/lib/mock-mode';
+import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
   convertCurrencyToUsd,
   convertUsdToCurrency,
@@ -136,8 +136,8 @@ export default function AddFundsPage() {
 
     setSubmitting(true);
     try {
-      if (isMockMode()) {
-        toast.error('Wallet deposits require Supabase. Set VITE_USE_MOCK_DATA=false and add your Supabase keys.');
+      if (!hasSupabaseConfig()) {
+        toast.error('Wallet deposits require Supabase. Add your Supabase keys and redeploy.');
         return;
       }
 

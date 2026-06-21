@@ -1,6 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { isMockMode } from '@/lib/mock-mode';
-import { mockProfileService } from '@/mocks/mock-profile';
 import type { PaginatedResponse, ProfileStats, ReferralStats, Transaction } from '@/types';
 
 function makeRef(prefix: string) {
@@ -9,7 +7,6 @@ function makeRef(prefix: string) {
 
 export const profileService = {
   async getStats(userId: string): Promise<ProfileStats> {
-    if (isMockMode()) return mockProfileService.getStats(userId);
     const [walletRes, ordersRes] = await Promise.all([
       supabase.from('wallets').select('balance').eq('user_id', userId).single(),
       supabase.from('orders').select('total_amount, payment_status').eq('user_id', userId),
@@ -27,7 +24,6 @@ export const profileService = {
   },
 
   async getTransactions(userId: string, page = 1, limit = 5): Promise<PaginatedResponse<Transaction>> {
-    if (isMockMode()) return mockProfileService.getTransactions(userId, page, limit);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
     const { data, error, count } = await supabase
@@ -53,7 +49,6 @@ export const profileService = {
   },
 
   async getReferralStats(userId: string): Promise<ReferralStats> {
-    if (isMockMode()) return mockProfileService.getReferralStats(userId);
     const [profileRes, referralsRes, earningsRes] = await Promise.all([
       supabase.from('profiles').select('referral_code').eq('id', userId).single(),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('referred_by', userId),

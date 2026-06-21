@@ -5,7 +5,7 @@ import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
 import { AdminDualCurrencyPriceInput } from '@/components/admin/AdminDualCurrencyPriceInput';
 import { ProductBuyerDetailsEditor } from '@/components/admin/ProductBuyerDetailsEditor';
 import { AdminScrollTable, AdminScrollTableRow } from '@/components/admin/AdminScrollTable';
-import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { ProductIcon, ProductIconBySlug } from '@/components/common/ProductIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { categoryService, productService } from '@/services';
-import { isMockMode } from '@/lib/mock-mode';
 import { supabase } from '@/lib/supabase';
-import { getPlatformIconPath } from '@/lib/platform-icons';
+import { getProductIconPathFromSlug } from '@/lib/platform-icons';
+import { isRdpProduct } from '@/lib/rdp-utils';
 import { countProductDetailLines, normalizeProductDetailsStorage } from '@/lib/product-details';
 import {
   adminActionIconButtonClass,
@@ -54,6 +54,7 @@ interface ProductFormState {
   following: string;
   description: string;
   product_details: string;
+  preview_url: string;
   featured: boolean;
   verified: boolean;
   is_active: boolean;
@@ -82,6 +83,7 @@ function createEmptyForm(categoryId = ''): ProductFormState {
     following: '',
     description: '',
     product_details: '',
+    preview_url: '',
     featured: false,
     verified: false,
     is_active: true,
@@ -103,6 +105,7 @@ function createFormFromProduct(product: Product): ProductFormState {
     following: product.following != null ? String(product.following) : '',
     description: product.description,
     product_details: normalizeProductDetailsStorage(product.product_details),
+    preview_url: product.preview_url ?? '',
     featured: product.featured,
     verified: product.verified,
     is_active: product.is_active,
@@ -127,6 +130,7 @@ function buildProductPayload(form: ProductFormState) {
     following: form.following ? Number(form.following) : null,
     description: form.description.trim(),
     product_details: normalizeProductDetailsStorage(form.product_details),
+    preview_url: form.preview_url.trim() || null,
     featured: form.featured,
     verified: form.verified,
     is_active: form.is_active,
@@ -159,7 +163,7 @@ export default function AdminProductsPage() {
   });
 
   const selectedCategory = categories?.find((category) => category.id === form.category_id);
-  const productIconUrl = selectedCategory?.image_url || getPlatformIconPath(form.platform);
+  const productIconUrl = selectedCategory?.image_url || getProductIconPathFromSlug(form.slug, form.platform);
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -177,25 +181,7 @@ export default function AdminProductsPage() {
   const saveProduct = useMutation({
     mutationFn: async ({ payload }: { payload: ReturnType<typeof buildProductPayload> }) => {
       const selectedCategory = categories?.find((category) => category.id === payload.category_id);
-      const iconUrl = selectedCategory?.image_url || getPlatformIconPath(payload.platform);
-
-      if (isMockMode()) {
-        const payloadWithImage = iconUrl
-          ? {
-            ...payload,
-            product_images: [{
-              id: `img-${Date.now()}`,
-              product_id: editingProduct?.id ?? `prod-${Date.now()}`,
-              image_url: iconUrl,
-              sort_order: 0,
-              created_at: new Date().toISOString(),
-            }],
-          }
-          : payload;
-
-        if (editingProduct) return productService.update(editingProduct.id, payloadWithImage as never);
-        return productService.create(payloadWithImage as never);
-      }
+      const iconUrl = selectedCategory?.image_url || getProductIconPathFromSlug(payload.slug, payload.platform);
 
       const saved = editingProduct
         ? await productService.update(editingProduct.id, payload)
@@ -314,14 +300,14 @@ export default function AdminProductsPage() {
                 <AdminScrollTableRow key={product.id} gridClassName={PRODUCT_TABLE_GRID}>
                   <div className="flex min-w-[240px] items-start gap-4">
                     <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center', adminPlatformIconWrapClass(isDark))}>
-                      <PlatformIcon platform={product.platform} size="md" className="h-7 w-7" />
+                      <ProductIcon product={product} size="md" className="h-7 w-7" />
                     </div>
                     <div className="min-w-0">
                       <p className={cn('font-medium', adminStrongTextClass(isDark))}>{product.title}</p>
                       <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>{product.slug}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Badge variant="outline" className={isDark ? 'border-[#26354c] bg-[#0d1b2d] text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}>
-                          {product.platform}
+                          {isRdpProduct(product) ? 'RDP' : product.platform}
                         </Badge>
                         {product.featured && (
                           <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">
@@ -412,7 +398,7 @@ export default function AdminProductsPage() {
                         {productIconUrl ? (
                           <img src={productIconUrl} alt="" className="h-10 w-10 object-contain" />
                         ) : (
-                          <PlatformIcon platform={form.platform} size="md" className="h-10 w-10" />
+                          <ProductIconBySlug slug={form.slug} platform={form.platform} size="md" className="h-10 w-10" />
                         )}
                       </div>
                       <div className={cn(
@@ -514,6 +500,19 @@ export default function AdminProductsPage() {
                         className="admin-textarea"
                         placeholder="Describe the account quality, history, audience, and important details."
                       />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Preview profile link</label>
+                      <Input
+                        type="url"
+                        value={form.preview_url}
+                        onChange={(event) => setForm((current) => ({ ...current, preview_url: event.target.value }))}
+                        className="admin-input"
+                        placeholder="https://instagram.com/username"
+                      />
+                      <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
+                        Optional. Buyers see a Preview button only when this link is set.
+                      </p>
                     </div>
                     <div className="md:col-span-2">
                       <ProductBuyerDetailsEditor

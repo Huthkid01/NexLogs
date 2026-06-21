@@ -1,2 +1,5 @@
 [functions.flutterwave-verify]
 verify_jwt = true
+
+[functions.telegram-order-alert]
+verify_jwt = false

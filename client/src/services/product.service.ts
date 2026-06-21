@@ -1,7 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { isMockMode } from '@/lib/mock-mode';
-import { mockAdminService } from '@/mocks/mock-admin';
-import { mockProductService } from '@/mocks/mock-products';
 import type { Product, ProductFilters, PaginatedResponse } from '@/types';
 
 async function getNextProductSortOrder(): Promise<number> {
@@ -18,7 +15,6 @@ async function getNextProductSortOrder(): Promise<number> {
 
 export const productService = {
   async getProducts(filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> {
-    if (isMockMode()) return mockProductService.getProducts(filters);
     const { search, platform, country, verified, minPrice, maxPrice, categoryId, sort = 'newest', page = 1, limit = 12 } = filters;
 
     let query = supabase
@@ -61,7 +57,6 @@ export const productService = {
   },
 
   async getFeatured(limit = 6): Promise<Product[]> {
-    if (isMockMode()) return mockProductService.getFeatured(limit);
     const { data, error } = await supabase
       .from('products')
       .select('*, category:categories(*), product_images(*)')
@@ -76,7 +71,6 @@ export const productService = {
   },
 
   async getBySlug(slug: string): Promise<Product | null> {
-    if (isMockMode()) return mockProductService.getBySlug(slug);
     const { data, error } = await supabase
       .from('products')
       .select('*, category:categories(*), product_images(*), reviews(*, profile:profiles(full_name, avatar_url))')
@@ -88,7 +82,6 @@ export const productService = {
   },
 
   async getRelated(productId: string, categoryId: string, limit = 4): Promise<Product[]> {
-    if (isMockMode()) return mockProductService.getRelated(productId, categoryId, limit);
     const { data, error } = await supabase
       .from('products')
       .select('*, category:categories(*), product_images(*)')
@@ -103,7 +96,6 @@ export const productService = {
   },
 
   async getAllAdmin(): Promise<Product[]> {
-    if (isMockMode()) return mockAdminService.getProducts();
     const { data, error } = await supabase
       .from('products')
       .select('*, category:categories(*), product_images(*)')
@@ -114,7 +106,6 @@ export const productService = {
   },
 
   async create(product: Partial<Product>) {
-    if (isMockMode()) return mockAdminService.createProduct(product);
     const sort_order = await getNextProductSortOrder();
     const { data, error } = await supabase.from('products').insert({ ...product, sort_order } as never).select().single();
     if (error) throw error;
@@ -122,7 +113,6 @@ export const productService = {
   },
 
   async update(id: string, updates: Partial<Product>) {
-    if (isMockMode()) return mockAdminService.updateProduct(id, updates);
     const { sort_order: _ignored, ...safeUpdates } = updates;
     const { data, error } = await supabase.from('products').update(safeUpdates as never).eq('id', id).select().single();
     if (error) throw error;
@@ -130,7 +120,6 @@ export const productService = {
   },
 
   async delete(id: string) {
-    if (isMockMode()) return mockAdminService.deleteProduct(id);
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) throw error;
   },

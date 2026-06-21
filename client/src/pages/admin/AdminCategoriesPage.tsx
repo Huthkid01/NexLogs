@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { categoryService, storageService } from '@/services';
-import { isMockMode } from '@/lib/mock-mode';
 import { getCategoryIconPath, getPlatformFromCategory } from '@/lib/platform-icons';
 import {
   adminActionIconButtonClass,
@@ -115,11 +114,6 @@ export default function AdminCategoriesPage() {
       }
 
       const payloadWithIcon = { ...payload, image_url: imageUrl };
-
-      if (isMockMode()) {
-        if (editingCategory) return categoryService.update(editingCategory.id, payloadWithIcon as never);
-        return categoryService.create(payloadWithIcon as never);
-      }
 
       const saved = editingCategory
         ? await categoryService.update(editingCategory.id, payloadWithIcon)

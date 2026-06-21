@@ -11,6 +11,7 @@ export {
   contentService,
   adminService,
   supportTicketService,
+  couponService,
   storageService,
 } from './misc.service';
 export { siteVisitService } from './site-visit.service';

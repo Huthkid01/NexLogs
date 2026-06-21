@@ -119,7 +119,37 @@ VITE_APP_NAME=Nexlogs
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-xxx
+
+# Telegram order alerts (Supabase Edge Functions only — do NOT add to Vercel)
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_ADMIN_CHAT_ID=your-chat-id
+TELEGRAM_WEBHOOK_SECRET=long-random-secret
+APP_URL=https://your-vercel-domain.vercel.app
 ```
+
+---
+
+## 7. Telegram purchase alerts
+
+Alerts fire automatically when any order is created (RDP + marketplace products).
+
+### Supabase setup (required)
+
+1. Run migration `027_telegram_order_alerts.sql` in the SQL editor.
+2. Deploy the edge function:
+   ```bash
+   supabase functions deploy telegram-order-alert --no-verify-jwt
+   ```
+3. In **Supabase Dashboard → Edge Functions → Secrets**, add:
+   - `TELEGRAM_BOT_TOKEN`
+   - `TELEGRAM_ADMIN_CHAT_ID`
+   - `TELEGRAM_WEBHOOK_SECRET` (pick a long random string)
+   - `APP_URL` (your live site, e.g. `https://nex-logs-client.vercel.app`)
+4. Run `supabase/setup/telegram_alerts.sql` in the SQL editor (replace `YOUR_PROJECT_REF` and use the **same** `TELEGRAM_WEBHOOK_SECRET` as step 3).
+
+### Vercel
+
+**Do not** add `TELEGRAM_BOT_TOKEN` or `TELEGRAM_ADMIN_CHAT_ID` to Vercel. Those are server secrets and belong in Supabase Edge Function secrets only.
 
 ---
 

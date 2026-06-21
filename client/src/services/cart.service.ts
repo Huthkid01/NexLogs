@@ -1,7 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { isMockMode } from '@/lib/mock-mode';
-import { mockAdminService } from '@/mocks/mock-admin';
-import { getMockUserOrders } from '@/mocks/mock-orders';
 import type { Cart, CartItem, Order, Coupon } from '@/types';
 
 export const cartService = {
@@ -62,10 +59,6 @@ export const cartService = {
 
 export const orderService = {
   async purchaseWithWallet(productId: string, quantity = 1): Promise<string> {
-    if (isMockMode()) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return `order-${crypto.randomUUID()}`;
-    }
     const { data, error } = await supabase.rpc('purchase_product_with_wallet', {
       p_product_id: productId,
       p_quantity: quantity,
@@ -75,10 +68,6 @@ export const orderService = {
   },
 
   async purchaseRdpWithWallet(productId: string, quantity = 1): Promise<string> {
-    if (isMockMode()) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return `order-${crypto.randomUUID()}`;
-    }
     const { data, error } = await supabase.rpc('purchase_rdp_with_wallet', {
       p_product_id: productId,
       p_quantity: quantity,
@@ -88,10 +77,6 @@ export const orderService = {
   },
 
   async purchaseRdpBySlug(productSlug: string, quantity = 1): Promise<string> {
-    if (isMockMode()) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return `order-${crypto.randomUUID()}`;
-    }
     const { data, error } = await supabase.rpc('purchase_rdp_with_wallet_by_slug', {
       p_product_slug: productSlug,
       p_quantity: quantity,
@@ -105,8 +90,6 @@ export const orderService = {
     deliveredDetails: string,
     orderId: string,
   ): Promise<void> {
-    if (isMockMode()) return;
-
     const trimmed = deliveredDetails.trim();
     const { error: itemError } = await supabase
       .from('order_items')
@@ -186,8 +169,6 @@ export const orderService = {
   },
 
   async getUserOrders(userId: string): Promise<Order[]> {
-    if (isMockMode()) return getMockUserOrders(userId);
-
     const { data, error } = await supabase
       .from('orders')
       .select('*, order_items(*, product:products(*, product_images(*)))')
@@ -208,7 +189,6 @@ export const orderService = {
   },
 
   async getAllOrders(): Promise<Order[]> {
-    if (isMockMode()) return mockAdminService.getOrders();
     const { data, error } = await supabase
       .from('orders')
       .select('*, order_items(*, product:products(title, slug)), profile:profiles(full_name, email)')
@@ -218,7 +198,6 @@ export const orderService = {
   },
 
   async updateOrderStatus(orderId: string, status: string, paymentStatus?: string) {
-    if (isMockMode()) return mockAdminService.updateOrderStatus(orderId, status);
     const updates: Record<string, string> = { status };
     if (paymentStatus) updates.payment_status = paymentStatus;
     const { data, error } = await supabase.from('orders').update(updates as never).eq('id', orderId).select().single();

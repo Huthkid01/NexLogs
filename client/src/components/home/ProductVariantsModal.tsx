@@ -6,8 +6,6 @@ import { toast } from 'sonner';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { openErrorReport } from '@/lib/error-report';
-import { isMockMode } from '@/lib/mock-mode';
-import { parseProductDetailLines } from '@/lib/product-details';
 import {
   getPurchaseErrorMessage,
   isInsufficientFundsError,
@@ -57,6 +55,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   }, [open, onClose]);
 
   const variants = product ? getProductVariants(product) : [];
+  const previewUrl = product?.preview_url?.trim() ?? '';
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['profile-stats', user?.id],
@@ -89,14 +88,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     setPurchasing(true);
     try {
       const orderId = await orderService.purchaseWithWallet(product.id, 1);
-      let purchasedDetails: string | null = null;
-      if (isMockMode()) {
-        const lines = parseProductDetailLines(product.product_details);
-        purchasedDetails = lines[0] ?? product.product_details ?? null;
-      } else {
-        const order = await orderService.getOrderById(orderId);
-        purchasedDetails = order?.order_items?.[0]?.delivered_details ?? null;
-      }
+      const order = await orderService.getOrderById(orderId);
+      const purchasedDetails = order?.order_items?.[0]?.delivered_details ?? null;
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       setLogSeed(variantId);
@@ -131,7 +124,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   };
 
   const handlePreview = () => {
-    toast.info('Preview is not available yet');
+    if (!previewUrl) return;
+    window.open(previewUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleCheckRate = () => {
@@ -227,13 +221,15 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                         >
                           Buy
                         </button>
-                        <button
-                          type="button"
-                          onClick={handlePreview}
-                          className="text-sm font-medium text-[#f26522] hover:underline"
-                        >
-                          Preview
-                        </button>
+                        {previewUrl ? (
+                          <button
+                            type="button"
+                            onClick={handlePreview}
+                            className="text-sm font-medium text-[#f26522] hover:underline"
+                          >
+                            Preview
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </div>

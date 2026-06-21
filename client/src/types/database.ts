@@ -65,6 +65,7 @@ export interface Database {
           slug: string;
           description: string;
           product_details: string | null;
+          preview_url: string | null;
           platform: 'instagram' | 'facebook' | 'tiktok' | 'x' | 'youtube' | 'snapchat';
           price: number;
           stock: number;
@@ -86,6 +87,7 @@ export interface Database {
           slug: string;
           description: string;
           product_details?: string | null;
+          preview_url?: string | null;
           platform: 'instagram' | 'facebook' | 'tiktok' | 'x' | 'youtube' | 'snapchat';
           price: number;
           stock?: number;
@@ -105,6 +107,7 @@ export interface Database {
           slug?: string;
           description?: string;
           product_details?: string | null;
+          preview_url?: string | null;
           platform?: 'instagram' | 'facebook' | 'tiktok' | 'x' | 'youtube' | 'snapchat';
           price?: number;
           stock?: number;

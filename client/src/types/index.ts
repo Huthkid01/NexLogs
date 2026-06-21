@@ -32,6 +32,7 @@ export interface Product {
   slug: string;
   description: string;
   product_details?: string | null;
+  preview_url?: string | null;
   platform: PlatformType;
   price: number;
   stock: number;
