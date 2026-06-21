@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
 import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -41,9 +42,10 @@ export function AdminLayout() {
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [hoverTooltip, setHoverTooltip] = useState<{ label: string; top: number; showStateIcon?: boolean } | null>(null);
   const [contentFlyoutTop, setContentFlyoutTop] = useState<number | null>(null);
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  useMarketplaceRealtime({ userId: user?.id ?? null, includeAdmin: true });
   const isDark = theme === 'dark';
   const contentMenuActive = location.pathname.startsWith('/admin/content');
   const [contentMenuOpen, setContentMenuOpen] = useState(contentMenuActive);

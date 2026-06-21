@@ -11,12 +11,14 @@ import { SHOP_CATEGORIES, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from 
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { useSiteVisitTracking } from '@/hooks/useSiteVisitTracking';
 import { productService, categoryService } from '@/services';
 import { SORT_OPTIONS } from '@/constants';
 
 export default function HomePage() {
   const { user } = useAuth();
   const { content } = useSiteContent();
+  useSiteVisitTracking();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();

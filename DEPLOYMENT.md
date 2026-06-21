@@ -145,9 +145,10 @@ Alerts fire automatically when any order is created (RDP + marketplace products)
    - `TELEGRAM_ADMIN_CHAT_ID`
    - `TELEGRAM_WEBHOOK_SECRET` (pick a long random string)
    - `APP_URL` (your live site, e.g. `https://nex-logs-client.vercel.app`)
-   - `SUPABASE_SERVICE_ROLE_KEY` (from Supabase → Settings → API → service_role key)
 
-   **Important:** Local `.env` values are NOT used by Edge Functions. Secrets must be set in the Supabase dashboard.
+   **Do not** add secrets starting with `SUPABASE_` — Supabase blocks that prefix. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically into every edge function.
+
+   **Important:** Local `.env` values are NOT used by Edge Functions. Only add the four secrets above in the Supabase dashboard.
 4. Run `supabase/setup/telegram_alerts.sql` in the SQL editor (replace `YOUR_PROJECT_REF` and use the **same** `TELEGRAM_WEBHOOK_SECRET` as step 3).
 
 ### Vercel

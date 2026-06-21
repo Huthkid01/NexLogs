@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import { getVisitorSessionId } from '@/lib/visitor-session';
+import {
+  isMarketplaceVisitPath,
+  MARKETPLACE_PAGE_VIEW_PATH_FILTER,
+  MARKETPLACE_SESSION_PATH_FILTER,
+} from '@/lib/marketplace-visit-path';
 
 export interface SiteSession {
   id: string;
@@ -61,22 +66,22 @@ async function getAdminUserIds(): Promise<string[]> {
   return (data ?? []).map((profile) => profile.id);
 }
 
-function excludeAdminSessions<T extends { eq: (col: string, val: string) => T; not: (col: string, op: string, val: string) => T }>(
+function excludeAdminSessions<T extends { or: (filters: string) => T; not: (col: string, op: string, val: string) => T }>(
   query: T,
   adminIds: string[],
 ) {
-  let filtered = query.not('last_path', 'like', '/admin%');
+  let filtered = query.or(MARKETPLACE_SESSION_PATH_FILTER);
   if (adminIds.length > 0) {
     filtered = filtered.not('user_id', 'in', `(${adminIds.join(',')})`);
   }
   return filtered;
 }
 
-function excludeAdminPageViews<T extends { not: (col: string, op: string, val: string) => T }>(
+function excludeAdminPageViews<T extends { or: (filters: string) => T; not: (col: string, op: string, val: string) => T }>(
   query: T,
   adminIds: string[],
 ) {
-  let filtered = query.not('path', 'like', '/admin%');
+  let filtered = query.or(MARKETPLACE_PAGE_VIEW_PATH_FILTER);
   if (adminIds.length > 0) {
     filtered = filtered.not('user_id', 'in', `(${adminIds.join(',')})`);
   }
@@ -84,13 +89,13 @@ function excludeAdminPageViews<T extends { not: (col: string, op: string, val: s
 }
 
 function isTrackableSession(session: SiteSession) {
-  if (session.last_path.startsWith('/admin')) return false;
+  if (!isMarketplaceVisitPath(session.last_path)) return false;
   if (session.profile?.role === 'admin') return false;
   return true;
 }
 
 function isTrackablePageView(visit: SitePageView) {
-  if (visit.path.startsWith('/admin')) return false;
+  if (!isMarketplaceVisitPath(visit.path)) return false;
   if (visit.profile?.role === 'admin') return false;
   return true;
 }
@@ -106,6 +111,17 @@ export const siteVisitService = {
 
     if (error) {
       console.warn('Failed to record site visit', error.message);
+    }
+  },
+
+  async clearAll(): Promise<void> {
+    const { data, error } = await supabase.rpc('clear_site_visits', {});
+
+    if (error) throw new Error(error.message);
+
+    const result = data as { cleared?: boolean } | null;
+    if (!result?.cleared) {
+      throw new Error('Failed to clear visits');
     }
   },
 

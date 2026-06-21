@@ -8,14 +8,14 @@ import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
 import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { FloatingActions } from '@/components/layout/FloatingActions';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { useSiteVisitTracking } from '@/hooks/useSiteVisitTracking';
+import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
 
 export function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
   const { content } = useSiteContent();
   const location = useLocation();
-  useSiteVisitTracking();
+  useMarketplaceRealtime({ userId: user?.id ?? null });
   const authPages = ['/login', '/register', '/forgot-password', '/reset-password'];
   const hideAuthLink = authPages.includes(location.pathname);
   const hideFloatingActions = authPages.includes(location.pathname);

@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS telegram_alert_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE telegram_alert_log ENABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE telegram_alert_log IS 'Server-only debug log for Telegram alert attempts. RLS enabled with no public policies.';
+
 CREATE OR REPLACE FUNCTION queue_telegram_order_alert(p_order_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql

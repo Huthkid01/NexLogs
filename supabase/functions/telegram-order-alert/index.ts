@@ -97,23 +97,38 @@ async function sendTelegramMessage(text: string) {
   const chatId = Deno.env.get('TELEGRAM_ADMIN_CHAT_ID');
 
   if (!token || !chatId) {
-    throw new Error('TELEGRAM_BOT_TOKEN or TELEGRAM_ADMIN_CHAT_ID is not configured in Edge Function secrets');
+    throw new Error('TELEGRAM_BOT_TOKEN or TELEGRAM_ADMIN_CHAT_ID is missing in Supabase Edge Function secrets (not .env)');
   }
 
-  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  async function postMessage(body: Record<string, unknown>) {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.description || 'Telegram sendMessage failed');
+    }
+  }
+
+  try {
+    await postMessage({
       chat_id: chatId,
       text,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
-    }),
-  });
-
-  const payload = await response.json();
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload.description || 'Telegram sendMessage failed');
+    });
+  } catch (htmlError) {
+    const htmlMessage = htmlError instanceof Error ? htmlError.message : 'HTML send failed';
+    if (!htmlMessage.toLowerCase().includes("can't parse")) {
+      throw htmlError;
+    }
+    await postMessage({
+      chat_id: chatId,
+      text: text.replace(/<[^>]+>/g, ''),
+      disable_web_page_preview: true,
+    });
   }
 }
 
@@ -141,9 +156,11 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const serviceRoleKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
+      Deno.env.get('SERVICE_ROLE_KEY');
     if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured in Edge Function secrets');
+      throw new Error('Service role key is unavailable. Supabase injects SUPABASE_SERVICE_ROLE_KEY automatically; redeploy the function if this persists.');
     }
 
     const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || '').replace(/\/$/, '');

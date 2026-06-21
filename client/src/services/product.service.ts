@@ -81,6 +81,16 @@ export const productService = {
     return data as Product;
   },
 
+  async getById(id: string): Promise<Product | null> {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, category:categories(*), product_images(*)')
+      .eq('id', id)
+      .single();
+    if (error) return null;
+    return data as Product;
+  },
+
   async getRelated(productId: string, categoryId: string, limit = 4): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')

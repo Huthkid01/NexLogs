@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
-import { orderService, profileService } from '@/services';
+import { orderService, productService, profileService } from '@/services';
 import type { Product } from '@/types';
 
 interface ProductVariantsModalProps {
@@ -54,8 +54,16 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     };
   }, [open, onClose]);
 
-  const variants = product ? getProductVariants(product) : [];
-  const previewUrl = product?.preview_url?.trim() ?? '';
+  const { data: liveProduct } = useQuery({
+    queryKey: ['product', product?.id],
+    queryFn: () => productService.getById(product!.id),
+    enabled: open && !!product?.id,
+    staleTime: 0,
+  });
+
+  const displayProduct = liveProduct ?? product;
+  const variants = displayProduct ? getProductVariants(displayProduct) : [];
+  const previewUrl = displayProduct?.preview_url?.trim() ?? '';
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['profile-stats', user?.id],
@@ -70,7 +78,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   };
 
   const handleBuy = async (variantId: string, price: number) => {
-    if (!product) return;
+    if (!displayProduct) return;
     if (!user) {
       toast.error('Please login first');
       navigate('/login');
@@ -87,7 +95,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
 
     setPurchasing(true);
     try {
-      const orderId = await orderService.purchaseWithWallet(product.id, 1);
+      const orderId = await orderService.purchaseWithWallet(displayProduct.id, 1);
       const order = await orderService.getOrderById(orderId);
       const purchasedDetails = order?.order_items?.[0]?.delivered_details ?? null;
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
@@ -142,7 +150,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
 
   return (
     <>
-      {open && product && (
+      {open && displayProduct && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <button
           type="button"
@@ -162,7 +170,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
               id="product-variants-title"
               className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 uppercase leading-snug pr-4"
             >
-              {product.title}
+              {displayProduct.title}
             </h2>
             <button
               type="button"
@@ -177,16 +185,16 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
           <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5">
             <div className="rounded-lg border border-gray-200 dark:border-dm-border dark:bg-dm-product-row p-4 mb-4">
               <div className="flex items-start gap-3">
-                <PlatformIcon platform={product.platform} size="sm" />
+                <PlatformIcon platform={displayProduct.platform} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
                     Description
                   </p>
                   <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-relaxed">
-                    {product.description}
+                    {displayProduct.description}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                    {product.stock} pcs available
+                    {displayProduct.stock} pcs available
                   </p>
                 </div>
               </div>
@@ -283,11 +291,11 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       )}
 
       <ProductDetailsModal
-        product={product}
+        product={displayProduct}
         orderDate={purchaseDate || new Date().toISOString()}
         logSeed={logSeed}
         deliveredDetails={deliveredDetails}
-        open={detailsOpen && !!product && !!logSeed}
+        open={detailsOpen && !!displayProduct && !!logSeed}
         onClose={handleDetailsClose}
       />
     </>

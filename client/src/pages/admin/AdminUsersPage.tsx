@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Globe2, Users, UserCheck } from 'lucide-react';
+import { Eye, Globe2, Trash2, Users, UserCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,20 @@ export default function AdminUsersPage() {
     },
   });
 
+  const clearVisits = useMutation({
+    mutationFn: siteVisitService.clearAll,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-visitor-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-active-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-recent-visits'] });
+      toast.success('All marketplace visits cleared');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to clear visits';
+      toast.error(message);
+    },
+  });
+
   const flagViolation = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
       await adminService.updateUser(id, { is_suspended: true });
@@ -105,13 +119,13 @@ export default function AdminUsersPage() {
       iconClass: 'bg-emerald-500/15 text-emerald-300',
     },
     {
-      label: 'Active now (15 min)',
+      label: 'Marketplace active (15 min)',
       value: visitorStats?.activeVisitors ?? 0,
       icon: Eye,
       iconClass: 'bg-violet-500/15 text-violet-300',
     },
     {
-      label: 'Visits today',
+      label: 'Marketplace visits today',
       value: visitorStats?.visitsToday ?? 0,
       icon: Globe2,
       iconClass: 'bg-amber-500/15 text-amber-200',
@@ -135,7 +149,7 @@ export default function AdminUsersPage() {
       <div className="space-y-2">
         <h1 className="text-xl sm:text-2xl font-bold">Users & Visitors</h1>
         <p className="text-sm text-muted-foreground">
-          Manage registered accounts and monitor live visitors, including guests without accounts.
+          Manage registered accounts and monitor homepage/marketplace visitors only (guests and registered users).
         </p>
       </div>
 
@@ -221,9 +235,26 @@ export default function AdminUsersPage() {
 
       {activeTab === 'active' && (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {visitorStats?.activeRegistered ?? 0} registered and {visitorStats?.activeGuests ?? 0} guest visitors active in the last 15 minutes.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {visitorStats?.activeRegistered ?? 0} registered and {visitorStats?.activeGuests ?? 0} guest visitors on the homepage or marketplace in the last 15 minutes.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-red-600 hover:text-red-700"
+              disabled={clearVisits.isPending}
+              onClick={() => {
+                if (window.confirm('Clear all marketplace visit history? This cannot be undone.')) {
+                  clearVisits.mutate();
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear all visits
+            </Button>
+          </div>
           {activeLoading ? (
             <Skeleton className="h-24" />
           ) : activeSessions?.length ? (
@@ -252,7 +283,7 @@ export default function AdminUsersPage() {
           ) : (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No active visitors in the last 15 minutes.
+                No visitors on the homepage or marketplace in the last 15 minutes.
               </CardContent>
             </Card>
           )}
@@ -261,6 +292,26 @@ export default function AdminUsersPage() {
 
       {activeTab === 'visits' && (
         <div className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Homepage and marketplace page views only.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-red-600 hover:text-red-700"
+              disabled={clearVisits.isPending}
+              onClick={() => {
+                if (window.confirm('Clear all marketplace visit history? This cannot be undone.')) {
+                  clearVisits.mutate();
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear all visits
+            </Button>
+          </div>
           {visitsLoading ? (
             <Skeleton className="h-24" />
           ) : recentVisits?.length ? (
@@ -285,7 +336,7 @@ export default function AdminUsersPage() {
           ) : (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No visits recorded yet. Visitor tracking starts after migration 025 is applied.
+                No marketplace visits recorded yet.
               </CardContent>
             </Card>
           )}

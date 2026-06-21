@@ -1,33 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { getMarketplaceVisitBasePath } from '@/lib/marketplace-visit-path';
 import { siteVisitService } from '@/services/site-visit.service';
 
 const HEARTBEAT_MS = 2 * 60 * 1000;
-
-function shouldTrackVisit(pathname: string, isAdmin: boolean) {
-  if (isAdmin) return false;
-  if (pathname.startsWith('/admin')) return false;
-  return true;
-}
 
 export function useSiteVisitTracking() {
   const location = useLocation();
   const { isAdmin } = useAuth();
   const lastPathRef = useRef<string | null>(null);
+  const marketplaceBasePath = getMarketplaceVisitBasePath(location.pathname);
 
   useEffect(() => {
-    if (!shouldTrackVisit(location.pathname, isAdmin)) return;
+    if (isAdmin || !marketplaceBasePath) return;
 
     const path = `${location.pathname}${location.search}`;
     if (lastPathRef.current === path) return;
 
     lastPathRef.current = path;
     void siteVisitService.record(path);
-  }, [location.pathname, location.search, isAdmin]);
+  }, [location.pathname, location.search, isAdmin, marketplaceBasePath]);
 
   useEffect(() => {
-    if (!shouldTrackVisit(location.pathname, isAdmin)) return;
+    if (isAdmin || !marketplaceBasePath) return;
 
     const heartbeat = window.setInterval(() => {
       const path = `${location.pathname}${location.search}`;
@@ -35,5 +31,5 @@ export function useSiteVisitTracking() {
     }, HEARTBEAT_MS);
 
     return () => window.clearInterval(heartbeat);
-  }, [location.pathname, location.search, isAdmin]);
+  }, [location.pathname, location.search, isAdmin, marketplaceBasePath]);
 }
