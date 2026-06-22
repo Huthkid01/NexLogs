@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
+import { useAdminRealtime } from '@/hooks/useAdminRealtime';
 import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -45,7 +45,7 @@ export function AdminLayout() {
   const { profile, signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
-  useMarketplaceRealtime({ userId: user?.id ?? null, includeAdmin: true });
+  useAdminRealtime({ userId: user?.id ?? null });
   const isDark = theme === 'dark';
   const contentMenuActive = location.pathname.startsWith('/admin/content');
   const [contentMenuOpen, setContentMenuOpen] = useState(contentMenuActive);

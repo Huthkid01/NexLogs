@@ -4,8 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getMarketplaceVisitBasePath } from '@/lib/marketplace-visit-path';
 import { siteVisitService } from '@/services/site-visit.service';
 
-const HEARTBEAT_MS = 2 * 60 * 1000;
-
+/** Record one visit when someone lands on the homepage or marketplace (guest or registered). */
 export function useSiteVisitTracking() {
   const location = useLocation();
   const { isAdmin } = useAuth();
@@ -20,16 +19,5 @@ export function useSiteVisitTracking() {
 
     lastPathRef.current = path;
     void siteVisitService.record(path);
-  }, [location.pathname, location.search, isAdmin, marketplaceBasePath]);
-
-  useEffect(() => {
-    if (isAdmin || !marketplaceBasePath) return;
-
-    const heartbeat = window.setInterval(() => {
-      const path = `${location.pathname}${location.search}`;
-      void siteVisitService.record(path);
-    }, HEARTBEAT_MS);
-
-    return () => window.clearInterval(heartbeat);
   }, [location.pathname, location.search, isAdmin, marketplaceBasePath]);
 }

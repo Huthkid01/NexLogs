@@ -80,13 +80,26 @@ export const activityLogService = {
   },
 
   async getAllAdmin(): Promise<ActivityLog[]> {
-    const { data, error } = await supabase
+    const { data: adminRows } = await supabase.from('profiles').select('id').eq('role', 'admin');
+    const adminIds = (adminRows ?? []).map((row) => row.id);
+
+    let query = supabase
       .from('activity_logs')
-      .select('*, profile:profiles(full_name, email)')
+      .select('*, profile:profiles(full_name, email, role)')
+      .not('user_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(200);
+
+    if (adminIds.length > 0) {
+      query = query.not('user_id', 'in', `(${adminIds.join(',')})`);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
-    return (data || []) as ActivityLog[];
+
+    return ((data || []) as ActivityLog[]).filter(
+      (log) => log.profile?.role !== 'admin',
+    );
   },
 };
 

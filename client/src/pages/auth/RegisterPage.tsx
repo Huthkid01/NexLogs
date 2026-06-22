@@ -32,7 +32,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await authService.signUp(data.email, data.password, data.name);
-      toast.success('Account created! Check your email to verify.');
+      toast.success('Account created! Check your email to verify your account.');
       navigate('/login');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Registration failed';

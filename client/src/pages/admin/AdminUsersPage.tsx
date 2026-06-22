@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Globe2, Trash2, Users, UserCheck } from 'lucide-react';
+import { Eye, Globe2, MapPin, Trash2, Users, UserCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { activityLogService, adminService, siteVisitService } from '@/services';
 import { cn } from '@/lib/utils';
+import { formatVisitorLocation, getVisitorDisplayName } from '@/lib/visitor-location';
 import { toast } from 'sonner';
 
 type UsersTab = 'registered' | 'active' | 'visits';
@@ -38,20 +39,17 @@ export default function AdminUsersPage() {
   const { data: visitorStats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-visitor-stats'],
     queryFn: siteVisitService.getStats,
-    refetchInterval: 30_000,
   });
 
   const { data: activeSessions, isLoading: activeLoading } = useQuery({
     queryKey: ['admin-active-sessions'],
     queryFn: siteVisitService.getActiveSessions,
-    refetchInterval: 30_000,
     enabled: activeTab === 'active',
   });
 
   const { data: recentVisits, isLoading: visitsLoading } = useQuery({
     queryKey: ['admin-recent-visits'],
     queryFn: () => siteVisitService.getRecentPageViews(100),
-    refetchInterval: 30_000,
     enabled: activeTab === 'visits',
   });
 
@@ -119,13 +117,13 @@ export default function AdminUsersPage() {
       iconClass: 'bg-emerald-500/15 text-emerald-300',
     },
     {
-      label: 'Marketplace active (15 min)',
+      label: 'On site now (15 min)',
       value: visitorStats?.activeVisitors ?? 0,
       icon: Eye,
       iconClass: 'bg-violet-500/15 text-violet-300',
     },
     {
-      label: 'Marketplace visits today',
+      label: 'Site visits today',
       value: visitorStats?.visitsToday ?? 0,
       icon: Globe2,
       iconClass: 'bg-amber-500/15 text-amber-200',
@@ -149,7 +147,7 @@ export default function AdminUsersPage() {
       <div className="space-y-2">
         <h1 className="text-xl sm:text-2xl font-bold">Users & Visitors</h1>
         <p className="text-sm text-muted-foreground">
-          Manage registered accounts and monitor homepage/marketplace visitors only (guests and registered users).
+          Manage registered accounts and monitor homepage/marketplace visits (guests and registered users).
         </p>
       </div>
 
@@ -237,7 +235,7 @@ export default function AdminUsersPage() {
         <div className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              {visitorStats?.activeRegistered ?? 0} registered and {visitorStats?.activeGuests ?? 0} guest visitors on the homepage or marketplace in the last 15 minutes.
+              {visitorStats?.activeRegistered ?? 0} registered and {visitorStats?.activeGuests ?? 0} guests who opened the homepage or marketplace link (with location).
             </p>
             <Button
               type="button"
@@ -267,10 +265,14 @@ export default function AdminUsersPage() {
                         {session.visitor_type === 'registered' ? 'Registered' : 'Guest'}
                       </Badge>
                       <span className="text-sm font-medium">
-                        {session.profile?.full_name || session.profile?.email || 'Anonymous visitor'}
+                        {getVisitorDisplayName(session.visitor_type, session.profile)}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">
+                    <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {formatVisitorLocation(session)}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Last page: {session.last_path}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -294,7 +296,7 @@ export default function AdminUsersPage() {
         <div className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              Homepage and marketplace page views only.
+              Homepage and marketplace only — guests and registered users who opened the site link.
             </p>
             <Button
               type="button"
@@ -324,10 +326,14 @@ export default function AdminUsersPage() {
                         {visit.visitor_type === 'registered' ? 'Registered' : 'Guest'}
                       </Badge>
                       <span className="text-sm font-medium">
-                        {visit.profile?.email || 'Anonymous visitor'}
+                        {getVisitorDisplayName(visit.visitor_type, visit.profile)}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">{visit.path}</p>
+                    <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {formatVisitorLocation(visit)}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">{visit.path}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">{new Date(visit.created_at).toLocaleString()}</p>
                 </CardContent>

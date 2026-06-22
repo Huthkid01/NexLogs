@@ -32,7 +32,7 @@ export default function AdminActivityLogsPage() {
       <div className="space-y-2">
         <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">Activity logs</h1>
         <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
-          Recent actions across the website and dashboard.
+          Actions from registered users only. Admin activity is not shown here.
         </p>
       </div>
 
@@ -103,7 +103,7 @@ export default function AdminActivityLogsPage() {
               <Activity className={cn('mx-auto h-10 w-10', isDark ? 'text-slate-600' : 'text-slate-400')} />
               <p className="mt-4 text-lg font-medium">No activity yet</p>
               <p className={cn('mt-2 text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
-                New actions will start appearing once users interact with the site.
+                Actions from registered users will appear here. Admin activity is hidden.
               </p>
             </CardContent>
           </Card>

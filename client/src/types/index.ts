@@ -157,7 +157,7 @@ export interface ActivityLog {
   entity_id: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;
-  profile?: Pick<Profile, 'full_name' | 'email'> | null;
+  profile?: Pick<Profile, 'full_name' | 'email' | 'role'> | null;
 }
 
 export interface BlogPost {

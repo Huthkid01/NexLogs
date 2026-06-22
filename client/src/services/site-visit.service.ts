@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { getVisitorSessionId } from '@/lib/visitor-session';
+import { getVisitorLocation } from '@/lib/visitor-location';
 import {
   isMarketplaceVisitPath,
   MARKETPLACE_PAGE_VIEW_PATH_FILTER,
@@ -13,6 +14,9 @@ export interface SiteSession {
   visitor_type: 'guest' | 'registered';
   last_path: string;
   user_agent: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
   first_seen_at: string;
   last_seen_at: string;
   page_views: number;
@@ -29,6 +33,9 @@ export interface SitePageView {
   user_id: string | null;
   visitor_type: 'guest' | 'registered';
   path: string;
+  country: string | null;
+  region: string | null;
+  city: string | null;
   created_at: string;
   profile?: {
     full_name: string;
@@ -103,10 +110,14 @@ function isTrackablePageView(visit: SitePageView) {
 export const siteVisitService = {
   async record(path: string): Promise<void> {
     const sessionId = getVisitorSessionId();
+    const location = await getVisitorLocation();
     const { error } = await supabase.rpc('record_site_visit', {
       p_session_id: sessionId,
       p_path: path,
       p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      p_country: location.country,
+      p_region: location.region,
+      p_city: location.city,
     } as never);
 
     if (error) {

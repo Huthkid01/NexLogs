@@ -26,7 +26,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const hash = window.location.hash;
     if (!hash.includes('type=recovery')) {
-      toast.error('Invalid reset link');
+      toast.error('Invalid or expired reset link');
     }
   }, []);
 
