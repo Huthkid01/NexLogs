@@ -61,7 +61,7 @@ export function PlatformCarousel() {
 
         {hasOverlayContent && (
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex max-w-[85%] items-center px-3 sm:max-w-[80%] sm:px-7">
-            <div className="space-y-1 sm:space-y-3">
+            <div className="space-y-3">
               {slide.title && (
                 <h2 className="max-w-md text-sm font-bold leading-tight text-white drop-shadow sm:text-2xl">
                   {slide.title}
@@ -76,7 +76,7 @@ export function PlatformCarousel() {
                 <Button
                   type="button"
                   size="sm"
-                  className="pointer-events-auto mt-0.5 h-7 px-2.5 text-xs sm:mt-1 sm:h-9 sm:px-3 sm:text-sm"
+                  className="pointer-events-auto h-7 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
                   onClick={handleSlideAction}
                 >
                   {slide.ctaLabel}
