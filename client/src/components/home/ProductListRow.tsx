@@ -15,26 +15,35 @@ export function ProductListRow({ product }: ProductListRowProps) {
   return (
     <>
       <div className="transition-colors hover:bg-gray-50 dark:bg-dm-product-row dark:hover:bg-dm-product-row-hover">
-        <div className="flex items-start gap-3 sm:gap-4 py-5 px-4 sm:px-5">
-          <PlatformIcon platform={product.platform} size="sm" className="mt-0.5" />
-          <div className="flex-1 min-w-0 pr-2">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase leading-snug">
-              {product.title}
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed line-clamp-2">
-              {product.description}
-            </p>
-            <p className="text-[#1b5e20] text-sm font-medium mt-2">
-              Starting from {formatProductPrice(product.price)}
-            </p>
+        <div className="px-4 py-5 sm:px-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <PlatformIcon platform={product.platform} size="sm" className="mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold leading-snug break-words text-gray-900 dark:text-gray-100">
+                {product.title}
+              </h3>
+              <p className="mt-1.5 text-xs leading-relaxed break-words text-gray-500 dark:text-gray-400 sm:line-clamp-2">
+                {product.description}
+              </p>
+              <p className="mt-2 text-sm font-medium text-[#1b5e20]">
+                Starting from {formatProductPrice(product.price)}
+              </p>
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="mt-3 text-sm font-medium text-[#f26522] hover:underline sm:hidden"
+              >
+                View Products
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="hidden shrink-0 self-end pb-0.5 text-sm font-medium text-[#f26522] hover:underline sm:block"
+            >
+              View Products
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="shrink-0 self-end text-sm font-medium text-[#f26522] hover:underline pb-0.5"
-          >
-            View Products
-          </button>
         </div>
         <div className="h-0.5 w-full bg-gray-300 dark:bg-dm-border" aria-hidden="true" />
       </div>

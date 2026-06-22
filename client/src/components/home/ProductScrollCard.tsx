@@ -18,10 +18,10 @@ export function ProductScrollCard({ product }: ProductScrollCardProps) {
         <div className="flex items-start gap-3">
           <PlatformIcon platform={product.platform} size="sm" className="mt-0.5 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase leading-snug line-clamp-2 min-h-[2.5rem]">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-snug break-words sm:line-clamp-3">
               {product.title}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-3 leading-relaxed">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed break-words sm:line-clamp-3">
               {product.description}
             </p>
           </div>

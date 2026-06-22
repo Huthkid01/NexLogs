@@ -17,8 +17,9 @@ export function MainLayout() {
   const location = useLocation();
   useMarketplaceRealtime({ userId: user?.id ?? null });
   const authPages = ['/login', '/register', '/forgot-password', '/reset-password'];
-  const hideAuthLink = authPages.includes(location.pathname);
-  const hideFloatingActions = authPages.includes(location.pathname);
+  const isAuthPage = authPages.includes(location.pathname);
+  const hideAuthLink = isAuthPage;
+  const hideFloatingActions = isAuthPage;
   const socialIcons = [Send, PlayCircle, Link2];
   const trustIcons = [CheckCircle, Lock, Clock];
 
@@ -27,7 +28,7 @@ export function MainLayout() {
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="min-h-screen flex flex-col">
-        <header className="sticky top-0 z-30 bg-white dark:bg-dm-bg border-b border-gray-100 dark:border-dm-border shrink-0">
+        <header className="sticky top-0 z-30 shrink-0 border-b border-gray-100 bg-white dark:border-dm-border dark:bg-dm-bg">
           <div className="flex items-center justify-between h-[52px] px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-3">
               {!menuOpen && (
@@ -51,7 +52,7 @@ export function MainLayout() {
             </div>
 
             <div className="flex items-center gap-3 ml-auto">
-              <CurrencySelector compact />
+              {user ? <CurrencySelector compact /> : null}
               {user ? (
                 <UserMenuDropdown />
               ) : !hideAuthLink ? (
@@ -66,11 +67,11 @@ export function MainLayout() {
           </div>
         </header>
 
-        <main className="flex-1 w-full">
+        <main className={`w-full flex-1 ${isAuthPage ? 'lg:flex lg:flex-col' : ''}`}>
           <Outlet />
         </main>
 
-        <footer className="bg-[#f8f9fa] dark:bg-dm-bg border-t border-gray-200 dark:border-dm-border mt-auto w-full">
+        <footer className={`mt-auto w-full border-t border-gray-200 bg-[#f8f9fa] dark:border-dm-border dark:bg-dm-bg ${isAuthPage ? 'lg:hidden' : ''}`}>
           <div className="px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               <div>

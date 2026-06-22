@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import type { SiteContent } from '@/contexts/site-content';
+import { SlideBanner } from '@/components/home/SlideBanner';
+import { normalizeSlideImage, SLIDE_BANNER_GUIDE, SLIDE_BANNER_HEIGHT, SLIDE_BANNER_WIDTH } from '@/lib/slide-banner';
 import { toast } from 'sonner';
 
 type SlideFormState = {
@@ -43,6 +45,7 @@ export default function AdminSlidesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<SlideFormState>(defaultFormState);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const slides = useMemo(
     () => [...content.slides].sort((a, b) => a.order - b.order),
@@ -90,18 +93,30 @@ export default function AdminSlidesPage() {
     });
   };
 
-  const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file.');
+      event.target.value = '';
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const optimized = await normalizeSlideImage(file);
       setForm((current) => ({
         ...current,
-        imageUrl: typeof reader.result === 'string' ? reader.result : current.imageUrl,
+        imageUrl: optimized,
       }));
-    };
-    reader.readAsDataURL(file);
+      toast.success(`Image resized to ${SLIDE_BANNER_WIDTH}×${SLIDE_BANNER_HEIGHT} for all devices.`);
+    } catch {
+      toast.error('Could not process that image. Try another file.');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
   };
 
   const handleSubmit: NonNullable<ComponentProps<'form'>['onSubmit']> = (event) => {
@@ -191,7 +206,7 @@ export default function AdminSlidesPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Any slide you add here will also appear in the homepage slider when it is active.
+              Upload any image — we crop and resize it to {SLIDE_BANNER_WIDTH}×{SLIDE_BANNER_HEIGHT}px so it fills the banner on mobile and desktop with no empty bars.
             </p>
           </CardContent>
         </Card>
@@ -210,9 +225,13 @@ export default function AdminSlidesPage() {
           )}
           {slides.map((slide) => (
             <div key={slide.id} className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card/70 p-4 md:flex-row md:items-center">
-              <div className="relative h-32 w-full overflow-hidden rounded-xl bg-muted md:w-72">
-                <img src={resolveSlideImageUrl(slide.imageUrl)} alt={slide.title || 'Slide image'} className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" />
+              <div className="relative w-full md:w-80">
+                <SlideBanner
+                  src={resolveSlideImageUrl(slide.imageUrl)}
+                  alt={slide.title || 'Slide image'}
+                  variant="desktop-preview"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4">
                   <p className="text-sm font-semibold text-white">{slide.title}</p>
                   {slide.ctaLabel && (
@@ -286,6 +305,7 @@ export default function AdminSlidesPage() {
             <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto px-5 py-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-200">Slider Image *</label>
+                <p className="text-xs leading-relaxed text-slate-400">{SLIDE_BANNER_GUIDE}</p>
                 <Input
                   value={form.imageUrl}
                   onChange={(event) => setForm((current) => ({ ...current, imageUrl: event.target.value }))}
@@ -296,14 +316,23 @@ export default function AdminSlidesPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-600 bg-slate-800/70 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white"
+                  disabled={uploading}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-600 bg-slate-800/70 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white disabled:opacity-60"
                 >
                   <Upload className="h-4 w-4" />
-                  Upload image
+                  {uploading ? 'Optimizing image…' : 'Upload image (auto-resize for all devices)'}
                 </button>
                 {previewImageUrl && (
-                  <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
-                    <img src={previewImageUrl} alt="Slide preview" className="h-48 w-full object-contain bg-slate-900/60" />
+                  <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-800 p-3">
+                    <p className="text-xs font-medium text-slate-300">Preview — how it will look on the site</p>
+                    <div className="space-y-2">
+                      <p className="text-[11px] uppercase tracking-wide text-slate-500">Mobile</p>
+                      <SlideBanner src={previewImageUrl} alt="Mobile slide preview" variant="mobile-preview" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[11px] uppercase tracking-wide text-slate-500">Desktop</p>
+                      <SlideBanner src={previewImageUrl} alt="Desktop slide preview" variant="desktop-preview" />
+                    </div>
                   </div>
                 )}
               </div>

@@ -11,19 +11,21 @@ export function SubscriptionCard({ product }: SubscriptionCardProps) {
   const { formatProductPrice } = useFormatDisplayPrice();
 
   return (
-    <div className="shrink-0 w-[220px] sm:w-[240px] border border-gray-200 dark:border-dm-border rounded-lg bg-white dark:bg-dm-surface dark:hover:bg-dm-product-row-hover p-4 flex flex-col transition-colors">
-      <PlatformIcon platform={product.platform} className="mb-3" />
-      <h3 className="text-[13px] font-bold text-gray-900 dark:text-gray-100 uppercase leading-snug line-clamp-2 min-h-[2.5rem]">
-        {product.title}
-      </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-3 flex-1 leading-relaxed">
-        {product.description}
-      </p>
-      <p className="text-[#1b5e20] font-semibold text-sm mt-3">{formatProductPrice(product.price)}</p>
-      <Link
-        to="/marketplace"
-        className="btn-orange mt-3 w-full py-2 text-sm text-center"
-      >
+    <div className="flex w-[min(82vw,300px)] shrink-0 snap-start flex-col rounded-xl border border-gray-200 bg-white p-4 transition-colors dark:border-dm-border dark:bg-dm-surface dark:hover:bg-dm-product-row-hover sm:w-[300px]">
+      <div className="flex items-start gap-3">
+        <PlatformIcon platform={product.platform} size="sm" className="mt-0.5 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold leading-snug break-words text-gray-900 dark:text-gray-100 sm:line-clamp-3">
+            {product.title}
+          </h3>
+          <p className="mt-2 text-xs leading-relaxed break-words text-gray-500 dark:text-gray-400 sm:line-clamp-4">
+            {product.description}
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm font-semibold text-[#1b5e20]">{formatProductPrice(product.price)}</p>
+      <Link to="/marketplace" className="btn-orange mt-3 w-full py-2 text-center text-sm">
         Purchase
       </Link>
     </div>

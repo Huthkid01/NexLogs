@@ -23,6 +23,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import MyPurchasesPage from '@/pages/MyPurchasesPage';
 import AddFundsPage from '@/pages/AddFundsPage';
 import PurchaseRdpPage from '@/pages/PurchaseRdpPage';
+import BuyNumbersPage from '@/pages/BuyNumbersPage';
 
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
       { path: 'purchases', element: <ProtectedRoute><MyPurchasesPage /></ProtectedRoute> },
       { path: 'add-funds', element: <ProtectedRoute><AddFundsPage /></ProtectedRoute> },
       { path: 'purchase-rdp', element: <ProtectedRoute><PurchaseRdpPage /></ProtectedRoute> },
+      { path: 'buy-numbers', element: <ProtectedRoute><BuyNumbersPage /></ProtectedRoute> },
     ],
   },
   { path: '/admin/login', element: <AdminGuestRoute><AdminLoginPage /></AdminGuestRoute> },
