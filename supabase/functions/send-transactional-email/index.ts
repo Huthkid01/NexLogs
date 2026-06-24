@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
+import nodemailer from 'npm:nodemailer@6.9.16';
 import { buildPurchaseEmail, buildWalletDepositEmail } from './templates.ts';
 
 const corsHeaders = {
@@ -28,31 +28,35 @@ function normalizeProduct(product: unknown) {
 
 async function sendViaSmtp(
   input: { to: string; subject: string; html: string; text?: string },
-  options: { host: string; port: number; tls: boolean; user: string; pass: string; from: string },
+  options: { host: string; port: number; secure: boolean; user: string; pass: string; from: string },
 ) {
-  const client = new SMTPClient({
-    connection: {
-      hostname: options.host,
-      port: options.port,
-      tls: options.tls,
-      auth: {
-        username: options.user,
-        password: options.pass,
-      },
+  const transport = nodemailer.createTransport({
+    host: options.host,
+    port: options.port,
+    secure: options.secure,
+    auth: {
+      user: options.user,
+      pass: options.pass,
     },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
   });
 
-  try {
-    await client.send({
-      from: options.from,
-      to: input.to,
-      subject: input.subject,
-      content: input.text || 'Your Nexlogs notification',
-      html: input.html,
-    });
-  } finally {
-    await client.close();
-  }
+  await new Promise<void>((resolve, reject) => {
+    transport.sendMail(
+      {
+        from: options.from,
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+      },
+      (error) => {
+        if (error) reject(error);
+        else resolve();
+      },
+    );
+  });
 }
 
 async function sendMail(input: { to: string; subject: string; html: string; text?: string }) {
@@ -66,14 +70,13 @@ async function sendMail(input: { to: string; subject: string; html: string; text
     throw new Error('SMTP_USER, SMTP_PASS, and EMAIL_FROM_ADDRESS must be set in Supabase Edge Function secrets');
   }
 
-  const from = `${fromName} <${fromAddress}>`;
+  const from = `"${fromName}" <${fromAddress}>`;
   const configuredPort = Number(Deno.env.get('SMTP_PORT') || 465);
   const configuredSecure = Deno.env.get('SMTP_SECURE') !== 'false';
 
   const attempts = [
-    { port: 587, tls: false },
-    { port: configuredPort, tls: configuredSecure },
-    ...(configuredPort !== 465 ? [{ port: 465, tls: true }] : []),
+    { port: 465, secure: true },
+    { port: 587, secure: false },
   ];
 
   let lastError: Error | null = null;
@@ -83,7 +86,7 @@ async function sendMail(input: { to: string; subject: string; html: string; text
       await sendViaSmtp(input, {
         host,
         port: attempt.port,
-        tls: attempt.tls,
+        secure: attempt.secure,
         user,
         pass,
         from,
@@ -92,7 +95,7 @@ async function sendMail(input: { to: string; subject: string; html: string; text
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       lastError = error instanceof Error ? error : new Error(message);
-      console.error(`[send-transactional-email] SMTP ${host}:${attempt.port} tls=${attempt.tls} failed:`, message);
+      console.error(`[send-transactional-email] SMTP ${host}:${attempt.port} secure=${attempt.secure} failed:`, message);
     }
   }
 
@@ -251,11 +254,16 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Send email failed';
-    const details = error instanceof Error && error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : message;
-    console.error('[send-transactional-email]', details);
-    return new Response(JSON.stringify({ error: message, hint: 'Check SMTP secrets for sales@nexlogs.store and Hostinger app password' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('[send-transactional-email]', message);
+    return new Response(
+      JSON.stringify({
+        error: message,
+        hint: 'Check Edge Function secrets: SMTP_USER=support@nexlogs.store and matching app password.',
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 });
