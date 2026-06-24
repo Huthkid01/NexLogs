@@ -1,12 +1,18 @@
+<!--
+  REFERENCE TEMPLATE — not sent directly.
+  Live wallet emails are built in:
+  supabase/functions/send-transactional-email/templates.ts
+  Values come from the customer's deposit at send time.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wallet funded — preview</title>
+  <title>Wallet funded</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">$50.00 added to your wallet</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{amount_added}} added to your wallet</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 16px;">
     <tr>
       <td align="center">
@@ -19,16 +25,16 @@
           </tr>
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi Alex,</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{customer_name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Your wallet has been credited successfully.</p>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
                 <tr>
                   <td style="padding:18px 20px;">
                     <p style="margin:0 0 6px;font-size:13px;color:#166534;">Amount added</p>
-                    <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">$50.00</p>
+                    <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">{{amount_added}}</p>
                     <p style="margin:0 0 6px;font-size:13px;color:#166534;">New balance</p>
-                    <p style="margin:0 0 14px;font-size:20px;font-weight:700;color:#14532d;">$75.00</p>
-                    <p style="margin:0;font-size:13px;color:#166534;">Reference: FLW-REF-123456</p>
+                    <p style="margin:0 0 14px;font-size:20px;font-weight:700;color:#14532d;">{{new_balance}}</p>
+                    <p style="margin:0;font-size:13px;color:#166534;">Reference: {{reference}}</p>
                   </td>
                 </tr>
               </table>
@@ -36,7 +42,7 @@
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 8px;">
                 <tr>
                   <td style="border-radius:8px;background:#f26522;">
-                    <a href="https://nexlogs.store/marketplace" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Browse marketplace</a>
+                    <a href="{{app_url}}/marketplace" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Browse marketplace</a>
                   </td>
                 </tr>
               </table>
@@ -46,7 +52,7 @@
             <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
               <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
                 Questions? <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a><br/>
-                © 2026 Nexlogs. All rights reserved.
+                © {{year}} Nexlogs. All rights reserved.
               </p>
             </td>
           </tr>

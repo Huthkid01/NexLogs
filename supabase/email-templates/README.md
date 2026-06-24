@@ -1,20 +1,44 @@
 # Email templates
 
-Live templates used when sending mail are in:
+## What actually gets sent
 
-**`supabase/functions/send-transactional-email/templates.ts`**
+| Email | Live code | Data source |
+|-------|-----------|-------------|
+| Purchase confirmed | `supabase/functions/send-transactional-email/templates.ts` | Real order + customer profile |
+| Wallet funded | same file | Real deposit + wallet balance |
+| Sign up / reset password | Supabase Dashboard → Email Templates | Supabase Auth |
 
-Edit that file, then redeploy:
+The `.html` files in this folder are **reference layouts** with `{{placeholders}}`.  
+They are **not** emailed to customers. Real emails use the customer's name, order total, balance, etc. from the database.
+
+## Edit live templates
+
+1. Edit `supabase/functions/send-transactional-email/templates.ts`
+2. Redeploy:
 
 ```bash
 supabase functions deploy send-transactional-email
 ```
 
-The `.html` files here are static previews of the layout (placeholders only).
+## Placeholder reference
 
-| File | Used when |
-|------|-----------|
-| `purchase.html` | User completes a purchase |
-| `wallet-deposit.html` | User adds funds to wallet |
+### Purchase (`purchase.html`)
 
-Auth emails (sign up, password reset) are configured in **Supabase Dashboard → Email Templates**, not in this folder.
+| Placeholder | Example at send time |
+|-------------|----------------------|
+| `{{customer_name}}` | User's full name or email prefix |
+| `{{order_number}}` | e.g. `NLX-8f3a2b` |
+| `{{product_lines}}` | List of products purchased |
+| `{{total_amount}}` | e.g. `$29.99` |
+| `{{pending_rdp}}` | Shows RDP notice when applicable |
+| `{{app_url}}` | `https://nexlogs.store` |
+
+### Wallet (`wallet-deposit.html`)
+
+| Placeholder | Example at send time |
+|-------------|----------------------|
+| `{{customer_name}}` | User's full name |
+| `{{amount_added}}` | Deposit amount |
+| `{{new_balance}}` | Wallet balance after deposit |
+| `{{reference}}` | Payment reference |
+| `{{app_url}}` | `https://nexlogs.store` |

@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import nodemailer from 'npm:nodemailer@6.9.16';
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 import { buildPurchaseEmail, buildWalletDepositEmail } from './templates.ts';
 
 const corsHeaders = {
@@ -20,10 +20,37 @@ function normalizeProduct(product: unknown) {
   return product as { title: string; slug: string };
 }
 
+async function sendViaSmtp(
+  input: { to: string; subject: string; html: string; text?: string },
+  options: { host: string; port: number; tls: boolean; user: string; pass: string; from: string },
+) {
+  const client = new SMTPClient({
+    connection: {
+      hostname: options.host,
+      port: options.port,
+      tls: options.tls,
+      auth: {
+        username: options.user,
+        password: options.pass,
+      },
+    },
+  });
+
+  try {
+    await client.send({
+      from: options.from,
+      to: input.to,
+      subject: input.subject,
+      content: input.text || 'Your Nexlogs notification',
+      html: input.html,
+    });
+  } finally {
+    await client.close();
+  }
+}
+
 async function sendMail(input: { to: string; subject: string; html: string; text?: string }) {
   const host = Deno.env.get('SMTP_HOST') || 'smtp.hostinger.com';
-  const port = Number(Deno.env.get('SMTP_PORT') || 465);
-  const secure = Deno.env.get('SMTP_SECURE') !== 'false';
   const user = Deno.env.get('SMTP_USER');
   const pass = Deno.env.get('SMTP_PASS');
   const fromName = Deno.env.get('EMAIL_FROM_NAME') || Deno.env.get('APP_NAME') || 'Nexlogs';
@@ -33,20 +60,37 @@ async function sendMail(input: { to: string; subject: string; html: string; text
     throw new Error('SMTP_USER, SMTP_PASS, and EMAIL_FROM_ADDRESS must be set in Supabase Edge Function secrets');
   }
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-  });
+  const from = `${fromName} <${fromAddress}>`;
+  const configuredPort = Number(Deno.env.get('SMTP_PORT') || 465);
+  const configuredSecure = Deno.env.get('SMTP_SECURE') !== 'false';
 
-  await transporter.sendMail({
-    from: `"${fromName}" <${fromAddress}>`,
-    to: input.to,
-    subject: input.subject,
-    html: input.html,
-    text: input.text,
-  });
+  const attempts = [
+    { port: configuredPort, tls: configuredSecure },
+    ...(configuredPort === 465 ? [{ port: 587, tls: false }] : []),
+    ...(configuredPort === 587 ? [{ port: 465, tls: true }] : []),
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const attempt of attempts) {
+    try {
+      await sendViaSmtp(input, {
+        host,
+        port: attempt.port,
+        tls: attempt.tls,
+        user,
+        pass,
+        from,
+      });
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = error instanceof Error ? error : new Error(message);
+      console.error(`[send-transactional-email] SMTP ${host}:${attempt.port} tls=${attempt.tls} failed:`, message);
+    }
+  }
+
+  throw lastError ?? new Error('SMTP send failed');
 }
 
 Deno.serve(async (req) => {
@@ -193,8 +237,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Send email failed';
-    console.error('[send-transactional-email]', message);
-    return new Response(JSON.stringify({ error: message }), {
+    const details = error instanceof Error && error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : message;
+    console.error('[send-transactional-email]', details);
+    return new Response(JSON.stringify({ error: message, hint: 'Check SMTP secrets for sales@nexlogs.store and Hostinger app password' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

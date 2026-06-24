@@ -6,6 +6,7 @@ build/
 .env.*.local
 client/.env
 client/.env.local
+client/.env.vercel
 server/.env
 *.log
 .DS_Store
