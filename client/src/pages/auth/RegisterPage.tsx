@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout';
 import { authService } from '@/services/auth.service';
 import { APP_NAME } from '@/constants';
+import { getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 
 const registerSchema = z.object({
@@ -35,8 +36,8 @@ export default function RegisterPage() {
       toast.success('Account created! Check your email to verify your account.');
       navigate('/login');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Registration failed';
-      toast.error('We could not create your account.');
+      const message = getUserSignUpMessage(normalizeAuthErrorMessage(err));
+      toast.error(message);
       openErrorReport({
         title: 'Error while creating account',
         message: 'We could not create your account.',

@@ -8,7 +8,13 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-email-webhook-secret',
 };
 
-type EmailType = 'purchase' | 'wallet_deposit';
+function toError(error: unknown, fallback: string) {
+  if (error instanceof Error) return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return new Error(String((error as { message: unknown }).message));
+  }
+  return new Error(fallback);
+}
 
 function isRdpSlug(slug: string | null | undefined) {
   return Boolean(slug?.includes('-rdp-'));
@@ -65,9 +71,9 @@ async function sendMail(input: { to: string; subject: string; html: string; text
   const configuredSecure = Deno.env.get('SMTP_SECURE') !== 'false';
 
   const attempts = [
+    { port: 587, tls: false },
     { port: configuredPort, tls: configuredSecure },
-    ...(configuredPort === 465 ? [{ port: 587, tls: false }] : []),
-    ...(configuredPort === 587 ? [{ port: 465, tls: true }] : []),
+    ...(configuredPort !== 465 ? [{ port: 465, tls: true }] : []),
   ];
 
   let lastError: Error | null = null;
@@ -127,8 +133,12 @@ Deno.serve(async (req) => {
     const serviceRoleKey =
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
     if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Supabase service role key is unavailable');
+      throw new Error(
+        'SUPABASE_SERVICE_ROLE_KEY is missing. Run: supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-service-role-key',
+      );
     }
+
+    console.log('[send-transactional-email] start', { type, hasSmtpUser: Boolean(Deno.env.get('SMTP_USER')) });
 
     const appName = Deno.env.get('APP_NAME') || 'Nexlogs';
     const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://nexlogs.store').replace(
@@ -159,7 +169,7 @@ Deno.serve(async (req) => {
         .eq('id', orderId)
         .single();
 
-      if (orderError || !order) throw orderError ?? new Error('Order not found');
+      if (orderError || !order) throw toError(orderError, 'Order not found');
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -167,7 +177,9 @@ Deno.serve(async (req) => {
         .eq('id', order.user_id)
         .single();
 
-      if (profileError || !profile?.email) throw profileError ?? new Error('Buyer profile not found');
+      if (profileError || !profile?.email) throw toError(profileError, 'Buyer profile not found');
+
+      console.log('[send-transactional-email] purchase email to', profile.email);
 
       const items = order.order_items ?? [];
       const productLines = items.map((item: {
@@ -206,7 +218,7 @@ Deno.serve(async (req) => {
         .eq('id', transactionId)
         .single();
 
-      if (txError || !tx) throw txError ?? new Error('Transaction not found');
+      if (txError || !tx) throw toError(txError, 'Transaction not found');
       if (tx.kind !== 'deposit' || tx.status !== 'completed') {
         throw new Error('Transaction is not a completed deposit');
       }
@@ -217,8 +229,10 @@ Deno.serve(async (req) => {
           supabase.from('wallets').select('balance').eq('user_id', tx.user_id).single(),
         ]);
 
-      if (profileError || !profile?.email) throw profileError ?? new Error('Profile not found');
-      if (walletError || !wallet) throw walletError ?? new Error('Wallet not found');
+      if (profileError || !profile?.email) throw toError(profileError, 'Profile not found');
+      if (walletError || !wallet) throw toError(walletError, 'Wallet not found');
+
+      console.log('[send-transactional-email] wallet email to', profile.email, 'amount', tx.amount);
 
       const email = buildWalletDepositEmail({
         appName,

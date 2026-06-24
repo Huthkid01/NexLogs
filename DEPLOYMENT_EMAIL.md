@@ -26,6 +26,7 @@ From the project root (with [Supabase CLI](https://supabase.com/docs/guides/cli)
 supabase link --project-ref opmjctjzwkvwsxenddfi
 
 supabase secrets set \
+  SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
   SMTP_HOST=smtp.hostinger.com \
   SMTP_PORT=465 \
   SMTP_SECURE=true \
@@ -74,7 +75,10 @@ Or complete a test purchase / add funds on the live site.
 |---------|-----|
 | No email after purchase | Check `app_config` has `supabase_functions_base` + `email_webhook_secret` |
 | 401 in function logs | Secret mismatch between SQL and `supabase secrets set` |
+| 500 in function logs | Open invocation **Response body** for `"error"` field |
+| `SUPABASE_SERVICE_ROLE_KEY is missing` | Add service role key to Edge Function secrets |
 | SMTP auth failed | App password must be for `sales@nexlogs.store` |
+| Connection timed out | Hostinger may block cloud SMTP — use `server/` on Railway (see below) |
 | Function not found | Run `supabase functions deploy send-transactional-email` |
 
 Logs: Supabase Dashboard → Edge Functions → `send-transactional-email` → Logs

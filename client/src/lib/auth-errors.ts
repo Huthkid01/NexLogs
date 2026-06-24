@@ -16,6 +16,32 @@ export function isExpectedUserAuthError(message: string) {
   ].some((value) => normalized.includes(value));
 }
 
+export function getUserSignUpMessage(message: string) {
+  const normalized = message.trim().toLowerCase();
+
+  if (normalized.includes('already registered') || normalized.includes('already been registered')) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+
+  if (normalized.includes('error sending confirmation email') || normalized.includes('error sending email')) {
+    return 'Account setup failed while sending the verification email. Contact support@nexlogs.store.';
+  }
+
+  if (normalized.includes('database error saving new user')) {
+    return 'We could not finish setting up your account. Please try again or contact support.';
+  }
+
+  if (normalized.includes('password')) {
+    return message;
+  }
+
+  if (normalized.includes('email')) {
+    return message;
+  }
+
+  return message || 'We could not create your account.';
+}
+
 export function getUserLoginMessage(message: string) {
   const normalized = message.trim().toLowerCase();
 
