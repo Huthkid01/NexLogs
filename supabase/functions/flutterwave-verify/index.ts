@@ -50,6 +50,77 @@ function convertCurrencyToUsd(
   return Math.round((amount / rate) * 100) / 100;
 }
 
+function extractBearerToken(authHeader: string) {
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() ?? '';
+}
+
+function flutterwaveErrorMessage(status: number, payload: { message?: string; status?: string }) {
+  const message = payload.message || 'Flutterwave verification failed';
+  if (
+    status === 401 ||
+    message.toLowerCase().includes('unauthorized') ||
+    message.toLowerCase().includes('invalid authorization')
+  ) {
+    return 'Flutterwave secret key is invalid or missing. In Supabase Dashboard → Edge Functions → Secrets, set FLUTTERWAVE_SECRET_KEY to the secret that matches your VITE_FLUTTERWAVE_PUBLIC_KEY (same test or live mode).';
+  }
+  return message;
+}
+
+async function creditWalletDeposit(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    amountUsd: number;
+    verifiedAmount: number;
+    verifiedCurrency: string;
+    paymentMethod: string;
+    txRef: string;
+    transactionId: number;
+    payment: { amount: unknown; currency: unknown };
+  },
+) {
+  const providerMetadata = {
+    provider: 'flutterwave',
+    flutterwave_tx_id: String(params.transactionId),
+    charged_amount: params.payment.amount,
+    charged_currency: params.payment.currency,
+  };
+
+  const withExternalRef = await supabase.rpc('wallet_deposit', {
+    p_amount_usd: params.amountUsd,
+    p_original_amount: params.verifiedAmount,
+    p_currency: params.verifiedCurrency,
+    p_payment_method: params.paymentMethod,
+    p_external_ref: params.txRef,
+    p_provider_metadata: providerMetadata,
+  });
+
+  if (!withExternalRef.error) {
+    return withExternalRef.data as string | null;
+  }
+
+  const missingFn =
+    withExternalRef.error.code === '42883' ||
+    withExternalRef.error.message?.includes('Could not find the function');
+
+  if (!missingFn) {
+    throw new Error(withExternalRef.error.message || 'Wallet deposit failed');
+  }
+
+  const legacy = await supabase.rpc('wallet_deposit', {
+    p_amount_usd: params.amountUsd,
+    p_original_amount: params.verifiedAmount,
+    p_currency: params.verifiedCurrency,
+    p_payment_method: params.paymentMethod,
+  });
+
+  if (legacy.error) {
+    throw new Error(legacy.error.message || 'Wallet deposit failed');
+  }
+
+  return legacy.data as string | null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -77,13 +148,19 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    const accessToken = extractBearerToken(authHeader);
+    if (!accessToken) {
+      throw new Error('Missing authorization header');
+    }
+
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser(accessToken);
 
     if (userError || !user) {
-      throw new Error('Unauthorized');
+      console.error('auth.getUser failed:', userError?.message);
+      throw new Error(userError?.message || 'Unauthorized');
     }
 
     const body = (await req.json()) as VerifyRequestBody;
@@ -136,7 +213,7 @@ Deno.serve(async (req) => {
     const verifyPayload = await verifyResponse.json();
 
     if (!verifyResponse.ok || verifyPayload.status !== 'success') {
-      throw new Error(verifyPayload.message || 'Flutterwave verification failed');
+      throw new Error(flutterwaveErrorMessage(verifyResponse.status, verifyPayload));
     }
 
     const payment = verifyPayload.data;
@@ -170,23 +247,15 @@ Deno.serve(async (req) => {
       exchangeRates,
     );
 
-    const { data: depositId, error: depositError } = await supabase.rpc('wallet_deposit', {
-      p_amount_usd: computedAmountUsd,
-      p_original_amount: verifiedAmount,
-      p_currency: verifiedCurrency,
-      p_payment_method: payment_method || 'flutterwave',
-      p_external_ref: tx_ref,
-      p_provider_metadata: {
-        provider: 'flutterwave',
-        flutterwave_tx_id: String(transaction_id),
-        charged_amount: payment.amount,
-        charged_currency: payment.currency,
-      },
+    const depositId = await creditWalletDeposit(supabase, {
+      amountUsd: computedAmountUsd,
+      verifiedAmount,
+      verifiedCurrency,
+      paymentMethod: payment_method || 'flutterwave',
+      txRef: tx_ref,
+      transactionId: transaction_id,
+      payment,
     });
-
-    if (depositError) {
-      throw new Error(depositError.message || 'Wallet deposit failed');
-    }
 
     return new Response(
       JSON.stringify({
