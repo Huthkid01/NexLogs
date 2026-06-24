@@ -273,6 +273,13 @@ export default function AddFundsPage() {
 
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Choose amount and payment method</p>
 
+              {verifyingRedirect && (
+                <div className="flex items-center gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
+                  <Info className="h-4 w-4 text-[#f26522] shrink-0" />
+                  <p className="text-sm text-gray-800">Verifying your payment with Flutterwave…</p>
+                </div>
+              )}
+
               {isFlutterwaveTestMode() && import.meta.env.DEV && (
                 <div className="flex items-start gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
                   <Info className="h-4 w-4 text-[#f26522] shrink-0 mt-0.5" />

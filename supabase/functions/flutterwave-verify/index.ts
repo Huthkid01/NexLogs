@@ -175,31 +175,17 @@ Deno.serve(async (req) => {
       p_original_amount: verifiedAmount,
       p_currency: verifiedCurrency,
       p_payment_method: payment_method || 'flutterwave',
+      p_external_ref: tx_ref,
+      p_provider_metadata: {
+        provider: 'flutterwave',
+        flutterwave_tx_id: String(transaction_id),
+        charged_amount: payment.amount,
+        charged_currency: payment.currency,
+      },
     });
 
     if (depositError) {
-      throw depositError;
-    }
-
-    if (depositId) {
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      if (serviceRoleKey) {
-        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-        await supabaseAdmin
-          .from('wallet_transactions')
-          .update({
-            payment_method: 'flutterwave',
-            metadata: {
-              provider: 'flutterwave',
-              flutterwave_tx_id: String(transaction_id),
-              tx_ref,
-              charged_amount: payment.amount,
-              charged_currency: payment.currency,
-            },
-          } as never)
-          .eq('id', depositId)
-          .eq('user_id', user.id);
-      }
+      throw new Error(depositError.message || 'Wallet deposit failed');
     }
 
     return new Response(
@@ -216,7 +202,12 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error('flutterwave-verify failed:', error);
-    const message = error instanceof Error ? error.message : 'Verification failed';
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : 'Verification failed';
     return new Response(JSON.stringify({ error: message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

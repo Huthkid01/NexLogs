@@ -176,6 +176,7 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
 
   return new Promise<void>((resolve, reject) => {
     let settled = false;
+    let verifying = false;
 
     const finish = (handler: () => void) => {
       if (settled) return;
@@ -206,21 +207,23 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
               return;
             }
 
+            verifying = true;
             await verifyFlutterwaveDeposit(response, params, txRef);
             clearPendingDeposit();
             finish(() => resolve());
           } catch (err) {
             finish(() => reject(err instanceof Error ? err : new Error('Payment verification failed')));
+          } finally {
+            verifying = false;
           }
         })();
       },
       onclose: () => {
-        // Flutterwave may close the modal before redirect; redirect handler completes payment.
         setTimeout(() => {
-          if (!settled) {
+          if (!settled && !verifying) {
             finish(() => reject(new Error('Payment cancelled')));
           }
-        }, 1500);
+        }, 5000);
       },
     });
   });
