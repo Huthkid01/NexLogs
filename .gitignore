@@ -16,3 +16,5 @@ coverage/
 client/dist/
 .supabase-home/
 supabase/.temp/
+supabase/setup/*_ready.sql
+supabase/setup/*.local.sql

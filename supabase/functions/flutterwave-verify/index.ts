@@ -90,11 +90,6 @@ Deno.serve(async (req) => {
     const {
       transaction_id,
       tx_ref,
-      expected_amount,
-      expected_currency,
-      amount_usd,
-      original_amount,
-      original_currency,
       payment_method,
     } = body;
 
@@ -102,15 +97,28 @@ Deno.serve(async (req) => {
       throw new Error('Missing payment reference');
     }
 
-    const { data: existingTx } = await supabase
+    const { data: existingByTxId } = await supabase
       .from('wallet_transactions')
       .select('id')
       .eq('user_id', user.id)
       .contains('metadata', { flutterwave_tx_id: String(transaction_id) })
       .maybeSingle();
 
-    if (existingTx) {
-      return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+    if (existingByTxId) {
+      return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByTxId.id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: existingByRef } = await supabase
+      .from('wallet_transactions')
+      .select('id')
+      .eq('user_id', user.id)
+      .filter('metadata->>tx_ref', 'eq', tx_ref)
+      .maybeSingle();
+
+    if (existingByRef) {
+      return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByRef.id }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -137,16 +145,15 @@ Deno.serve(async (req) => {
       throw new Error('Payment was not successful');
     }
 
-    if (payment.tx_ref !== tx_ref) {
+    if (String(payment.tx_ref) !== String(tx_ref)) {
       throw new Error('Transaction reference mismatch');
     }
 
-    if (payment.currency !== expected_currency) {
-      throw new Error('Currency mismatch');
-    }
+    const verifiedAmount = Number(payment.amount);
+    const verifiedCurrency = String(payment.currency || '').toUpperCase();
 
-    if (Math.abs(Number(payment.amount) - Number(expected_amount)) > 0.01) {
-      throw new Error('Amount mismatch');
+    if (!verifiedAmount || verifiedAmount <= 0 || !verifiedCurrency) {
+      throw new Error('Invalid payment amount from Flutterwave');
     }
 
     const { data: walletContent } = await supabase
@@ -158,19 +165,15 @@ Deno.serve(async (req) => {
     const walletValue = walletContent?.value as { exchangeRates?: Record<string, number> } | null;
     const exchangeRates = normalizeWalletExchangeRates(walletValue?.exchangeRates);
     const computedAmountUsd = convertCurrencyToUsd(
-      Number(original_amount),
-      original_currency,
+      verifiedAmount,
+      verifiedCurrency,
       exchangeRates,
     );
 
-    if (Math.abs(computedAmountUsd - Number(amount_usd)) > 0.02) {
-      throw new Error('USD conversion mismatch');
-    }
-
     const { data: depositId, error: depositError } = await supabase.rpc('wallet_deposit', {
       p_amount_usd: computedAmountUsd,
-      p_original_amount: original_amount,
-      p_currency: original_currency,
+      p_original_amount: verifiedAmount,
+      p_currency: verifiedCurrency,
       p_payment_method: payment_method || 'flutterwave',
     });
 
@@ -199,10 +202,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, deposit_id: depositId }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        deposit_id: depositId,
+        amount_usd: computedAmountUsd,
+        original_amount: verifiedAmount,
+        original_currency: verifiedCurrency,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   } catch (error) {
+    console.error('flutterwave-verify failed:', error);
     const message = error instanceof Error ? error.message : 'Verification failed';
     return new Response(JSON.stringify({ error: message }), {
       status: 400,

@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import {
   createDepositTxRef,
@@ -27,21 +28,44 @@ interface PendingDeposit {
 const PENDING_DEPOSIT_KEY = 'nexlogs_pending_deposit';
 
 function savePendingDeposit(pending: PendingDeposit) {
-  sessionStorage.setItem(PENDING_DEPOSIT_KEY, JSON.stringify(pending));
+  localStorage.setItem(PENDING_DEPOSIT_KEY, JSON.stringify(pending));
 }
 
 function clearPendingDeposit() {
-  sessionStorage.removeItem(PENDING_DEPOSIT_KEY);
+  localStorage.removeItem(PENDING_DEPOSIT_KEY);
 }
 
 function getPendingDeposit(): PendingDeposit | null {
   try {
-    const raw = sessionStorage.getItem(PENDING_DEPOSIT_KEY);
+    const raw = localStorage.getItem(PENDING_DEPOSIT_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PendingDeposit;
   } catch {
     return null;
   }
+}
+
+async function readFunctionErrorMessage(error: unknown, data: unknown) {
+  if (data && typeof data === 'object' && 'error' in data && data.error) {
+    return String(data.error);
+  }
+
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const payload = await error.context.json();
+      if (payload && typeof payload === 'object' && 'error' in payload && payload.error) {
+        return String(payload.error);
+      }
+    } catch {
+      // Fall through to generic message.
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Payment verification failed';
 }
 
 function loadFlutterwaveScript() {
@@ -86,11 +110,7 @@ async function verifyFlutterwaveDeposit(
   });
 
   if (error) {
-    const message =
-      (data && typeof data === 'object' && 'error' in data && String(data.error)) ||
-      error.message ||
-      'Payment verification failed';
-    throw new Error(message);
+    throw new Error(await readFunctionErrorMessage(error, data));
   }
 
   if (data && typeof data === 'object' && 'error' in data && data.error) {
@@ -109,7 +129,7 @@ export async function completeFlutterwaveRedirect(searchParams: URLSearchParams)
   if (status !== 'successful' && status !== 'completed') return false;
 
   const pending = getPendingDeposit();
-  if (!pending || pending.txRef !== txRef) {
+  if (pending && pending.txRef !== txRef) {
     throw new Error('Payment session expired. If you were charged, contact support with reference: ' + txRef);
   }
 
@@ -119,7 +139,12 @@ export async function completeFlutterwaveRedirect(searchParams: URLSearchParams)
       transaction_id: Number(transactionId),
       tx_ref: txRef,
     },
-    pending,
+    pending ?? {
+      amount: 0,
+      currency: 'NGN',
+      amountUsd: 0,
+      paymentMethod: 'flutterwave',
+    },
     txRef,
   );
 

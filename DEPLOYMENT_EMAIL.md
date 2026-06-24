@@ -30,7 +30,9 @@ supabase functions deploy send-transactional-email
 
 ### 2. Supabase SQL (required)
 
-Run **`supabase/setup/hostinger_transactional_emails_ready.sql`** in SQL Editor.
+1. Copy `supabase/setup/hostinger_transactional_emails.sql` to a **local** file (e.g. `hostinger_transactional_emails.local.sql` — gitignored).
+2. Replace the three placeholders (`EMAIL_WEBHOOK_SECRET`, project ref, anon key). **Do not commit real values.**
+3. Run your local copy in Supabase SQL Editor.
 
 Do **not** set `email_api_base` unless you host `server/` somewhere else.
 
@@ -46,11 +48,11 @@ SELECT queue_user_email('wallet_deposit', NULL, NULL, 'TRANSACTION_UUID'::uuid);
 
 | Log | Fix |
 |-----|-----|
-| **503** | Redeploy Edge Function; run full `hostinger_transactional_emails_ready.sql` |
+| **503** | Redeploy Edge Function; re-run your local SQL setup file |
 | **500** + `535` / auth failed | Same app password as Supabase SMTP; username must be `support@nexlogs.store` |
 | **500** + timeout | Try port 587 in Supabase-style test; check Edge Function logs Response body |
 | **401** | `email_webhook_secret` must match `EMAIL_WEBHOOK_SECRET` |
-| No email, no log | Triggers missing — re-run `hostinger_transactional_emails_ready.sql` |
+| No email, no log | Triggers missing — re-run your local SQL setup file |
 
 Logs: Dashboard → Edge Functions → `send-transactional-email`
 
@@ -59,3 +61,12 @@ Logs: Dashboard → Edge Functions → `send-transactional-email`
 ## Optional: `server/` on a VPS
 
 If Edge SMTP keeps failing, you can host `server/` elsewhere and set `email_api_base` in `app_config`. Render is **not** required — any HTTPS URL for `server/` works.
+
+---
+
+## If a secret was exposed on GitHub
+
+1. **Rotate immediately** — generate a new webhook secret: `openssl rand -hex 32`
+2. Update Supabase Edge Function secret: `supabase secrets set EMAIL_WEBHOOK_SECRET=NEW_VALUE`
+3. Update `app_config` in SQL Editor: `UPDATE app_config SET value = 'NEW_VALUE' WHERE key = 'email_webhook_secret';`
+4. Mark the GitGuardian alert as resolved after rotation. Never commit `*_ready.sql` or `.local.sql` files with real secrets.
