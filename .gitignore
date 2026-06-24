@@ -6,6 +6,7 @@ build/
 .env.*.local
 client/.env
 client/.env.local
+server/.env
 *.log
 .DS_Store
 coverage/

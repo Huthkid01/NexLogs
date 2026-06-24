@@ -1,78 +1,86 @@
-# Purchase & add-funds emails (Render + Hostinger)
+# Purchase & add-funds emails (Supabase Edge Function + Nodemailer)
 
-Auth emails (signup, forgot password) → **Supabase Auth + Hostinger SMTP** in the dashboard.
+No Render. No separate server. Templates live in the repo.
 
-Purchase & wallet emails → **small free API on Render** (this `server/` folder). You do not run it on your laptop.
+| Email | Sender | Where |
+|-------|--------|--------|
+| Sign up / verify | `no-reply@nexlogs.store` | Supabase Dashboard → SMTP + templates |
+| Password reset | `no-reply@nexlogs.store` | Supabase Dashboard |
+| Purchase confirmed | `sales@nexlogs.store` | Edge Function `send-transactional-email` |
+| Wallet funded | `sales@nexlogs.store` | Edge Function `send-transactional-email` |
 
----
+**HTML templates (edit these):**
 
-## Step 1 — Hostinger mailbox
+- `supabase/functions/send-transactional-email/templates.ts` — purchase + wallet emails
+- Preview copies: `supabase/email-templates/purchase.html`, `wallet-deposit.html`
 
-Create e.g. `hello@yourdomain.com` and note:
-
-| Setting | Value |
-|---------|--------|
-| SMTP host | `smtp.hostinger.com` |
-| Port | `465` (SSL) |
-| Username | full email |
-| Password | mailbox password |
-
----
-
-## Step 2 — Deploy on Render (free)
-
-1. Push this repo to GitHub.
-2. Go to [render.com](https://render.com) → **New → Blueprint** (or Web Service).
-3. Connect the repo. Render reads `render.yaml` and deploys `server/`.
-4. Set these **Environment** variables on Render:
-
-| Variable | Example |
-|----------|---------|
-| `SMTP_USER` | `hello@yourdomain.com` |
-| `SMTP_PASS` | your Hostinger password |
-| `EMAIL_FROM_ADDRESS` | `hello@yourdomain.com` |
-| `EMAIL_FROM_NAME` | `Nexlogs` |
-| `SUPABASE_URL` | `https://opmjctjzwkvwsxenddfi.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | from Supabase → Settings → API |
-| `APP_URL` | `https://nex-logs-client.vercel.app` |
-| `CLIENT_ORIGINS` | `https://nex-logs-client.vercel.app` |
-| `EMAIL_WEBHOOK_SECRET` | long random string (copy for Step 3) |
-
-5. Deploy. Copy your live URL, e.g. `https://nexlogs-email.onrender.com`.
-
-**Note:** Free Render sleeps after ~15 min idle; first email after sleep may take ~30s. Upgrade to paid for always-on.
+**Flow:** order or deposit inserted → database trigger → Edge Function → Nodemailer → Hostinger SMTP → user inbox
 
 ---
 
-## Step 3 — Supabase SQL
+## Step 1 — Deploy the Edge Function
 
-Run migrations **039** (if not applied), then edit and run:
+From the project root (with [Supabase CLI](https://supabase.com/docs/guides/cli) installed and logged in):
 
-`supabase/setup/render_transactional_emails.sql`
+```bash
+supabase link --project-ref opmjctjzwkvwsxenddfi
 
-- `email_api_base` = your Render URL  
-- `email_webhook_secret` = same as on Render  
+supabase secrets set \
+  SMTP_HOST=smtp.hostinger.com \
+  SMTP_PORT=465 \
+  SMTP_SECURE=true \
+  SMTP_USER=sales@nexlogs.store \
+  SMTP_PASS=your-hostinger-app-password \
+  EMAIL_FROM_ADDRESS=sales@nexlogs.store \
+  EMAIL_FROM_NAME=Nexlogs \
+  EMAIL_WEBHOOK_SECRET=your-long-random-secret \
+  APP_URL=https://nexlogs.store
+
+supabase functions deploy send-transactional-email
+```
+
+Use the **same** `EMAIL_WEBHOOK_SECRET` in Step 2 SQL.
 
 ---
 
-## Step 4 — Test
+## Step 2 — Supabase SQL
 
-1. Make a test purchase or add funds on the live site.
-2. User should get email from your Hostinger address.
-3. Or run in SQL Editor:
-   ```sql
-   SELECT queue_user_email('purchase', NULL, 'ORDER_UUID'::uuid);
-   ```
+Run in SQL Editor (edit the secret first):
+
+`supabase/setup/hostinger_transactional_emails.sql`
+
+This sets:
+
+- `email_webhook_secret` — matches Edge Function secret
+- `supabase_functions_base` — `https://opmjctjzwkvwsxenddfi.supabase.co/functions/v1`
+
+Also run migration **039** and **040** if not applied yet.
 
 ---
 
-## What sends what
+## Step 3 — Test
 
-| Email | Sender |
-|-------|--------|
-| Sign up / verify | Supabase Auth (Hostinger SMTP in dashboard) |
-| Forgot password | Supabase Auth |
-| Purchase confirmed | Render email API |
-| Wallet funded | Render email API |
+```sql
+SELECT queue_user_email('purchase', NULL, 'ORDER_UUID'::uuid);
+```
 
-No Gmail. No Edge Functions. No server on your PC.
+Or complete a test purchase / add funds on the live site.
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| No email after purchase | Check `app_config` has `supabase_functions_base` + `email_webhook_secret` |
+| 401 in function logs | Secret mismatch between SQL and `supabase secrets set` |
+| SMTP auth failed | App password must be for `sales@nexlogs.store` |
+| Function not found | Run `supabase functions deploy send-transactional-email` |
+
+Logs: Supabase Dashboard → Edge Functions → `send-transactional-email` → Logs
+
+---
+
+## Optional: local Node server (`server/`)
+
+The `server/` folder still works for local testing. Set `email_api_base` in `app_config` instead of `supabase_functions_base`. Production should use the Edge Function.
