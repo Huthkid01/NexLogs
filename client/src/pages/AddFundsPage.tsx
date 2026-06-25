@@ -5,14 +5,14 @@ import { ArrowUpDown, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { isFlutterwaveConfigured, isFlutterwaveTestMode } from '@/lib/flutterwave-config';
+import { isKoraConfigured, isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
   convertCurrencyToUsd,
   convertUsdToCurrency,
   DISPLAY_RATE_CURRENCIES,
 } from '@/lib/wallet-exchange-rates';
-import { completeFlutterwaveRedirect, startFlutterwaveDeposit } from '@/services/payment.service';
+import { completeKoraRedirect, startKoraDeposit } from '@/services/payment.service';
 
 const CURRENCIES = [
   { code: 'NGN', label: 'NGN' },
@@ -53,13 +53,13 @@ export default function AddFundsPage() {
 
   useEffect(() => {
     if (!user?.id || redirectHandled.current || verifyingRedirect) return;
-    if (!searchParams.get('transaction_id') || !searchParams.get('tx_ref')) return;
+    if (!searchParams.get('reference')) return;
 
     redirectHandled.current = true;
     setVerifyingRedirect(true);
     void (async () => {
       try {
-        const completed = await completeFlutterwaveRedirect(searchParams);
+        const completed = await completeKoraRedirect(searchParams);
         if (!completed) return;
 
         await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
@@ -141,8 +141,8 @@ export default function AddFundsPage() {
         return;
       }
 
-      if (!isFlutterwaveConfigured()) {
-        toast.error('Flutterwave is not configured. Add VITE_FLUTTERWAVE_PUBLIC_KEY to your environment.');
+      if (!isKoraConfigured()) {
+        toast.error('Kora is not configured. Add VITE_KORA_PUBLIC_KEY to your environment.');
         return;
       }
 
@@ -151,14 +151,15 @@ export default function AddFundsPage() {
         return;
       }
 
-      await startFlutterwaveDeposit({
+      await startKoraDeposit({
         userId: user.id,
         email: user.email,
         name: profile?.full_name,
         amount: value,
         currency,
         amountUsd: Number(usdEquivalent),
-        paymentMethod: paymentMethod === 'card' ? 'flutterwave_card' : 'flutterwave',
+        paymentMethod: paymentMethod === 'card' ? 'kora_card' : 'kora',
+        exchangeRates,
       });
 
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
@@ -276,22 +277,22 @@ export default function AddFundsPage() {
               {verifyingRedirect && (
                 <div className="flex items-center gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
                   <Info className="h-4 w-4 text-[#f26522] shrink-0" />
-                  <p className="text-sm text-gray-800">Verifying your payment with Flutterwave…</p>
+                  <p className="text-sm text-gray-800">Verifying your payment with Kora…</p>
                 </div>
               )}
 
-              {isFlutterwaveTestMode() && import.meta.env.DEV && (
+              {isKoraTestMode() && import.meta.env.DEV && (
                 <div className="flex items-start gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
                   <Info className="h-4 w-4 text-[#f26522] shrink-0 mt-0.5" />
                   <p className="text-sm text-gray-800">
-                    Flutterwave test mode is active. Use test card <span className="font-mono">5531886652142950</span>, CVV <span className="font-mono">564</span>, expiry <span className="font-mono">09/32</span>, PIN <span className="font-mono">3310</span>, OTP <span className="font-mono">12345</span>.
+                    Kora test mode is active. Use your Kora dashboard test cards and bank accounts for sandbox payments.
                   </p>
                 </div>
               )}
 
               <div className="flex items-start gap-2 rounded-lg bg-[#fff8e6] dark:bg-[#f26522] border border-[#f5e6b8] dark:border-[#f26522] px-3 py-2.5 mb-6">
                 <Info className="h-4 w-4 text-amber-700 dark:text-white shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-900 dark:text-white">Payments are processed securely by Flutterwave. We do not store your card details.</p>
+                <p className="text-sm text-amber-900 dark:text-white">Payments are processed securely by Kora. We do not store your card details.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5 max-w-md">

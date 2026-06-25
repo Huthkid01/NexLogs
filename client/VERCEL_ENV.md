@@ -23,7 +23,7 @@ Use **`client/.env.vercel`** — copy/paste or import into Vercel.
 These stay in Supabase secrets / local `.env` only:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `FLUTTERWAVE_SECRET_KEY`
+- `KORA_SECRET_KEY`
 - `SMTP_*`, `EMAIL_WEBHOOK_SECRET`
 - `TELEGRAM_*`
 - `GOOGLE_CLIENT_SECRET`

@@ -1,11 +1,16 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import {
-  createDepositTxRef,
-  getFlutterwavePublicKey,
-  isFlutterwaveConfigured,
-} from '@/lib/flutterwave-config';
-import type { FlutterwaveCheckoutResponse } from '@/types/flutterwave';
+  createDepositReference,
+  getKoraPublicKey,
+  isKoraConfigured,
+} from '@/lib/kora-config';
+import type { KoraCheckoutSuccess } from '@/types/kora';
+import {
+  convertCurrencyToUsd,
+  convertUsdToCurrency,
+  type WalletExchangeRates,
+} from '@/lib/wallet-exchange-rates';
 
 export interface StartDepositParams {
   userId: string;
@@ -15,17 +20,24 @@ export interface StartDepositParams {
   currency: string;
   amountUsd: number;
   paymentMethod: string;
+  exchangeRates: WalletExchangeRates;
 }
 
 interface PendingDeposit {
-  txRef: string;
+  reference: string;
   amount: number;
   currency: string;
+  chargeAmount: number;
+  chargeCurrency: string;
   amountUsd: number;
   paymentMethod: string;
 }
 
 const PENDING_DEPOSIT_KEY = 'nexlogs_pending_deposit';
+const KORA_SCRIPT_URL =
+  'https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js';
+
+const KORA_SUPPORTED_CURRENCIES = new Set(['NGN', 'KES', 'GHS']);
 
 function savePendingDeposit(pending: PendingDeposit) {
   localStorage.setItem(PENDING_DEPOSIT_KEY, JSON.stringify(pending));
@@ -43,6 +55,27 @@ function getPendingDeposit(): PendingDeposit | null {
   } catch {
     return null;
   }
+}
+
+function getKoraChargeDetails(
+  amount: number,
+  currency: string,
+  exchangeRates: WalletExchangeRates,
+) {
+  const code = currency.toUpperCase();
+  if (KORA_SUPPORTED_CURRENCIES.has(code)) {
+    return {
+      chargeAmount: Math.round(amount),
+      chargeCurrency: code,
+    };
+  }
+
+  const usd = convertCurrencyToUsd(amount, code, exchangeRates);
+  const ngnAmount = convertUsdToCurrency(usd, exchangeRates.NGN ?? 1500);
+  return {
+    chargeAmount: Math.round(ngnAmount),
+    chargeCurrency: 'NGN',
+  };
 }
 
 async function readFunctionErrorMessage(error: unknown, data: unknown) {
@@ -68,44 +101,34 @@ async function readFunctionErrorMessage(error: unknown, data: unknown) {
   return 'Payment verification failed';
 }
 
-function loadFlutterwaveScript() {
-  if (window.FlutterwaveCheckout) {
+function loadKoraScript() {
+  if (window.Korapay) {
     return Promise.resolve();
   }
 
   return new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector('script[data-flutterwave-checkout]');
+    const existing = document.querySelector('script[data-kora-checkout]');
     if (existing) {
       existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Failed to load Flutterwave')), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Failed to load Kora')), { once: true });
       return;
     }
 
     const script = document.createElement('script');
-    script.src = 'https://checkout.flutterwave.com/v3.js';
+    script.src = KORA_SCRIPT_URL;
     script.async = true;
-    script.dataset.flutterwaveCheckout = 'true';
+    script.dataset.koraCheckout = 'true';
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Flutterwave checkout'));
+    script.onerror = () => reject(new Error('Failed to load Kora checkout'));
     document.body.appendChild(script);
   });
 }
 
-async function verifyFlutterwaveDeposit(
-  response: FlutterwaveCheckoutResponse,
-  params: Pick<StartDepositParams, 'amount' | 'currency' | 'amountUsd' | 'paymentMethod'>,
-  txRef: string,
-) {
-  const { data, error } = await supabase.functions.invoke('flutterwave-verify', {
+async function verifyKoraDeposit(reference: string, paymentMethod: string) {
+  const { data, error } = await supabase.functions.invoke('kora-verify', {
     body: {
-      transaction_id: response.transaction_id,
-      tx_ref: txRef,
-      expected_amount: params.amount,
-      expected_currency: params.currency,
-      amount_usd: params.amountUsd,
-      original_amount: params.amount,
-      original_currency: params.currency,
-      payment_method: params.paymentMethod,
+      reference,
+      payment_method: paymentMethod,
     },
   });
 
@@ -120,56 +143,51 @@ async function verifyFlutterwaveDeposit(
   return data;
 }
 
-export async function completeFlutterwaveRedirect(searchParams: URLSearchParams) {
-  const status = searchParams.get('status');
-  const txRef = searchParams.get('tx_ref');
-  const transactionId = searchParams.get('transaction_id');
-
-  if (!txRef || !transactionId) return false;
-  if (status !== 'successful' && status !== 'completed') return false;
+export async function completeKoraRedirect(searchParams: URLSearchParams) {
+  const reference = searchParams.get('reference');
+  if (!reference) return false;
 
   const pending = getPendingDeposit();
-  if (pending && pending.txRef !== txRef) {
-    throw new Error('Payment session expired. If you were charged, contact support with reference: ' + txRef);
+  if (pending && pending.reference !== reference) {
+    throw new Error(
+      'Payment session expired. If you were charged, contact support with reference: ' + reference,
+    );
   }
 
-  await verifyFlutterwaveDeposit(
-    {
-      status: 'successful',
-      transaction_id: Number(transactionId),
-      tx_ref: txRef,
-    },
-    pending ?? {
-      amount: 0,
-      currency: 'NGN',
-      amountUsd: 0,
-      paymentMethod: 'flutterwave',
-    },
-    txRef,
-  );
-
+  await verifyKoraDeposit(reference, pending?.paymentMethod ?? 'kora');
   clearPendingDeposit();
   return true;
 }
 
-export async function startFlutterwaveDeposit(params: StartDepositParams) {
-  if (!isFlutterwaveConfigured()) {
-    throw new Error('Flutterwave is not configured. Add VITE_FLUTTERWAVE_PUBLIC_KEY to your environment.');
+export async function startKoraDeposit(params: StartDepositParams) {
+  if (!isKoraConfigured()) {
+    throw new Error('Kora is not configured. Add VITE_KORA_PUBLIC_KEY to your environment.');
   }
 
-  await loadFlutterwaveScript();
+  await loadKoraScript();
 
-  if (!window.FlutterwaveCheckout) {
-    throw new Error('Flutterwave checkout failed to initialize');
+  if (!window.Korapay) {
+    throw new Error('Kora checkout failed to initialize');
   }
 
-  const publicKey = getFlutterwavePublicKey()!;
-  const txRef = createDepositTxRef(params.userId);
+  const publicKey = getKoraPublicKey()!;
+  const reference = createDepositReference(params.userId);
+  const { chargeAmount, chargeCurrency } = getKoraChargeDetails(
+    params.amount,
+    params.currency,
+    params.exchangeRates,
+  );
+
+  if (chargeAmount <= 0) {
+    throw new Error('Invalid payment amount');
+  }
 
   savePendingDeposit({
-    txRef,
+    reference,
     amount: params.amount,
     currency: params.currency,
+    chargeAmount,
+    chargeCurrency,
     amountUsd: params.amountUsd,
     paymentMethod: params.paymentMethod,
   });
@@ -184,31 +202,27 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
       handler();
     };
 
-    window.FlutterwaveCheckout!({
-      public_key: publicKey,
-      tx_ref: txRef,
-      amount: params.amount,
-      currency: params.currency,
-      payment_options: 'card,banktransfer,ussd',
-      redirect_url: `${window.location.origin}/add-funds`,
+    window.Korapay!.initialize({
+      key: publicKey,
+      reference,
+      amount: chargeAmount,
+      currency: chargeCurrency,
+      narration: 'Add funds to your Nexlogs wallet',
+      channels: ['card', 'bank_transfer', 'pay_with_bank'],
+      default_channel: 'card',
       customer: {
         email: params.email,
         name: params.name || params.email,
       },
-      customizations: {
-        title: 'Nexlogs',
-        description: 'Add funds to your wallet',
+      metadata: {
+        userId: params.userId.slice(0, 20),
+        source: 'nexlogs-wallet',
       },
-      callback: (response) => {
+      onSuccess: (data: KoraCheckoutSuccess) => {
         void (async () => {
           try {
-            if (response.status !== 'successful') {
-              finish(() => reject(new Error('Payment was not successful')));
-              return;
-            }
-
             verifying = true;
-            await verifyFlutterwaveDeposit(response, params, txRef);
+            await verifyKoraDeposit(data.reference || reference, params.paymentMethod);
             clearPendingDeposit();
             finish(() => resolve());
           } catch (err) {
@@ -218,7 +232,10 @@ export async function startFlutterwaveDeposit(params: StartDepositParams) {
           }
         })();
       },
-      onclose: () => {
+      onFailed: () => {
+        finish(() => reject(new Error('Payment was not successful')));
+      },
+      onClose: () => {
         setTimeout(() => {
           if (!settled && !verifying) {
             finish(() => reject(new Error('Payment cancelled')));

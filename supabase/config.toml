@@ -1,3 +1,6 @@
+[functions.kora-verify]
+verify_jwt = true
+
 [functions.flutterwave-verify]
 verify_jwt = true
 
