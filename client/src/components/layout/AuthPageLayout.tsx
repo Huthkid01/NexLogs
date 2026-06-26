@@ -18,7 +18,7 @@ export function AuthPageLayout({ children, title, description }: AuthPageLayoutP
           <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm lg:border-0 lg:bg-transparent lg:shadow-none">
             <div className="flex flex-col space-y-1.5 p-6 text-center lg:p-0 lg:text-left">
               <div className="mb-2 flex justify-center lg:justify-start">
-                <NexLogsLogo className="h-12" />
+                <NexLogsLogo className="h-9 sm:h-10" />
               </div>
               <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
               <p className="text-sm text-muted-foreground">{description}</p>

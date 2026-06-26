@@ -95,7 +95,7 @@ export function AdminLayout() {
                 <div className={cn(desktopSidebarCollapsed && 'lg:hidden')}>
                   <p className={cn('text-[11px] font-semibold uppercase tracking-[0.18em]', isDark ? 'text-amber-500/90' : 'text-[#f26522]')}>Admin Panel</p>
                   <Link to="/admin" className="mt-3 inline-block">
-                    <NexLogsLogo className="h-10" />
+                    <NexLogsLogo className="h-8" />
                   </Link>
                 </div>
                 <Link

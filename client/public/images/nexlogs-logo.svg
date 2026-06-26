@@ -1,47 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none" role="img" aria-label="NexLogs">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 248 44" fill="none" role="img" aria-label="NexLogs">
   <title>NexLogs</title>
 
-  <!-- Icon -->
-  <g transform="translate(72, 8)">
-    <!-- Magnifying glass -->
+  <g transform="translate(0, 1) scale(0.36)">
     <circle cx="46" cy="56" r="27" stroke="#f26522" stroke-width="5.5" />
     <path d="M26 76 L10 92" stroke="#f26522" stroke-width="5.5" stroke-linecap="round" />
-
-    <!-- Person inside magnifying glass -->
     <circle cx="46" cy="48" r="7.5" fill="#f26522" />
     <path
       d="M33.5 67 C33.5 60.5 39.5 57 46 57 C52.5 57 58.5 60.5 58.5 67 L58.5 70 L33.5 70 Z"
       fill="#f26522"
     />
-
-    <!-- Growth arrow (behind bars) -->
-    <path
-      d="M78 94 L198 30"
-      stroke="#f26522"
-      stroke-width="5.5"
-      stroke-linecap="round"
-    />
-    <path
-      d="M198 30 L186 34 L192 46 Z"
-      fill="#f26522"
-    />
-
-    <!-- Small people along the arrow -->
+    <path d="M78 94 L198 30" stroke="#f26522" stroke-width="5.5" stroke-linecap="round" />
+    <path d="M198 30 L186 34 L192 46 Z" fill="#f26522" />
     <g fill="#f26522">
       <circle cx="102" cy="78" r="3.2" />
       <path d="M98.5 86 C98.5 83 100 81.5 102 81.5 C104 81.5 105.5 83 105.5 86 L105.5 88.5 L98.5 88.5 Z" />
-
       <circle cx="128" cy="62" r="3.2" />
       <path d="M124.5 70 C124.5 67 126 65.5 128 65.5 C130 65.5 131.5 67 131.5 70 L131.5 72.5 L124.5 72.5 Z" />
-
       <circle cx="154" cy="47" r="3.2" />
       <path d="M150.5 55 C150.5 52 152 50.5 154 50.5 C156 50.5 157.5 52 157.5 55 L157.5 57.5 L150.5 57.5 Z" />
-
       <circle cx="178" cy="35" r="3.2" />
       <path d="M174.5 43 C174.5 40 176 38.5 178 38.5 C180 38.5 181.5 40 181.5 43 L181.5 45.5 L174.5 45.5 Z" />
     </g>
-
-    <!-- Bar chart -->
     <path d="M82 98 H210" stroke="#f26522" stroke-width="4.5" stroke-linecap="round" />
     <rect x="94" y="80" width="16" height="18" rx="2" fill="#f26522" />
     <rect x="118" y="68" width="16" height="30" rx="2" fill="#f26522" />
@@ -49,15 +28,13 @@
     <rect x="166" y="38" width="16" height="60" rx="2" fill="#f26522" />
   </g>
 
-  <!-- Wordmark -->
   <text
-    x="200"
-    y="205"
-    text-anchor="middle"
+    x="84"
+    y="31"
     font-family="Inter, Montserrat, 'Segoe UI', Roboto, Arial, sans-serif"
-    font-size="52"
+    font-size="26"
     font-weight="700"
-    letter-spacing="-0.5"
+    letter-spacing="-0.4"
   >
     <tspan fill="#3d4449">Nex</tspan><tspan fill="#f26522">Logs</tspan>
   </text>

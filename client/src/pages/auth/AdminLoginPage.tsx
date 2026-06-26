@@ -97,7 +97,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mx-auto mb-5 flex items-center justify-center">
-            <NexLogsLogo className="h-16" />
+            <NexLogsLogo className="h-10 sm:h-11" />
           </div>
           <p className="text-sm text-gray-500">Admin Dashboard Access</p>
         </div>

@@ -43,7 +43,7 @@ export function MainLayout() {
                     <Menu className="h-6 w-6" strokeWidth={2} />
                   </button>
                   <Link to="/" className="flex items-center">
-                    <NexLogsLogo className="h-9 sm:h-10" />
+                    <NexLogsLogo className="h-7 sm:h-8" />
                   </Link>
                 </>
               )}
@@ -74,7 +74,7 @@ export function MainLayout() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               <div>
                 <Link to="/" className="inline-block mb-3">
-                  <NexLogsLogo className="h-10" />
+                  <NexLogsLogo className="h-8 sm:h-9" />
                 </Link>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   {content.footer.brandDescription}
