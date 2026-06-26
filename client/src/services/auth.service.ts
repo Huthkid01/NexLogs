@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { requestGoogleIdToken } from '@/lib/google-auth';
 import type { Profile } from '@/types';
 
 export const authService = {
@@ -27,11 +28,27 @@ export const authService = {
   },
 
   async signInWithGoogle() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const idToken = await requestGoogleIdToken();
+    const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      token: idToken,
     });
     if (error) throw error;
+
+    try {
+      const userId = data.user?.id ?? data.session?.user?.id;
+      if (userId) {
+        await supabase.from('activity_logs').insert({
+          user_id: userId,
+          action: 'signed_in',
+          entity: 'auth',
+          metadata: { provider: 'google' },
+        } as never);
+      }
+    } catch {
+      return data;
+    }
+
     return data;
   },
 

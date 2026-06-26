@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout';
 import { authService } from '@/services/auth.service';
+import { resetThemeForLogin } from '@/contexts/theme';
 import { APP_NAME } from '@/constants';
+import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 
@@ -25,6 +27,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
@@ -50,10 +53,22 @@ export default function RegisterPage() {
   };
 
   const handleGoogle = async () => {
+    if (!isGoogleSignInConfigured()) {
+      toast.error('Google sign-in is not configured. Add VITE_GOOGLE_CLIENT_ID in Vercel.');
+      return;
+    }
+
+    setGoogleLoading(true);
     try {
       await authService.signInWithGoogle();
+      resetThemeForLogin();
+      toast.success('Signed in with Google.');
+      navigate('/', { replace: true });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Google signup failed';
+      const message = normalizeAuthErrorMessage(err);
+      if (message === 'Google sign-in was cancelled') {
+        return;
+      }
       toast.error('We could not create your account with Google.');
       openErrorReport({
         title: 'Error while creating account',
@@ -61,6 +76,8 @@ export default function RegisterPage() {
         source: 'login',
         errorMessage: message,
       });
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -92,7 +109,7 @@ export default function RegisterPage() {
             <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground lg:bg-white lg:dark:bg-dm-bg">or continue with</span></div>
           </div>
 
-          <Button variant="outline" className="w-full" onClick={handleGoogle}>Google</Button>
+          <Button variant="outline" className="w-full" onClick={handleGoogle} loading={googleLoading} disabled={loading}>Google</Button>
 
           <p className="text-center text-sm text-muted-foreground">
             Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
