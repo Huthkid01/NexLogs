@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { categoryService, productService } from '@/services';
 import { supabase } from '@/lib/supabase';
-import { getProductIconPathFromSlug } from '@/lib/platform-icons';
+import { getPlatformFromCategory, resolveCategoryIconUrl, resolveProductIconUrl } from '@/lib/platform-icons';
 import { isRdpProduct } from '@/lib/rdp-utils';
 import { countProductDetailLines, normalizeProductDetailsStorage } from '@/lib/product-details';
 import {
@@ -163,7 +163,9 @@ export default function AdminProductsPage() {
   });
 
   const selectedCategory = categories?.find((category) => category.id === form.category_id);
-  const productIconUrl = selectedCategory?.image_url || getProductIconPathFromSlug(form.slug, form.platform);
+  const productIconUrl =
+    resolveCategoryIconUrl(selectedCategory) ||
+    resolveProductIconUrl({ slug: form.slug, platform: form.platform, category: selectedCategory });
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -181,7 +183,13 @@ export default function AdminProductsPage() {
   const saveProduct = useMutation({
     mutationFn: async ({ payload }: { payload: ReturnType<typeof buildProductPayload> }) => {
       const selectedCategory = categories?.find((category) => category.id === payload.category_id);
-      const iconUrl = selectedCategory?.image_url || getProductIconPathFromSlug(payload.slug, payload.platform);
+      const iconUrl =
+        resolveCategoryIconUrl(selectedCategory) ||
+        resolveProductIconUrl({
+          slug: payload.slug,
+          platform: payload.platform,
+          category: selectedCategory,
+        });
 
       const saved = editingProduct
         ? await productService.update(editingProduct.id, payload)
@@ -398,19 +406,29 @@ export default function AdminProductsPage() {
                         {productIconUrl ? (
                           <img src={productIconUrl} alt="" className="h-10 w-10 object-contain" />
                         ) : (
-                          <ProductIconBySlug slug={form.slug} platform={form.platform} size="md" className="h-10 w-10" />
+                          <ProductIconBySlug
+                            slug={form.slug}
+                            platform={form.platform}
+                            category={selectedCategory}
+                            size="md"
+                            className="h-10 w-10"
+                          />
                         )}
                       </div>
                       <div className={cn(
                         'rounded-2xl border px-4 py-3 text-sm',
                         isDark ? 'border-[#22324a] bg-[#06101d] text-slate-300' : 'border-slate-200 bg-white text-slate-600',
                       )}>
-                        {selectedCategory?.image_url
-                          ? 'Uses the icon uploaded on the selected category.'
-                          : 'Uses the platform icon until the category has a custom upload.'}
+                        {selectedCategory
+                          ? selectedCategory.image_url
+                            ? 'Uses the custom icon uploaded for this category.'
+                            : `Uses the default ${selectedCategory.name} category icon.`
+                          : 'Select a category to preview its icon.'}
                       </div>
                     </div>
-                    <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>Choose a category with an uploaded icon, or fall back to the platform icon.</p>
+                    <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
+                      The product icon follows the selected category. Platform is synced automatically.
+                    </p>
                   </div>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
@@ -435,7 +453,19 @@ export default function AdminProductsPage() {
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Category</label>
                       <select
                         value={form.category_id}
-                        onChange={(event) => setForm((current) => ({ ...current, category_id: event.target.value }))}
+                        onChange={(event) => {
+                          const categoryId = event.target.value;
+                          const category = categories?.find((item) => item.id === categoryId);
+                          const nextPlatform = category
+                            ? getPlatformFromCategory(category.slug || category.name)
+                            : null;
+
+                          setForm((current) => ({
+                            ...current,
+                            category_id: categoryId,
+                            platform: nextPlatform ?? current.platform,
+                          }));
+                        }}
                         className="admin-select"
                       >
                         <option value="">Select category</option>
@@ -445,9 +475,9 @@ export default function AdminProductsPage() {
                           </option>
                         ))}
                       </select>
-                      {selectedCategory?.image_url ? (
+                      {selectedCategory ? (
                         <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
-                          Category icon will be used on this product.
+                          {selectedCategory.name} icon will be used on this product.
                         </p>
                       ) : null}
                     </div>

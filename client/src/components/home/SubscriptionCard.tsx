@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { ProductIcon } from '@/components/common/ProductIcon';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import type { Product } from '@/types';
 
@@ -13,7 +13,7 @@ export function SubscriptionCard({ product }: SubscriptionCardProps) {
   return (
     <div className="flex w-[min(82vw,300px)] shrink-0 snap-start flex-col rounded-xl border border-gray-200 bg-white p-4 transition-colors dark:border-dm-border dark:bg-dm-surface dark:hover:bg-dm-product-row-hover sm:w-[300px]">
       <div className="flex items-start gap-3">
-        <PlatformIcon platform={product.platform} size="sm" className="mt-0.5 shrink-0" />
+        <ProductIcon product={product} size="sm" className="mt-0.5 shrink-0" />
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-bold leading-snug break-words text-gray-900 dark:text-gray-100 sm:line-clamp-3">
             {product.title}

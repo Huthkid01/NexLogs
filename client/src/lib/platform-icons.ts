@@ -7,8 +7,33 @@ export const PLATFORM_ICON_PATHS: Record<PlatformType, string> = {
   tiktok: '/images/platforms/tiktok.png',
   x: '/images/platforms/x.png',
   youtube: '/images/platforms/youtube.svg',
-  snapchat: '/images/platforms/snapchat.svg',
+  snapchat: '/images/platforms/snapchat.png',
 };
+
+export function resolveCategoryIconUrl(category?: {
+  name?: string | null;
+  slug?: string | null;
+  image_url?: string | null;
+} | null) {
+  if (!category) return null;
+  return category.image_url || getCategoryIconPath(category);
+}
+
+export function resolveProductIconUrl(input: {
+  slug: string;
+  platform: PlatformType;
+  category?: { name?: string | null; slug?: string | null; image_url?: string | null } | null;
+  product_images?: { image_url: string; sort_order?: number }[] | null;
+}) {
+  const categoryIcon = resolveCategoryIconUrl(input.category);
+  if (categoryIcon) return categoryIcon;
+
+  const storedImage =
+    input.product_images?.find((image) => image.sort_order === 0) ?? input.product_images?.[0];
+  if (storedImage?.image_url) return storedImage.image_url;
+
+  return getProductIconPathFromSlug(input.slug, input.platform);
+}
 
 export const RDP_ICON_PATH = '/images/platforms/rdp.svg';
 

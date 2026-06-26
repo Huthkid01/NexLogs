@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ShoppingCart, MapPin, Users, BadgeCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { ProductIcon } from '@/components/common/ProductIcon';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { formatNumber } from '@/lib/utils';
 import { PLATFORMS } from '@/constants';
@@ -24,7 +24,7 @@ export function ProductCard({ product, onAddToCart, onToggleWishlist, isInWishli
       <Link to="/marketplace">
         <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
           <div className="flex h-full w-full items-center justify-center">
-            <PlatformIcon platform={product.platform} className="h-24 w-24 transition-transform duration-500 group-hover:scale-105" />
+            <ProductIcon product={product} className="h-24 w-24 transition-transform duration-500 group-hover:scale-105" />
           </div>
           <div className="absolute top-3 left-3 flex gap-2">
             {product.verified && (

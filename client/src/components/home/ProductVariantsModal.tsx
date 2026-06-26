@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
-import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { ProductIcon } from '@/components/common/ProductIcon';
 import { openErrorReport } from '@/lib/error-report';
 import {
   getPurchaseErrorMessage,
@@ -185,7 +185,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
           <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5">
             <div className="rounded-lg border border-gray-200 dark:border-dm-border dark:bg-dm-product-row p-4 mb-4">
               <div className="flex items-start gap-3">
-                <PlatformIcon platform={displayProduct.platform} size="sm" />
+                <ProductIcon product={displayProduct} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
                     Description

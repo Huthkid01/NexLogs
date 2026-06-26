@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { categoryService, storageService } from '@/services';
-import { getCategoryIconPath, getPlatformFromCategory } from '@/lib/platform-icons';
+import { getCategoryIconPath, getPlatformFromCategory, resolveCategoryIconUrl } from '@/lib/platform-icons';
 import {
   adminActionIconButtonClass,
   adminIconButtonClass,
@@ -285,12 +285,8 @@ export default function AdminCategoriesPage() {
                   <div className="min-w-[180px]">
                     <div className="flex items-center gap-3">
                       <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center', adminPlatformIconWrapClass(isDark), 'text-blue-300')}>
-                        {getPlatformFromCategory(category.slug || category.name) || category.image_url ? (
-                          category.image_url ? (
-                            <img src={category.image_url} alt="" className="h-8 w-8 rounded-lg object-contain" />
-                          ) : (
-                            <PlatformIcon platform={getPlatformFromCategory(category.slug || category.name)!} size="sm" className="h-8 w-8" />
-                          )
+                        {resolveCategoryIconUrl(category) ? (
+                          <img src={resolveCategoryIconUrl(category)!} alt="" className="h-8 w-8 rounded-lg object-contain" />
                         ) : (
                           <Tag className="h-5 w-5" />
                         )}

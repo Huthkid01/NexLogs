@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { ProductIcon } from '@/components/common/ProductIcon';
 import { ProductVariantsModal } from '@/components/home/ProductVariantsModal';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import type { Product } from '@/types';
@@ -17,7 +17,7 @@ export function ProductListRow({ product }: ProductListRowProps) {
       <div className="transition-colors hover:bg-gray-50 dark:bg-dm-product-row dark:hover:bg-dm-product-row-hover">
         <div className="px-4 py-5 sm:px-5">
           <div className="flex items-start gap-3 sm:gap-4">
-            <PlatformIcon platform={product.platform} size="sm" className="mt-0.5 shrink-0" />
+            <ProductIcon product={product} size="sm" className="mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
               <h3 className="text-sm font-bold leading-snug break-words text-gray-900 dark:text-gray-100">
                 {product.title}
