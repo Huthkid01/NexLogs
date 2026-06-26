@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowRight, DollarSign, FolderKanban, LifeBuoy, Package, RefreshCw, Settings, ShoppingBag, Users } from 'lucide-react';
+import { ArrowRight, DollarSign, FolderKanban, LifeBuoy, Package, RefreshCw, Settings, ShoppingBag, Trash2, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
 import { useTheme } from '@/hooks/useTheme';
 import { adminService } from '@/services';
 import { cn } from '@/lib/utils';
@@ -18,9 +19,29 @@ export default function AdminDashboardPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [clearOrdersOpen, setClearOrdersOpen] = useState(false);
   const { data: stats, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: adminService.getStats,
+  });
+
+  const clearOrders = useMutation({
+    mutationFn: adminService.clearOrderHistory,
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-analytics'] });
+      setClearOrdersOpen(false);
+      toast.success(
+        result.deleted_orders > 0
+          ? `Cleared ${result.deleted_orders} orders and reset revenue`
+          : 'Order history is already empty',
+      );
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to clear orders';
+      toast.error(message);
+    },
   });
 
   if (isLoading) {
@@ -88,17 +109,30 @@ export default function AdminDashboardPage() {
             </p>
           )}
         </div>
-        <Button
-          variant="outline"
-          className={cn(
-            isDark ? 'border-[#22324a] bg-[#081624] text-slate-100 hover:bg-[#10213a]' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
-          )}
-          onClick={() => void handleRefresh()}
-          loading={isFetching}
-        >
-          {!isFetching && <RefreshCw className="h-4 w-4" />}
-          Refresh
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            variant="outline"
+            className={cn(
+              isDark ? 'border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20' : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+            )}
+            onClick={() => setClearOrdersOpen(true)}
+            disabled={!stats?.totalOrders}
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear orders
+          </Button>
+          <Button
+            variant="outline"
+            className={cn(
+              isDark ? 'border-[#22324a] bg-[#081624] text-slate-100 hover:bg-[#10213a]' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+            )}
+            onClick={() => void handleRefresh()}
+            loading={isFetching}
+          >
+            {!isFetching && <RefreshCw className="h-4 w-4" />}
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -225,6 +259,18 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <DeleteConfirmModal
+        open={clearOrdersOpen}
+        title="Clear order history"
+        message="Delete all orders and reset dashboard revenue? This cannot be undone. User wallets and products are not affected."
+        confirmLabel="Clear all orders"
+        loading={clearOrders.isPending}
+        onClose={() => {
+          if (!clearOrders.isPending) setClearOrdersOpen(false);
+        }}
+        onConfirm={() => clearOrders.mutate()}
+      />
     </div>
   );
 }

@@ -265,6 +265,18 @@ export const adminService = {
     return buildAdminAnalyticsSnapshot(orders, orderItems);
   },
 
+  async clearOrderHistory(): Promise<{ deleted_orders: number }> {
+    const { data, error } = await supabase.rpc('clear_order_history', {});
+    if (error) throw error;
+
+    const result = data as { cleared?: boolean; deleted_orders?: number } | null;
+    if (!result?.cleared) {
+      throw new Error('Failed to clear order history');
+    }
+
+    return { deleted_orders: result.deleted_orders ?? 0 };
+  },
+
   async getUsers(): Promise<Profile[]> {
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
