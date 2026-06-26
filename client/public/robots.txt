@@ -14,4 +14,4 @@ Disallow: /forgot-password
 Disallow: /suspended
 Disallow: /dashboard/
 
-Sitemap: https://nexlogs.store/sitemap.xml
+Sitemap: https://www.nexlogs.store/sitemap.xml
