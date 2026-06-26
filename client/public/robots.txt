@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /profile
+Disallow: /purchases
+Disallow: /add-funds
+Disallow: /purchase-rdp
+Disallow: /buy-numbers
+Disallow: /auth/
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /suspended
+Disallow: /dashboard/
+
+Sitemap: https://nexlogs.store/sitemap.xml
