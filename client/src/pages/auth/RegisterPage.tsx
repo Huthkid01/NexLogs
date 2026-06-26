@@ -12,6 +12,7 @@ import { authService } from '@/services/auth.service';
 import { resetThemeForLogin } from '@/contexts/theme';
 import { APP_NAME } from '@/constants';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 
@@ -52,23 +53,15 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    if (!isGoogleSignInConfigured()) {
-      toast.error('Google sign-in is not configured. Add VITE_GOOGLE_CLIENT_ID in Vercel.');
-      return;
-    }
-
+  const completeGoogleSignIn = async (idToken: string) => {
     setGoogleLoading(true);
     try {
-      await authService.signInWithGoogle();
+      await authService.signInWithGoogle(idToken);
       resetThemeForLogin();
       toast.success('Signed in with Google.');
       navigate('/', { replace: true });
     } catch (err: unknown) {
       const message = normalizeAuthErrorMessage(err);
-      if (message === 'Google sign-in was cancelled') {
-        return;
-      }
       toast.error('We could not create your account with Google.');
       openErrorReport({
         title: 'Error while creating account',
@@ -109,7 +102,20 @@ export default function RegisterPage() {
             <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground lg:bg-white lg:dark:bg-dm-bg">or continue with</span></div>
           </div>
 
-          <Button variant="outline" className="w-full" onClick={handleGoogle} loading={googleLoading} disabled={loading}>Google</Button>
+          {isGoogleSignInConfigured() ? (
+            <GoogleSignInButton
+              disabled={loading || googleLoading}
+              onCredential={completeGoogleSignIn}
+              onError={(error) => {
+                if (error.message === 'Google sign-in was cancelled') return;
+                toast.error(error.message);
+              }}
+            />
+          ) : (
+            <Button variant="outline" className="w-full" disabled>
+              Google sign-in not configured
+            </Button>
+          )}
 
           <p className="text-center text-sm text-muted-foreground">
             Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>

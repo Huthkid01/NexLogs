@@ -12,6 +12,7 @@ import { authService } from '@/services/auth.service';
 import { resetThemeForLogin } from '@/contexts/theme';
 import { APP_NAME } from '@/constants';
 import { getSupabaseConfigError } from '@/lib/mock-mode';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
@@ -57,36 +58,26 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogle = async () => {
+  const completeGoogleSignIn = async (idToken: string) => {
     const configError = getSupabaseConfigError();
     if (configError) {
       toast.error(configError);
-      openErrorReport({
-        title: 'Error while signing in',
-        message: 'Google sign-in is not configured on this deployment.',
-        source: 'login',
-        errorMessage: configError,
-      });
-      return;
-    }
-
-    if (!isGoogleSignInConfigured()) {
-      toast.error('Google sign-in is not configured. Add VITE_GOOGLE_CLIENT_ID in Vercel.');
       return;
     }
 
     setGoogleLoading(true);
     try {
-      await authService.signInWithGoogle();
+      await authService.signInWithGoogle(idToken);
       resetThemeForLogin();
       const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
       navigate(from && from !== '/login' ? from : '/', { replace: true });
     } catch (err: unknown) {
       const message = normalizeAuthErrorMessage(err);
-      if (message === 'Google sign-in was cancelled') {
+      if (message.includes('origin_mismatch') || message.includes('Origin')) {
+        toast.error('Google origin mismatch. Add this site URL in Google Cloud → Authorized JavaScript origins.');
         return;
       }
-      toast.error(message.includes('demo mode') ? getSupabaseConfigError() ?? 'Google sign-in requires Supabase env vars on this deployment.' : 'We could not sign you in with Google.');
+      toast.error('We could not sign you in with Google.');
       openErrorReport({
         title: 'Error while signing in',
         message: 'We could not sign you in with Google.',
@@ -125,10 +116,22 @@ export default function LoginPage() {
             <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground lg:bg-white lg:dark:bg-dm-bg">or continue with</span></div>
           </div>
 
-          <Button variant="outline" className="w-full" onClick={handleGoogle} loading={googleLoading} disabled={loading}>
-            <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            Google
-          </Button>
+          {isGoogleSignInConfigured() ? (
+            <GoogleSignInButton
+              disabled={loading || googleLoading}
+              onCredential={completeGoogleSignIn}
+              onError={(error) => {
+                if (error.message === 'Google sign-in was cancelled') return;
+                toast.error(error.message.includes('GOOGLE_SIGNIN_NOT_CONFIGURED')
+                  ? 'Add VITE_GOOGLE_CLIENT_ID in Vercel.'
+                  : error.message);
+              }}
+            />
+          ) : (
+            <Button variant="outline" className="w-full" disabled>
+              Google sign-in not configured
+            </Button>
+          )}
 
           <p className="text-center text-sm text-muted-foreground">
             Don't have an account? <Link to="/register" className="text-primary hover:underline">Sign up</Link>

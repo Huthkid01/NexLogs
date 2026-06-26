@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { requestGoogleIdToken } from '@/lib/google-auth';
 import type { Profile } from '@/types';
 
 export const authService = {
@@ -27,8 +26,7 @@ export const authService = {
     return data;
   },
 
-  async signInWithGoogle() {
-    const idToken = await requestGoogleIdToken();
+  async signInWithGoogle(idToken: string) {
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
       token: idToken,
