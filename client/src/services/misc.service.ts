@@ -267,14 +267,41 @@ export const adminService = {
 
   async clearOrderHistory(): Promise<{ deleted_orders: number }> {
     const { data, error } = await supabase.rpc('clear_order_history', {});
-    if (error) throw error;
 
-    const result = data as { cleared?: boolean; deleted_orders?: number } | null;
-    if (!result?.cleared) {
-      throw new Error('Failed to clear order history');
+    if (!error) {
+      const result = data as { cleared?: boolean; deleted_orders?: number } | null;
+      if (result?.cleared) {
+        return { deleted_orders: result.deleted_orders ?? 0 };
+      }
     }
 
-    return { deleted_orders: result.deleted_orders ?? 0 };
+    const rpcMessage = error?.message ?? '';
+    const rpcMissing =
+      rpcMessage.includes('clear_order_history') &&
+      (rpcMessage.includes('does not exist') || rpcMessage.includes('Could not find'));
+
+    if (!rpcMissing && error) {
+      throw new Error(error.message);
+    }
+
+    const { data: orders, error: selectError } = await supabase.from('orders').select('id');
+    if (selectError) throw new Error(selectError.message);
+
+    const orderIds = (orders ?? []).map((order) => order.id);
+    if (!orderIds.length) {
+      return { deleted_orders: 0 };
+    }
+
+    const { error: deleteError } = await supabase.from('orders').delete().in('id', orderIds);
+    if (deleteError) {
+      throw new Error(
+        deleteError.message.includes('policy')
+          ? 'Clear orders is not set up yet. Run migration 044_fix_clear_order_history.sql in Supabase SQL Editor.'
+          : deleteError.message,
+      );
+    }
+
+    return { deleted_orders: orderIds.length };
   },
 
   async getUsers(): Promise<Profile[]> {
