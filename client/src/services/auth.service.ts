@@ -33,18 +33,14 @@ export const authService = {
     });
     if (error) throw error;
 
-    try {
-      const userId = data.user?.id ?? data.session?.user?.id;
-      if (userId) {
-        await supabase.from('activity_logs').insert({
-          user_id: userId,
-          action: 'signed_in',
-          entity: 'auth',
-          metadata: { provider: 'google' },
-        } as never);
-      }
-    } catch {
-      return data;
+    const userId = data.user?.id ?? data.session?.user?.id;
+    if (userId) {
+      void supabase.from('activity_logs').insert({
+        user_id: userId,
+        action: 'signed_in',
+        entity: 'auth',
+        metadata: { provider: 'google' },
+      } as never);
     }
 
     return data;

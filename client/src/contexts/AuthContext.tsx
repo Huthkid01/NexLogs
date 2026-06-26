@@ -31,25 +31,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const applySession = async (sess: Session | null) => {
+    const fetchProfile = (userId: string) => {
+      void authService.getProfile(userId).then((p) => {
+        if (mounted) setProfile(p);
+      });
+    };
+
+    const applySession = (sess: Session | null) => {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        const p = await authService.getProfile(sess.user.id);
-        if (mounted) setProfile(p);
+        fetchProfile(sess.user.id);
       } else if (mounted) {
         setProfile(null);
       }
+      if (mounted) setLoading(false);
     };
 
-    authService.getSession().then(async (s) => {
-      await applySession(s);
-      if (mounted) setLoading(false);
+    authService.getSession().then((s) => {
+      if (!mounted) return;
+      applySession(s);
     });
 
-    const { data: { subscription } } = authService.onAuthStateChange(async (event, s) => {
+    const { data: { subscription } } = authService.onAuthStateChange((event, s) => {
       if (event === 'INITIAL_SESSION') return;
-      await applySession(s as Session | null);
+
+      const sess = s as Session | null;
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setSession(sess);
+        setUser(sess?.user ?? null);
+        if (sess?.user) fetchProfile(sess.user.id);
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (sess?.user) {
+        fetchProfile(sess.user.id);
+      } else if (mounted) {
+        setProfile(null);
+      }
       if (mounted) setLoading(false);
     });
 

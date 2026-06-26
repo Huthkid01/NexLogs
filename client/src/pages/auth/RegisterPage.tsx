@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout';
 import { authService } from '@/services/auth.service';
-import { resetThemeForLogin } from '@/contexts/theme';
+import { completeGoogleAuth } from '@/lib/google-sign-in';
 import { APP_NAME } from '@/constants';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -56,11 +56,9 @@ export default function RegisterPage() {
   const completeGoogleSignIn = async (idToken: string) => {
     setGoogleLoading(true);
     try {
-      await authService.signInWithGoogle(idToken);
-      resetThemeForLogin();
-      toast.success('Signed in with Google.');
-      navigate('/', { replace: true });
+      await completeGoogleAuth(idToken);
     } catch (err: unknown) {
+      setGoogleLoading(false);
       const message = normalizeAuthErrorMessage(err);
       toast.error('We could not create your account with Google.');
       openErrorReport({
@@ -69,8 +67,6 @@ export default function RegisterPage() {
         source: 'login',
         errorMessage: message,
       });
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -104,7 +100,8 @@ export default function RegisterPage() {
 
           {isGoogleSignInConfigured() ? (
             <GoogleSignInButton
-              disabled={loading || googleLoading}
+              disabled={loading}
+              processing={googleLoading}
               onCredential={completeGoogleSignIn}
               onError={(error) => {
                 if (error.message === 'Google sign-in was cancelled') return;

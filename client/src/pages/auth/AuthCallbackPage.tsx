@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { resetThemeForLogin } from '@/contexts/theme';
+import { GOOGLE_SIGN_IN_DESTINATION } from '@/lib/google-sign-in';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function AuthCallbackPage() {
           } as never)
           .then(() => undefined, () => undefined);
       }
-      navigate(session ? '/' : '/login', { replace: true });
+      navigate(session ? GOOGLE_SIGN_IN_DESTINATION : '/login', { replace: true });
     });
   }, [navigate]);
 

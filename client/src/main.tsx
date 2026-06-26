@@ -7,7 +7,12 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { SiteContentProvider } from '@/contexts/SiteContentContext';
 import { DisplayCurrencyProvider } from '@/contexts/DisplayCurrencyContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { isGoogleSignInConfigured, loadGoogleScript } from '@/lib/google-auth';
 import './index.css';
+
+if (isGoogleSignInConfigured()) {
+  void loadGoogleScript();
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {

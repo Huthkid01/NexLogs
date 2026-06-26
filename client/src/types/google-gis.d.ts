@@ -19,6 +19,7 @@ interface GoogleIdConfiguration {
   cancel_on_tap_outside?: boolean;
   context?: 'signin' | 'signup' | 'use';
   ux_mode?: 'popup' | 'redirect';
+  use_fedcm_for_prompt?: boolean;
 }
 
 interface GoogleAccountsId {

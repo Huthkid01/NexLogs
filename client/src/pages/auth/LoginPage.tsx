@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout';
 import { authService } from '@/services/auth.service';
 import { resetThemeForLogin } from '@/contexts/theme';
+import { completeGoogleAuth } from '@/lib/google-sign-in';
 import { APP_NAME } from '@/constants';
 import { getSupabaseConfigError } from '@/lib/mock-mode';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -67,11 +68,9 @@ export default function LoginPage() {
 
     setGoogleLoading(true);
     try {
-      await authService.signInWithGoogle(idToken);
-      resetThemeForLogin();
-      const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
-      navigate(from && from !== '/login' ? from : '/', { replace: true });
+      await completeGoogleAuth(idToken);
     } catch (err: unknown) {
+      setGoogleLoading(false);
       const message = normalizeAuthErrorMessage(err);
       if (message.includes('origin_mismatch') || message.includes('Origin')) {
         toast.error('Google origin mismatch. Add this site URL in Google Cloud → Authorized JavaScript origins.');
@@ -84,8 +83,6 @@ export default function LoginPage() {
         source: 'login',
         errorMessage: message,
       });
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -118,7 +115,8 @@ export default function LoginPage() {
 
           {isGoogleSignInConfigured() ? (
             <GoogleSignInButton
-              disabled={loading || googleLoading}
+              disabled={loading}
+              processing={googleLoading}
               onCredential={completeGoogleSignIn}
               onError={(error) => {
                 if (error.message === 'Google sign-in was cancelled') return;

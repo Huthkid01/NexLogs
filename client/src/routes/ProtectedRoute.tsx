@@ -27,7 +27,7 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
 export function GuestRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <AppLoader fullScreen />;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/marketplace" replace />;
   return <>{children}</>;
 }
 
