@@ -1,6 +1,7 @@
 import { createContext } from 'react';
 import { APP_NAME } from '@/constants';
 import { normalizeWalletExchangeRates } from '@/lib/wallet-exchange-rates';
+import { normalizeTelegramUrl } from '@/lib/telegram-url';
 import { DEFAULT_RDP_CATALOG, mergeRdpCatalog, type RdpCatalog } from '@/lib/rdp-catalog';
 
 export interface SiteContent {
@@ -165,7 +166,7 @@ export const defaultSiteContent: SiteContent = {
       {
         title: 'Telegram',
         description: 'Reach us via Telegram',
-        href: 'https://t.me/',
+        href: 'https://t.me/nexlogs',
       },
       {
         title: 'Email',
@@ -269,7 +270,7 @@ export const defaultSiteContent: SiteContent = {
     trustTitle: 'TRUST & SECURITY',
     trustItems: ['SSL Secured', 'Secure Payments', '24/7 Support'],
     socialLinks: [
-      { label: 'Telegram', href: '#' },
+      { label: 'Telegram', href: 'https://t.me/nexlogs' },
       { label: 'YouTube', href: '#' },
       { label: 'Link', href: '#' },
     ],
@@ -331,6 +332,32 @@ function normalizeHomeContent(home?: Partial<SiteContent['home']> & { buyBulkLab
   };
 }
 
+function normalizeSupportChannels(
+  channels?: SiteContent['support']['channels'] | null
+): SiteContent['support']['channels'] {
+  const source = channels ?? defaultSiteContent.support.channels;
+  return source.map((channel) => {
+    if (channel.title.toLowerCase() !== 'telegram') return channel;
+    return {
+      ...channel,
+      href: normalizeTelegramUrl(channel.href) ?? channel.href,
+    };
+  });
+}
+
+function normalizeSocialLinks(
+  links?: SiteContent['footer']['socialLinks'] | null
+): SiteContent['footer']['socialLinks'] {
+  const source = links ?? defaultSiteContent.footer.socialLinks;
+  return source.map((link) => {
+    if (link.label.toLowerCase() !== 'telegram') return link;
+    return {
+      ...link,
+      href: normalizeTelegramUrl(link.href) ?? link.href,
+    };
+  });
+}
+
 export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteContent {
   return {
     slides: normalizeSlides(content?.slides),
@@ -352,7 +379,7 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
     support: {
       ...defaultSiteContent.support,
       ...content?.support,
-      channels: content?.support?.channels ?? defaultSiteContent.support.channels,
+      channels: normalizeSupportChannels(content?.support?.channels),
       tutorials: content?.support?.tutorials ?? defaultSiteContent.support.tutorials,
     },
     terms: {
@@ -372,7 +399,7 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
       ...defaultSiteContent.footer,
       ...content?.footer,
       trustItems: content?.footer?.trustItems ?? defaultSiteContent.footer.trustItems,
-      socialLinks: content?.footer?.socialLinks ?? defaultSiteContent.footer.socialLinks,
+      socialLinks: normalizeSocialLinks(content?.footer?.socialLinks),
     },
     wallet: {
       exchangeRates: normalizeWalletExchangeRates(content?.wallet?.exchangeRates),

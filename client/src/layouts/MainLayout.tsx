@@ -10,6 +10,7 @@ import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { FloatingActions } from '@/components/layout/FloatingActions';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
+import { resolveSocialLinkHref } from '@/lib/telegram-url';
 
 export function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -92,10 +93,13 @@ export function MainLayout() {
                 <div className="flex gap-2">
                   {content.footer.socialLinks.map((link, index) => {
                     const Icon = socialIcons[index] ?? Link2;
+                    const href = resolveSocialLinkHref(link.label, link.href);
                     return (
                     <a
                       key={`${link.label}-${index}`}
-                      href={link.href}
+                      href={href}
+                      target={link.label.toLowerCase() === 'telegram' ? '_blank' : undefined}
+                      rel={link.label.toLowerCase() === 'telegram' ? 'noopener noreferrer' : undefined}
                       className="w-9 h-9 rounded-full bg-gray-200 dark:bg-dm-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-[#f26522] hover:text-white transition-colors"
                       aria-label={link.label}
                     >

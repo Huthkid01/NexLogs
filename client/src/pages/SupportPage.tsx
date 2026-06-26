@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Mail, Send } from 'lucide-react';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { normalizeTelegramUrl } from '@/lib/telegram-url';
 
 const SUPPORT_CHANNELS = [
   {
@@ -48,12 +49,16 @@ export default function SupportPage() {
             {content.support.channels.map((channel, index) => {
               const channelMeta = SUPPORT_CHANNELS[index];
               const Icon = channelMeta?.icon ?? Mail;
+              const href =
+                channel.title.toLowerCase() === 'telegram'
+                  ? normalizeTelegramUrl(channel.href) ?? channel.href
+                  : channel.href;
               return (
                 <a
                   key={`${channel.title}-${index}`}
-                  href={channel.href}
-                  target={index === 0 ? '_blank' : undefined}
-                  rel={index === 0 ? 'noopener noreferrer' : undefined}
+                  href={href}
+                  target={channel.title.toLowerCase() === 'telegram' ? '_blank' : undefined}
+                  rel={channel.title.toLowerCase() === 'telegram' ? 'noopener noreferrer' : undefined}
                   className="flex items-center gap-4 p-4 sm:p-5 bg-white dark:bg-dm-surface border border-gray-200 dark:border-dm-border rounded-xl hover:border-[#f26522]/40 transition-colors"
                 >
                   <span

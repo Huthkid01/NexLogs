@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { ChevronUp, MessageCircle } from 'lucide-react';
+import { useSiteContent } from '@/hooks/useSiteContent';
+import { getTelegramSupportUrl } from '@/lib/telegram-url';
 
-const TELEGRAM_SUPPORT_URL = 'https://t.me/';
 const SCROLL_THRESHOLD = 200;
 
 export function FloatingActions() {
+  const { content } = useSiteContent();
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const telegramUrl = getTelegramSupportUrl(content);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,7 +38,7 @@ export function FloatingActions() {
       )}
 
       <a
-        href={TELEGRAM_SUPPORT_URL}
+        href={telegramUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Open Telegram support"
