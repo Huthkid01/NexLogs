@@ -206,6 +206,7 @@ export interface ProductFilters {
   minPrice?: number;
   maxPrice?: number;
   categoryId?: string;
+  categorySlug?: string;
   sort?: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'popular';
   page?: number;
   limit?: number;

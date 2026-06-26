@@ -50,7 +50,8 @@ export default function HomePage() {
     queryFn: () =>
       productService.getProducts({
         categoryId: categoryId || undefined,
-        platform: !categoryId && categorySlug
+        categorySlug: categorySlug || undefined,
+        platform: !categoryId && categorySlug && categorySlug !== 'rdp'
           ? SHOP_CATEGORY_PLATFORMS[categorySlug as ShopCategorySlug]
           : undefined,
         search: search || undefined,

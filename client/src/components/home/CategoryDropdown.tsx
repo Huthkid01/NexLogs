@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { PlatformLogo } from '@/components/common/platform-logos';
-import { SHOP_CATEGORIES, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
+import { SHOP_CATEGORIES, SHOP_CATEGORY_ICON_PATHS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
 import { cn } from '@/lib/utils';
 
 interface CategoryDropdownProps {
@@ -26,12 +26,17 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const renderIcon = (slug: ShopCategorySlug) => (
-    <PlatformLogo
-      platform={SHOP_CATEGORY_PLATFORMS[slug]}
-      className="h-5 w-5"
-    />
-  );
+  const renderIcon = (slug: ShopCategorySlug) => {
+    const customIcon = SHOP_CATEGORY_ICON_PATHS[slug];
+    if (customIcon) {
+      return <img src={customIcon} alt="" className="h-5 w-5 shrink-0 object-contain" />;
+    }
+
+    const platform = SHOP_CATEGORY_PLATFORMS[slug];
+    if (!platform) return null;
+
+    return <PlatformLogo platform={platform} className="h-5 w-5" />;
+  };
 
   return (
     <div ref={containerRef} className="relative w-full max-w-[280px]">
