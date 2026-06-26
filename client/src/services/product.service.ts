@@ -62,7 +62,6 @@ export const productService = {
       .select('*, category:categories(*), product_images(*)')
       .eq('is_active', true)
       .eq('featured', true)
-      .not('slug', 'like', '%-rdp-%')
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true })
       .limit(limit);
@@ -131,6 +130,14 @@ export const productService = {
 
   async delete(id: string) {
     const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23503') {
+        const { error: archiveError } = await supabase.from('products').update({ is_active: false } as never).eq('id', id);
+        if (archiveError) throw archiveError;
+        return { archived: true as const };
+      }
+      throw error;
+    }
+    return { archived: false as const };
   },
 };

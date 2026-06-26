@@ -29,29 +29,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    authService.getSession().then((s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        authService.getProfile(s.user.id).then(setProfile);
-      }
-      setLoading(false);
-    });
+    let mounted = true;
 
-    const { data: { subscription } } = authService.onAuthStateChange(async (_event, s) => {
-      const sess = s as Session | null;
+    const applySession = async (sess: Session | null) => {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
         const p = await authService.getProfile(sess.user.id);
-        setProfile(p);
-      } else {
+        if (mounted) setProfile(p);
+      } else if (mounted) {
         setProfile(null);
       }
-      setLoading(false);
+    };
+
+    authService.getSession().then(async (s) => {
+      await applySession(s);
+      if (mounted) setLoading(false);
+    });
+
+    const { data: { subscription } } = authService.onAuthStateChange(async (event, s) => {
+      if (event === 'INITIAL_SESSION') return;
+      await applySession(s as Session | null);
+      if (mounted) setLoading(false);
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);

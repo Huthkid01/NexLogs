@@ -10,3 +10,14 @@ export function isRdpProduct(product: Pick<Product, 'slug'> | null | undefined):
 export function isRdpProductSlug(slug: string | null | undefined): boolean {
   return Boolean(slug?.includes('-rdp-'));
 }
+
+export function isRdpFormProduct(input: {
+  slug?: string | null;
+  niche?: string | null;
+  categorySlug?: string | null;
+}): boolean {
+  if (isRdpProductSlug(input.slug)) return true;
+  if (input.niche?.trim().toLowerCase() === 'rdp') return true;
+  if (input.categorySlug === 'rdp') return true;
+  return false;
+}

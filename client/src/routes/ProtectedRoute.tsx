@@ -33,9 +33,13 @@ export function GuestRoute({ children }: { children: React.ReactNode }) {
 
 export function AdminGuestRoute({ children }: { children: React.ReactNode }) {
   const { loading, isAdmin } = useAuth();
+  const location = useLocation();
 
   if (loading) return <AppLoader fullScreen />;
-  if (isAdmin) return <Navigate to="/admin" replace />;
+  if (isAdmin) {
+    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+    return <Navigate to={from?.startsWith('/admin') ? from : '/admin'} replace />;
+  }
 
   return <>{children}</>;
 }

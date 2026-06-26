@@ -43,7 +43,8 @@ export default function AdminLoginPage() {
   });
 
   if (isAdmin) {
-    return <Navigate to="/admin" replace />;
+    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+    return <Navigate to={from?.startsWith('/admin') ? from : '/admin'} replace />;
   }
 
   const onSubmit = async (data: AdminLoginForm) => {

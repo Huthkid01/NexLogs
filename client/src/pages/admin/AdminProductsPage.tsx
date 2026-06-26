@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { categoryService, productService } from '@/services';
 import { supabase } from '@/lib/supabase';
 import { getPlatformFromCategory, resolveCategoryIconUrl, resolveProductIconUrl } from '@/lib/platform-icons';
-import { isRdpProduct } from '@/lib/rdp-utils';
+import { isRdpProduct, isRdpFormProduct } from '@/lib/rdp-utils';
 import { countProductDetailLines, normalizeProductDetailsStorage } from '@/lib/product-details';
 import {
   adminActionIconButtonClass,
@@ -112,9 +112,10 @@ function createFormFromProduct(product: Product): ProductFormState {
   };
 }
 
-function buildProductPayload(form: ProductFormState) {
+function buildProductPayload(form: ProductFormState, categorySlug?: string | null) {
   const detailLineCount = countProductDetailLines(form.product_details);
-  const stockValue = detailLineCount > 0 ? detailLineCount : Number(form.stock);
+  const isRdp = isRdpFormProduct({ slug: form.slug, niche: form.niche, categorySlug });
+  const stockValue = isRdp || detailLineCount === 0 ? Number(form.stock) : detailLineCount;
 
   return {
     title: form.title.trim(),
@@ -163,6 +164,11 @@ export default function AdminProductsPage() {
   });
 
   const selectedCategory = categories?.find((category) => category.id === form.category_id);
+  const isRdpForm = isRdpFormProduct({
+    slug: form.slug,
+    niche: form.niche,
+    categorySlug: selectedCategory?.slug,
+  });
   const productIconUrl =
     resolveCategoryIconUrl(selectedCategory) ||
     resolveProductIconUrl({ slug: form.slug, platform: form.platform, category: selectedCategory });
@@ -215,9 +221,14 @@ export default function AdminProductsPage() {
 
   const deleteProduct = useMutation({
     mutationFn: productService.delete,
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      toast.success('Product deleted');
+      queryClient.invalidateQueries({ queryKey: ['home-products'] });
+      queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+      toast.success(result.archived ? 'Product archived (it has past orders)' : 'Product deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Could not delete product');
     },
   });
 
@@ -242,12 +253,17 @@ export default function AdminProductsPage() {
   const submitProduct = (event: { preventDefault: () => void }) => {
     event.preventDefault();
 
-    if (!form.title.trim() || !form.category_id || !form.price || !form.description.trim() || detailLineCount === 0) {
+    if (!form.title.trim() || !form.category_id || !form.price || !form.description.trim()) {
+      toast.error('Fill in the required product fields first.');
+      return;
+    }
+
+    if (!isRdpForm && detailLineCount === 0) {
       toast.error('Fill in the required product details first. Add at least one buyer copy line.');
       return;
     }
 
-    saveProduct.mutate({ payload: buildProductPayload(form) });
+    saveProduct.mutate({ payload: buildProductPayload(form, selectedCategory?.slug) });
   };
 
   if (isLoading || categoriesLoading) {
@@ -545,18 +561,27 @@ export default function AdminProductsPage() {
                       </p>
                     </div>
                     <div className="md:col-span-2">
-                      <ProductBuyerDetailsEditor
-                        key={editingProduct?.id ?? 'new-product'}
-                        value={form.product_details}
-                        onChange={(product_details, lineCount) => {
-                          setForm((current) => ({
-                            ...current,
-                            product_details,
-                            stock: lineCount > 0 ? String(lineCount) : current.stock,
-                          }));
-                        }}
-                        isDark={isDark}
-                      />
+                      {isRdpForm ? (
+                        <div className={cn(
+                          'rounded-2xl border px-4 py-3 text-sm',
+                          isDark ? 'border-[#22324a] bg-[#06101d] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
+                        )}>
+                          RDP products use manual fulfillment. After a buyer purchases, paste their credentials in Admin → Orders. Buyer copy lines are not required.
+                        </div>
+                      ) : (
+                        <ProductBuyerDetailsEditor
+                          key={editingProduct?.id ?? 'new-product'}
+                          value={form.product_details}
+                          onChange={(product_details, lineCount) => {
+                            setForm((current) => ({
+                              ...current,
+                              product_details,
+                              stock: lineCount > 0 ? String(lineCount) : current.stock,
+                            }));
+                          }}
+                          isDark={isDark}
+                        />
+                      )}
                     </div>
                   </div>
                 </section>
