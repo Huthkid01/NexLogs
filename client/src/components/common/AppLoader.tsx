@@ -1,5 +1,5 @@
-import { ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 
 interface AppLoaderProps {
   fullScreen?: boolean;
@@ -18,9 +18,9 @@ export function AppLoader({ fullScreen = false, className, iconClassName }: AppL
         className
       )}
     >
-      <ShoppingCart
-        className={cn('h-10 w-10 text-[#f26522] animate-pulse', iconClassName)}
-        strokeWidth={2.25}
+      <NexLogsLogo
+        variant="icon"
+        className={cn('h-12 animate-pulse', iconClassName)}
       />
     </div>
   );

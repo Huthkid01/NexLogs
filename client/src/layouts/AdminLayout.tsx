@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/constants';
+import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -93,20 +94,20 @@ export function AdminLayout() {
               <div className={cn('min-w-0', desktopSidebarCollapsed && 'lg:flex lg:w-full lg:flex-col lg:items-center lg:justify-center lg:gap-3')}>
                 <div className={cn(desktopSidebarCollapsed && 'lg:hidden')}>
                   <p className={cn('text-[11px] font-semibold uppercase tracking-[0.18em]', isDark ? 'text-amber-500/90' : 'text-[#f26522]')}>Admin Panel</p>
-                  <Link to="/admin" className={cn('admin-heading mt-2 block truncate text-2xl font-semibold', isDark ? 'text-slate-50' : 'text-slate-900')}>
-                    {APP_NAME}
+                  <Link to="/admin" className="mt-3 inline-block">
+                    <NexLogsLogo className="h-10" />
                   </Link>
                 </div>
                 <Link
                   to="/admin"
                   className={cn(
-                    'hidden h-10 w-10 items-center justify-center rounded-2xl border text-sm font-semibold',
-                    isDark ? 'border-[#22324a] bg-[#081624] text-slate-100' : 'border-slate-200 bg-slate-100 text-slate-800',
+                    'hidden items-center justify-center rounded-2xl border p-1',
+                    isDark ? 'border-[#22324a] bg-[#081624]' : 'border-slate-200 bg-slate-100',
                     desktopSidebarCollapsed && 'lg:inline-flex'
                   )}
                   title={APP_NAME}
                 >
-                  {APP_NAME.charAt(0).toUpperCase()}
+                  <NexLogsLogo variant="icon" className="h-8 w-14" />
                 </Link>
               </div>
               <button

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 
 const AUTH_HERO_IMAGE = '/images/auth/nexlogs-auth-hero.png';
 
@@ -16,6 +17,9 @@ export function AuthPageLayout({ children, title, description }: AuthPageLayoutP
         <div className="w-full max-w-md lg:max-w-[400px]">
           <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm lg:border-0 lg:bg-transparent lg:shadow-none">
             <div className="flex flex-col space-y-1.5 p-6 text-center lg:p-0 lg:text-left">
+              <div className="mb-2 flex justify-center lg:justify-start">
+                <NexLogsLogo className="h-12" />
+              </div>
               <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
               <p className="text-sm text-muted-foreground">{description}</p>
             </div>

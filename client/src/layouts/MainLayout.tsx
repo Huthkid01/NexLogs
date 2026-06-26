@@ -1,8 +1,9 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Menu, ShoppingCart, Send, PlayCircle, Link2, CheckCircle, Lock, Clock } from 'lucide-react';
+import { Menu, Send, PlayCircle, Link2, CheckCircle, Lock, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_NAME } from '@/constants';
+import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { SideMenu } from '@/components/layout/SideMenu';
 import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
 import { CurrencySelector } from '@/components/common/CurrencySelector';
@@ -41,11 +42,8 @@ export function MainLayout() {
                   >
                     <Menu className="h-6 w-6" strokeWidth={2} />
                   </button>
-                  <Link to="/" className="flex items-center gap-1.5">
-                    <ShoppingCart className="h-5 w-5 text-[#f26522]" strokeWidth={2.5} />
-                    <span className="logo-text text-[17px] sm:text-lg text-[#f26522] dark:text-white">
-                      {APP_NAME.toUpperCase().replace(/\s/g, '')}
-                    </span>
+                  <Link to="/" className="flex items-center">
+                    <NexLogsLogo className="h-9 sm:h-10" />
                   </Link>
                 </>
               )}
@@ -75,7 +73,9 @@ export function MainLayout() {
           <div className="px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               <div>
-                <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">{APP_NAME}</h3>
+                <Link to="/" className="inline-block mb-3">
+                  <NexLogsLogo className="h-10" />
+                </Link>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   {content.footer.brandDescription}
                 </p>

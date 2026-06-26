@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { resetThemeForLogin } from '@/contexts/theme';
-import { APP_NAME } from '@/constants';
+import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { getAdminLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { Input } from '@/components/ui/input';
 import { openErrorReport } from '@/lib/error-report';
@@ -96,11 +96,10 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff7f2_0%,#f8f9fa_45%,#eef2f7_100%)] text-gray-900 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-[#fde0cc] bg-white shadow-lg">
-            <Shield className="h-8 w-8 text-[#f26522]" strokeWidth={2.2} />
+          <div className="mx-auto mb-5 flex items-center justify-center">
+            <NexLogsLogo className="h-16" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{APP_NAME.toUpperCase()}</h1>
-          <p className="mt-2 text-sm text-gray-500">Admin Dashboard Access</p>
+          <p className="text-sm text-gray-500">Admin Dashboard Access</p>
         </div>
 
         <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-2xl">
