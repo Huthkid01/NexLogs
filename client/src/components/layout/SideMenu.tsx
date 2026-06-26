@@ -30,13 +30,19 @@ type AuthMenuItem = (typeof MENU_ITEMS)[number];
 type GuestMenuItem = (typeof GUEST_MENU_ITEMS)[number];
 type VisibleMenuItem = AuthMenuItem | GuestMenuItem;
 
-function TelegramPromoCard({ href }: { href: string }) {
+function TelegramPromoCard({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
   return (
     <div className="rounded-xl border border-[#fde0cc] bg-[#fff3eb] p-4">
-      <p className="text-sm font-bold leading-tight text-[#f26522]">Telegram channel/support</p>
-      <p className="mt-2 text-xs leading-relaxed text-[#b45309]">
-        daily update on high followers and monetized accounts
-      </p>
+      <p className="text-sm font-bold leading-tight text-[#f26522]">{title}</p>
+      <p className="mt-2 text-xs leading-relaxed text-[#b45309]">{description}</p>
       <a
         href={href}
         target="_blank"
@@ -116,7 +122,11 @@ export function SideMenu({ open, onClose }: SideMenuProps) {
           </nav>
 
           <div className="px-4 pb-4">
-            <TelegramPromoCard href={telegramHref} />
+            <TelegramPromoCard
+              href={telegramHref}
+              title={content.footer.telegramPromoTitle}
+              description={content.footer.telegramPromoDescription}
+            />
           </div>
         </div>
       </aside>

@@ -21,7 +21,7 @@ const sectionMeta = {
   },
   footer: {
     title: 'Footer',
-    description: 'Edit the public footer text, trust items, and social links.',
+    description: 'Edit footer text, side menu Telegram promo, trust items, and social links.',
   },
   about: {
     title: 'About Page',
@@ -138,7 +138,7 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
       {currentSection === 'footer' && <Card>
         <CardHeader>
           <CardTitle>Footer</CardTitle>
-          <CardDescription>Edit the public footer text, trust items, and social links.</CardDescription>
+          <CardDescription>Edit footer text, side menu Telegram promo, trust items, and social links.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div>
@@ -180,6 +180,33 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
                 />
               </div>
             ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label htmlFor="footer-telegram-title">Side Menu Telegram Title</Label>
+              <Input
+                id="footer-telegram-title"
+                value={draft.footer.telegramPromoTitle}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    footer: { ...draft.footer, telegramPromoTitle: e.target.value },
+                  })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="footer-telegram-description">Side Menu Telegram Description</Label>
+              <Textarea
+                id="footer-telegram-description"
+                value={draft.footer.telegramPromoDescription}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    footer: { ...draft.footer, telegramPromoDescription: e.target.value },
+                  })}
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">

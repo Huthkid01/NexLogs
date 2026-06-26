@@ -82,6 +82,8 @@ export interface SiteContent {
     connectTitle: string;
     trustTitle: string;
     trustItems: string[];
+    telegramPromoTitle: string;
+    telegramPromoDescription: string;
     socialLinks: Array<{
       label: string;
       href: string;
@@ -269,6 +271,8 @@ export const defaultSiteContent: SiteContent = {
     connectTitle: 'CONNECT WITH US',
     trustTitle: 'TRUST & SECURITY',
     trustItems: ['SSL Secured', 'Secure Payments', '24/7 Support'],
+    telegramPromoTitle: 'Telegram channel/support',
+    telegramPromoDescription: 'Daily updates on high-follower and monetized accounts.',
     socialLinks: [
       { label: 'Telegram', href: 'https://t.me/nexlogs' },
       { label: 'YouTube', href: '#' },
