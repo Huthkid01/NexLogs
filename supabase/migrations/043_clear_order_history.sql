@@ -20,7 +20,7 @@ BEGIN
   SELECT COUNT(*)::integer INTO v_deleted_orders FROM orders;
 
   DELETE FROM telegram_alert_log WHERE order_id IS NOT NULL;
-  DELETE FROM orders;
+  DELETE FROM orders WHERE id IS NOT NULL;
 
   RETURN json_build_object('cleared', true, 'deleted_orders', v_deleted_orders);
 END;

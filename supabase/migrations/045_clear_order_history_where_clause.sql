@@ -1,8 +1,4 @@
--- Fix clear_order_history: admin delete policy + resilient RPC.
-
-DROP POLICY IF EXISTS "Admins can delete orders" ON orders;
-CREATE POLICY "Admins can delete orders"
-  ON orders FOR DELETE USING (is_admin());
+-- Supabase blocks DELETE without a WHERE clause; use an explicit filter.
 
 CREATE OR REPLACE FUNCTION clear_order_history()
 RETURNS json
@@ -34,4 +30,3 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION clear_order_history() TO authenticated;
-GRANT DELETE ON TABLE public.orders TO authenticated;

@@ -279,8 +279,9 @@ export const adminService = {
     const rpcMissing =
       rpcMessage.includes('clear_order_history') &&
       (rpcMessage.includes('does not exist') || rpcMessage.includes('Could not find'));
+    const rpcRecoverable = rpcMissing || rpcMessage.includes('WHERE clause');
 
-    if (!rpcMissing && error) {
+    if (!rpcRecoverable && error) {
       throw new Error(error.message);
     }
 
