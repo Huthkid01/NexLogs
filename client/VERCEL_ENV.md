@@ -18,6 +18,22 @@ Use **`client/.env.vercel`** — copy/paste or import into Vercel.
 | `client/.env.vercel` | Your real values — **gitignored**, safe to copy to Vercel |
 | `client/.env.vercel.example` | Template with placeholders (committed to repo) |
 
+## Variables to add (all in Vercel)
+
+| Variable | Where to get it |
+|----------|-----------------|
+| `VITE_USE_MOCK_DATA` | `false` |
+| `VITE_SUPABASE_URL` | Supabase → Project Settings → API |
+| `VITE_SUPABASE_ANON_KEY` | Supabase → Project Settings → API (anon public) |
+| `VITE_APP_URL` | `https://www.nexlogs.store` |
+| `VITE_APP_NAME` | `Nexlogs` |
+| `VITE_KORA_PUBLIC_KEY` | Kora dashboard (live public key) |
+| `VITE_GOOGLE_CLIENT_ID` | Google Cloud → OAuth Web client ID |
+| `VITE_ADMIN_EMAIL` | Your admin login email |
+| `VITE_ADMIN_PASSWORD` | Your admin login password |
+
+Copy the full list from `client/.env.vercel.example`.
+
 ## Do NOT add to Vercel
 
 These stay in Supabase secrets / local `.env` only:
