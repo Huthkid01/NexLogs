@@ -15,19 +15,13 @@ async function getNextProductSortOrder(): Promise<number> {
 
 export const productService = {
   async getProducts(filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> {
-    const { search, platform, country, verified, minPrice, maxPrice, categoryId, categorySlug, sort = 'newest', page = 1, limit = 12 } = filters;
-    const isRdpCategory = categorySlug === 'rdp';
+    const { search, platform, country, verified, minPrice, maxPrice, categoryId, sort = 'newest', page = 1, limit = 12 } = filters;
 
     let query = supabase
       .from('products')
       .select('*, category:categories(*), product_images(*)', { count: 'exact' })
-      .eq('is_active', true);
-
-    if (isRdpCategory) {
-      query = query.like('slug', '%-rdp-%');
-    } else {
-      query = query.not('slug', 'like', '%-rdp-%');
-    }
+      .eq('is_active', true)
+      .not('slug', 'like', '%-rdp-%');
 
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,niche.ilike.%${search}%`);
     if (platform) query = query.eq('platform', platform);

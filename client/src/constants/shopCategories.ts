@@ -21,3 +21,7 @@ export const SHOP_CATEGORY_PLATFORMS: Partial<Record<ShopCategorySlug, PlatformT
 export const SHOP_CATEGORY_ICON_PATHS: Partial<Record<ShopCategorySlug, string>> = {
   rdp: RDP_ICON_PATH,
 };
+
+export const SHOP_CATEGORY_LINKS: Partial<Record<ShopCategorySlug, string>> = {
+  rdp: '/purchase-rdp',
+};

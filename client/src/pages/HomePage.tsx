@@ -7,7 +7,7 @@ import { CategoryDropdown } from '@/components/home/CategoryDropdown';
 import { SubscriptionCard } from '@/components/home/SubscriptionCard';
 import { ProductListRow } from '@/components/home/ProductListRow';
 import { AppLoader } from '@/components/common/AppLoader';
-import { SHOP_CATEGORIES, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
+import { SHOP_CATEGORIES, SHOP_CATEGORY_LINKS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
@@ -50,8 +50,7 @@ export default function HomePage() {
     queryFn: () =>
       productService.getProducts({
         categoryId: categoryId || undefined,
-        categorySlug: categorySlug || undefined,
-        platform: !categoryId && categorySlug && categorySlug !== 'rdp'
+        platform: !categoryId && categorySlug
           ? SHOP_CATEGORY_PLATFORMS[categorySlug as ShopCategorySlug]
           : undefined,
         search: search || undefined,
@@ -70,6 +69,13 @@ export default function HomePage() {
       navigate('/login');
       return;
     }
+
+    const link = SHOP_CATEGORY_LINKS[slug as ShopCategorySlug];
+    if (link) {
+      navigate(link);
+      return;
+    }
+
     setCategorySlug(slug);
     setPage(1);
   };
