@@ -209,45 +209,21 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {draft.footer.socialLinks.map((link, index) => (
-              <div key={`social-${index}`} className="space-y-3 rounded-lg border border-border p-4">
-                <div>
-                  <Label htmlFor={`social-label-${index}`}>Social Label {index + 1}</Label>
-                  <Input
-                    id={`social-label-${index}`}
-                    value={link.label}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        footer: {
-                          ...draft.footer,
-                          socialLinks: draft.footer.socialLinks.map((socialLink, socialIndex) => (
-                            socialIndex === index ? { ...socialLink, label: e.target.value } : socialLink
-                          )),
-                        },
-                      })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`social-href-${index}`}>Social URL {index + 1}</Label>
-                  <Input
-                    id={`social-href-${index}`}
-                    value={link.href}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        footer: {
-                          ...draft.footer,
-                          socialLinks: draft.footer.socialLinks.map((socialLink, socialIndex) => (
-                            socialIndex === index ? { ...socialLink, href: e.target.value } : socialLink
-                          )),
-                        },
-                      })}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="max-w-xl">
+            <Label htmlFor="footer-telegram-url">Footer Telegram URL</Label>
+            <Input
+              id="footer-telegram-url"
+              value={draft.footer.socialLinks[0]?.href ?? ''}
+              placeholder="https://t.me/nexlogs or @nexlogs"
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  footer: {
+                    ...draft.footer,
+                    socialLinks: [{ label: 'Telegram', href: e.target.value }],
+                  },
+                })}
+            />
           </div>
         </CardContent>
       </Card>}

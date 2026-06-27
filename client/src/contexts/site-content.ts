@@ -275,8 +275,6 @@ export const defaultSiteContent: SiteContent = {
     telegramPromoDescription: 'Daily updates on high-follower and monetized accounts.',
     socialLinks: [
       { label: 'Telegram', href: 'https://t.me/nexlogs' },
-      { label: 'YouTube', href: '#' },
-      { label: 'Link', href: '#' },
     ],
   },
   wallet: {
@@ -353,13 +351,17 @@ function normalizeSocialLinks(
   links?: SiteContent['footer']['socialLinks'] | null
 ): SiteContent['footer']['socialLinks'] {
   const source = links ?? defaultSiteContent.footer.socialLinks;
-  return source.map((link) => {
-    if (link.label.toLowerCase() !== 'telegram') return link;
-    return {
-      ...link,
-      href: normalizeTelegramUrl(link.href) ?? link.href,
-    };
-  });
+  const telegram =
+    source.find((link) => link.label.toLowerCase() === 'telegram') ??
+    defaultSiteContent.footer.socialLinks[0];
+
+  return [
+    {
+      ...telegram,
+      label: 'Telegram',
+      href: normalizeTelegramUrl(telegram.href) ?? telegram.href,
+    },
+  ];
 }
 
 export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteContent {

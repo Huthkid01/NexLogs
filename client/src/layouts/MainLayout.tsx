@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-import { Menu, Send, PlayCircle, Link2, CheckCircle, Lock, Clock } from 'lucide-react';
+import { Menu, Send, CheckCircle, Lock, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_NAME } from '@/constants';
 import { NexLogsLogo } from '@/components/common/NexLogsLogo';
@@ -22,8 +22,10 @@ export function MainLayout() {
   const isAuthPage = authPages.includes(location.pathname);
   const hideAuthLink = isAuthPage;
   const hideFloatingActions = isAuthPage;
-  const socialIcons = [Send, PlayCircle, Link2];
   const trustIcons = [CheckCircle, Lock, Clock];
+  const telegramLink = content.footer.socialLinks.find(
+    (link) => link.label.toLowerCase() === 'telegram',
+  );
 
   return (
     <div className="min-h-screen bg-white dark:bg-dm-bg">
@@ -90,24 +92,17 @@ export function MainLayout() {
               </div>
               <div>
                 <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm mb-3 tracking-wide">{content.footer.connectTitle}</h4>
-                <div className="flex gap-2">
-                  {content.footer.socialLinks.map((link, index) => {
-                    const Icon = socialIcons[index] ?? Link2;
-                    const href = resolveSocialLinkHref(link.label, link.href);
-                    return (
-                    <a
-                      key={`${link.label}-${index}`}
-                      href={href}
-                      target={link.label.toLowerCase() === 'telegram' ? '_blank' : undefined}
-                      rel={link.label.toLowerCase() === 'telegram' ? 'noopener noreferrer' : undefined}
-                      className="w-9 h-9 rounded-full bg-gray-200 dark:bg-dm-surface flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-[#f26522] hover:text-white transition-colors"
-                      aria-label={link.label}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </a>
-                    );
-                  })}
-                </div>
+                {telegramLink ? (
+                  <a
+                    href={resolveSocialLinkHref(telegramLink.label, telegramLink.href)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 text-gray-600 transition-colors hover:bg-[#f26522] hover:text-white dark:bg-dm-surface dark:text-gray-300"
+                    aria-label="Telegram"
+                  >
+                    <Send className="h-4 w-4" />
+                  </a>
+                ) : null}
               </div>
               <div>
                 <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm mb-3 tracking-wide">{content.footer.trustTitle}</h4>
