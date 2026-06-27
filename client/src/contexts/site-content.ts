@@ -29,11 +29,6 @@ export interface SiteContent {
     title: string;
     paragraphs: string[];
   };
-  contact: {
-    title: string;
-    cardTitle: string;
-    successMessage: string;
-  };
   faq: {
     title: string;
     items: Array<{
@@ -133,11 +128,6 @@ export const defaultSiteContent: SiteContent = {
       'Our mission is to make social media account transactions safe, transparent, and efficient. Every listing on our platform undergoes rigorous verification to ensure authenticity and quality.',
       `Founded with a vision to revolutionize the digital asset marketplace, ${APP_NAME} has helped thousands of entrepreneurs, agencies, and content creators acquire the social presence they need to grow their businesses.`,
     ],
-  },
-  contact: {
-    title: 'Contact Us',
-    cardTitle: 'Send us a message',
-    successMessage: 'Message sent! We will get back to you soon.',
   },
   faq: {
     title: 'Frequently Asked Questions',
@@ -372,10 +362,6 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
       ...defaultSiteContent.about,
       ...content?.about,
       paragraphs: content?.about?.paragraphs ?? defaultSiteContent.about.paragraphs,
-    },
-    contact: {
-      ...defaultSiteContent.contact,
-      ...content?.contact,
     },
     faq: {
       ...defaultSiteContent.faq,

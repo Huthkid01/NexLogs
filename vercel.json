@@ -4,6 +4,13 @@
   "installCommand": "npm install --include=optional",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    { "source": "/contact", "destination": "/support", "permanent": true },
+    { "source": "/blog", "destination": "/", "permanent": true },
+    { "source": "/blog/:slug", "destination": "/", "permanent": true },
+    { "source": "/cart", "destination": "/marketplace", "permanent": true },
+    { "source": "/admin/content/contact", "destination": "/admin/content/support", "permanent": true }
+  ],
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }

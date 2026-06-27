@@ -31,10 +31,6 @@ const sectionMeta = {
     title: 'FAQ Page',
     description: 'Control the FAQ title and question/answer pairs displayed publicly.',
   },
-  contact: {
-    title: 'Contact Page',
-    description: 'Edit the contact page title and success message.',
-  },
   support: {
     title: 'Support Page',
     description: 'Manage support channels, tutorials, and the refund policy shortcut button.',
@@ -308,27 +304,6 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>}
-
-      {currentSection === 'contact' && <Card>
-        <CardHeader>
-          <CardTitle>Contact Page</CardTitle>
-          <CardDescription>Edit the contact page title and success message.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div>
-            <Label htmlFor="contact-title">Page Title</Label>
-            <Input id="contact-title" value={draft.contact.title} onChange={(e) => setDraft({ ...draft, contact: { ...draft.contact, title: e.target.value } })} />
-          </div>
-          <div>
-            <Label htmlFor="contact-card-title">Form Card Title</Label>
-            <Input id="contact-card-title" value={draft.contact.cardTitle} onChange={(e) => setDraft({ ...draft, contact: { ...draft.contact, cardTitle: e.target.value } })} />
-          </div>
-          <div>
-            <Label htmlFor="contact-success">Success Toast Message</Label>
-            <Input id="contact-success" value={draft.contact.successMessage} onChange={(e) => setDraft({ ...draft, contact: { ...draft.contact, successMessage: e.target.value } })} />
-          </div>
         </CardContent>
       </Card>}
 

@@ -39,17 +39,16 @@ export const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/about', label: 'About' },
-  { href: '/contact', label: 'Contact' },
+  { href: '/support', label: 'Support' },
 ];
 
 export const FOOTER_LINKS = {
   company: [
     { href: '/about', label: 'About Us' },
-    { href: '/contact', label: 'Contact' },
   ],
   support: [
     { href: '/faq', label: 'FAQ' },
-    { href: '/contact', label: 'Support' },
+    { href: '/support', label: 'Support' },
   ],
   legal: [
     { href: '/privacy', label: 'Privacy Policy' },

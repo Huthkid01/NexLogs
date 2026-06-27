@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, Mail, FileText, RotateCcw, Images, ArrowUpDown, Monitor,
+  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, ArrowUpDown, Monitor,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +32,6 @@ const siteContentItems = [
   { href: '/admin/content/footer', label: 'Footer', icon: PanelsTopLeft },
   { href: '/admin/content/about', label: 'About Page', icon: Info },
   { href: '/admin/content/faq', label: 'FAQ', icon: CircleHelp },
-  { href: '/admin/content/contact', label: 'Contact Page', icon: Mail },
   { href: '/admin/content/support', label: 'Support Page', icon: LifeBuoy },
   { href: '/admin/content/terms', label: 'Terms & Conditions', icon: FileText },
   { href: '/admin/content/refund', label: 'Refund Policy', icon: RotateCcw },

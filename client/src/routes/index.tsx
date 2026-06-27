@@ -5,7 +5,6 @@ import { ProtectedRoute, GuestRoute, AdminGuestRoute, AdminRedirectGate } from '
 
 import HomePage from '@/pages/HomePage';
 import AboutPage from '@/pages/AboutPage';
-import ContactPage from '@/pages/ContactPage';
 import FaqPage from '@/pages/FaqPage';
 import SupportPage from '@/pages/SupportPage';
 import PrivacyPage from '@/pages/PrivacyPage';
@@ -50,8 +49,8 @@ const router = createBrowserRouter([
       { path: 'cart', element: <Navigate to="/marketplace" replace /> },
       { path: 'blog', element: <Navigate to="/" replace /> },
       { path: 'blog/:slug', element: <Navigate to="/" replace /> },
+      { path: 'contact', element: <Navigate to="/support" replace /> },
       { path: 'about', element: <AboutPage /> },
-      { path: 'contact', element: <ContactPage /> },
       { path: 'faq', element: <FaqPage /> },
       { path: 'support', element: <SupportPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
@@ -86,8 +85,8 @@ const router = createBrowserRouter([
       { path: 'slides', element: <AdminSlidesPage /> },
       { path: 'exchange-rates', element: <AdminExchangeRatesPage /> },
       { path: 'rdp', element: <AdminRdpPage /> },
-      { path: 'blog', element: <Navigate to="/admin" replace /> },
       { path: 'content', element: <Navigate to="/admin/content/homepage" replace /> },
+      { path: 'content/contact', element: <Navigate to="/admin/content/support" replace /> },
       { path: 'content/:section', element: <AdminContentPage /> },
       { path: 'analytics', element: <AdminAnalyticsPage /> },
     ],

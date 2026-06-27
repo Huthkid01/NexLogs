@@ -1,61 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { Cart, CartItem, Order, Coupon } from '@/types';
-
-export const cartService = {
-  async getCart(userId: string): Promise<Cart | null> {
-    const { data, error } = await supabase
-      .from('carts')
-      .select('*, cart_items(*, product:products(*, product_images(*)))')
-      .eq('user_id', userId)
-      .single();
-    if (error) return null;
-    return data as Cart;
-  },
-
-  async addItem(userId: string, productId: string, quantity = 1) {
-    let cart = await this.getCart(userId);
-    if (!cart) {
-      const { data, error } = await supabase.from('carts').insert({ user_id: userId } as never).select().single();
-      if (error) throw error;
-      cart = data as Cart;
-    }
-
-    const existing = cart.cart_items?.find((item: CartItem) => item.product_id === productId);
-    if (existing) {
-      const { error } = await supabase
-        .from('cart_items')
-        .update({ quantity: existing.quantity + quantity } as never)
-        .eq('id', existing.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from('cart_items')
-        .insert({ cart_id: cart.id, product_id: productId, quantity } as never);
-      if (error) throw error;
-    }
-    return this.getCart(userId);
-  },
-
-  async updateQuantity(cartItemId: string, quantity: number) {
-    if (quantity <= 0) {
-      const { error } = await supabase.from('cart_items').delete().eq('id', cartItemId);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from('cart_items').update({ quantity } as never).eq('id', cartItemId);
-      if (error) throw error;
-    }
-  },
-
-  async removeItem(cartItemId: string) {
-    const { error } = await supabase.from('cart_items').delete().eq('id', cartItemId);
-    if (error) throw error;
-  },
-
-  async clearCart(cartId: string) {
-    const { error } = await supabase.from('cart_items').delete().eq('cart_id', cartId);
-    if (error) throw error;
-  },
-};
+import type { Order, Coupon } from '@/types';
 
 export const orderService = {
   async purchaseWithWallet(productId: string, quantity = 1): Promise<string> {
@@ -114,58 +58,6 @@ export const orderService = {
         } as never);
       }
     }
-  },
-
-  async createOrder(userId: string, items: CartItem[], couponCode?: string): Promise<Order> {
-    let discountAmount = 0;
-    let couponId: string | null = null;
-
-    const subtotal = items.reduce((sum, item) => sum + (item.product?.price || 0) * item.quantity, 0);
-
-    if (couponCode) {
-      const coupon = await this.validateCoupon(couponCode, subtotal);
-      if (coupon) {
-        couponId = coupon.id;
-        discountAmount = coupon.discount_type === 'percentage'
-          ? subtotal * (coupon.discount / 100)
-          : coupon.discount;
-      }
-    }
-
-    const totalAmount = Math.max(0, subtotal - discountAmount);
-
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: userId,
-        total_amount: totalAmount,
-        discount_amount: discountAmount,
-        coupon_id: couponId,
-        status: 'pending',
-        payment_status: 'pending',
-      } as never)
-      .select()
-      .single();
-    if (orderError) throw orderError;
-
-    const orderItems = items.map((item) => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      price: item.product?.price || 0,
-    }));
-
-    const { error: itemsError } = await supabase.from('order_items').insert(orderItems as never);
-    if (itemsError) throw itemsError;
-
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      title: 'Order Placed',
-      message: `Your order has been placed successfully.`,
-      link: `/profile`,
-    } as never);
-
-    return order as Order;
   },
 
   async getUserOrders(userId: string): Promise<Order[]> {

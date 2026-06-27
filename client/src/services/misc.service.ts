@@ -1,38 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import type { Wishlist, Notification, Category, BlogPost, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog, Coupon } from '@/types';
+import type { Notification, Category, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog, Coupon } from '@/types';
 import { buildAdminAnalyticsSnapshot, EMPTY_ADMIN_ANALYTICS } from '@/lib/admin-analytics';
-
-export const wishlistService = {
-  async getWishlist(userId: string): Promise<Wishlist[]> {
-    const { data, error } = await supabase
-      .from('wishlists')
-      .select('*, product:products(*, product_images(*), category:categories(*))')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data || []) as Wishlist[];
-  },
-
-  async add(userId: string, productId: string) {
-    const { error } = await supabase.from('wishlists').insert({ user_id: userId, product_id: productId } as never);
-    if (error) throw error;
-  },
-
-  async remove(userId: string, productId: string) {
-    const { error } = await supabase.from('wishlists').delete().eq('user_id', userId).eq('product_id', productId);
-    if (error) throw error;
-  },
-
-  async isInWishlist(userId: string, productId: string): Promise<boolean> {
-    const { data } = await supabase
-      .from('wishlists')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('product_id', productId)
-      .single();
-    return !!data;
-  },
-};
 
 export const notificationService = {
   async getNotifications(userId: string): Promise<Notification[]> {
@@ -130,55 +98,6 @@ export const categoryService = {
 
   async delete(id: string) {
     const { error } = await supabase.from('categories').delete().eq('id', id);
-    if (error) throw error;
-  },
-};
-
-export const blogService = {
-  async getPublished(): Promise<BlogPost[]> {
-    const { data, error } = await supabase
-      .from('blog_posts')
-      .select('*, author:profiles(full_name, avatar_url)')
-      .eq('published', true)
-      .order('published_at', { ascending: false });
-    if (error) throw error;
-    return (data || []) as BlogPost[];
-  },
-
-  async getBySlug(slug: string): Promise<BlogPost | null> {
-    const { data, error } = await supabase
-      .from('blog_posts')
-      .select('*, author:profiles(full_name, avatar_url)')
-      .eq('slug', slug)
-      .eq('published', true)
-      .single();
-    if (error) return null;
-    return data as BlogPost;
-  },
-
-  async getAllAdmin(): Promise<BlogPost[]> {
-    const { data, error } = await supabase
-      .from('blog_posts')
-      .select('*, author:profiles(full_name)')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data || []) as BlogPost[];
-  },
-
-  async create(post: Partial<BlogPost>) {
-    const { data, error } = await supabase.from('blog_posts').insert(post as never).select().single();
-    if (error) throw error;
-    return data as BlogPost;
-  },
-
-  async update(id: string, updates: Partial<BlogPost>) {
-    const { data, error } = await supabase.from('blog_posts').update(updates as never).eq('id', id).select().single();
-    if (error) throw error;
-    return data as BlogPost;
-  },
-
-  async delete(id: string) {
-    const { error } = await supabase.from('blog_posts').delete().eq('id', id);
     if (error) throw error;
   },
 };
