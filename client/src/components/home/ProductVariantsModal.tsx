@@ -16,7 +16,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
-import { formatPrice } from '@/lib/utils';
 import { orderService, productService, profileService } from '@/services';
 import type { Product } from '@/types';
 
@@ -31,7 +30,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const queryClient = useQueryClient();
   const { content } = useSiteContent();
   const { user } = useAuth();
-  const { formatProductPrice } = useFormatDisplayPrice();
+  const { formatProductPrice, formatDisplayAmount } = useFormatDisplayPrice();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState('');
   const [logSeed, setLogSeed] = useState('');
@@ -265,8 +264,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
               Your wallet balance is not enough to buy this product. Add funds to continue.
             </p>
             <div className="mt-4 space-y-1 text-sm text-gray-700 dark:text-gray-200">
-              <p>Required: <span className="font-semibold">{formatProductPrice(requiredAmount)}</span></p>
-              <p>Balance: <span className="font-semibold">{formatPrice(stats?.balance ?? 0, 'USD')}</span></p>
+              <p>Required: <span className="font-semibold">{formatDisplayAmount(requiredAmount)}</span></p>
+              <p>Balance: <span className="font-semibold">{formatDisplayAmount(stats?.balance ?? 0)}</span></p>
             </div>
             <div className="mt-6 flex gap-3">
               <button

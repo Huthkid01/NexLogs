@@ -4,7 +4,7 @@ import { Info, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileService } from '@/services/profile.service';
-import { formatPrice } from '@/lib/utils';
+import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function formatDateTime(iso: string) {
@@ -31,6 +31,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 export default function ProfilePage() {
   const { user, profile } = useAuth();
   const [page, setPage] = useState(1);
+  const { formatDisplayAmount } = useFormatDisplayPrice();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['profile-stats', user?.id],
@@ -85,9 +86,9 @@ export default function ProfilePage() {
           </div>
         ) : stats && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Account Balance" value={formatPrice(stats.balance)} />
+            <StatCard label="Account Balance" value={formatDisplayAmount(stats.balance)} />
             <StatCard label="Total Purchases" value={String(stats.total_purchases)} />
-            <StatCard label="Total Amount Spent" value={formatPrice(stats.total_spent)} />
+            <StatCard label="Total Amount Spent" value={formatDisplayAmount(stats.total_spent)} />
           </div>
         )}
 
@@ -123,7 +124,7 @@ export default function ProfilePage() {
                         <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDateTime(tx.created_at)}</td>
                         <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDateTime(tx.updated_at)}</td>
                         <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400">{tx.payment_method}</td>
-                        <td className="px-4 py-3.5 text-gray-900 dark:text-gray-100 font-medium">{formatPrice(tx.amount)}</td>
+                        <td className="px-4 py-3.5 text-gray-900 dark:text-gray-100 font-medium">{formatDisplayAmount(tx.amount)}</td>
                         <td className="px-4 sm:px-6 py-3.5">
                           <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 capitalize">
                             {tx.status}
@@ -192,7 +193,7 @@ export default function ProfilePage() {
                   </p>
                   <p className="text-2xl sm:text-3xl font-bold mt-2">{referral.qualified_referrals}</p>
                 </div>
-                <StatCard label="Total Earnings" value={formatPrice(referral.total_earnings)} />
+                <StatCard label="Total Earnings" value={formatDisplayAmount(referral.total_earnings)} />
               </div>
             </>
           )}

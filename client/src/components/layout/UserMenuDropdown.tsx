@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Moon, Sun, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
+import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { profileService } from '@/services/profile.service';
-import { cn, formatPrice } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 export function UserMenuDropdown() {
   const [open, setOpen] = useState(false);
@@ -20,6 +21,7 @@ export function UserMenuDropdown() {
     enabled: !!user?.id,
     refetchOnWindowFocus: true,
   });
+  const { formatDisplayAmount } = useFormatDisplayPrice();
   const balance = stats?.balance ?? 0;
   const profileHref = profile?.role === 'admin' ? '/admin' : '/profile';
 
@@ -65,7 +67,7 @@ export function UserMenuDropdown() {
           <User className="h-4 w-4 text-white" />
         </span>
         <span className="truncate hidden sm:inline">{user.email}</span>
-        <span className="font-semibold shrink-0">({formatPrice(balance, 'USD')})</span>
+        <span className="font-semibold shrink-0">({formatDisplayAmount(balance)})</span>
         <ChevronDown
           className={cn('h-4 w-4 shrink-0 opacity-80 transition-transform', open && 'rotate-180')}
         />

@@ -21,7 +21,7 @@ export function CurrencySelector({ className, compact = false }: CurrencySelecto
       <select
         value={currency}
         onChange={(event) => setCurrency(event.target.value as DisplayCurrency)}
-        aria-label="Product price currency"
+        aria-label="Product and wallet currency"
         className={cn(
           'appearance-none rounded-lg border border-gray-200 dark:border-dm-border bg-white dark:bg-dm-surface',
           'text-xs font-semibold text-gray-700 dark:text-gray-200',
