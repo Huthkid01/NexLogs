@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { authService } from '@/services/auth.service';
+import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
 import type { Profile } from '@/types';
 
 interface AuthContextType {
@@ -58,6 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const sess = s as Session | null;
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN') {
+          resetDisplayCurrencyForLogin();
+        }
         setSession(sess);
         setUser(sess?.user ?? null);
         if (sess?.user) fetchProfile(sess.user.id);

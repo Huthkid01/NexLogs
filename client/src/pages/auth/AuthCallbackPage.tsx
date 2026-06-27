@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { resetThemeForLogin } from '@/contexts/theme';
+import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
 import { GOOGLE_SIGN_IN_DESTINATION } from '@/lib/google-sign-in';
 
 export default function AuthCallbackPage() {
@@ -11,6 +12,7 @@ export default function AuthCallbackPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.id) {
         resetThemeForLogin();
+        resetDisplayCurrencyForLogin();
         supabase
           .from('activity_logs')
           .insert({

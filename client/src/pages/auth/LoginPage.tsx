@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout';
 import { authService } from '@/services/auth.service';
 import { resetThemeForLogin } from '@/contexts/theme';
+import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
 import { completeGoogleAuth } from '@/lib/google-sign-in';
 import { APP_NAME } from '@/constants';
 import { getSupabaseConfigError } from '@/lib/mock-mode';
@@ -40,6 +41,7 @@ export default function LoginPage() {
     try {
       await authService.signIn(data.email, data.password);
       resetThemeForLogin();
+      resetDisplayCurrencyForLogin();
       const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
       navigate(from && from !== '/login' ? from : '/', { replace: true });
     } catch (err: unknown) {

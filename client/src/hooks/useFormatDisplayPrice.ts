@@ -3,6 +3,7 @@ import { formatDisplayPrice } from '@/lib/display-currency';
 import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
+/** Format marketplace product prices in the user's chosen display currency (default NGN after login). */
 export function useFormatDisplayPrice() {
   const { currency } = useDisplayCurrency();
   const { content } = useSiteContent();

@@ -12,12 +12,9 @@ interface SideMenuProps {
 
 const MENU_ITEMS = [
   { label: 'Marketplace', emoji: '🏠', href: '/marketplace', auth: true },
+  { label: 'Purchase RDP', emoji: '🖥️', href: '/purchase-rdp', auth: true },
   { label: 'My Purchases', emoji: '🛒', href: '/purchases', auth: true },
   { label: 'Buy Numbers', emoji: '📱', href: '/buy-numbers', auth: true },
-  { label: 'Subscription Apps', emoji: '🌐', href: '/marketplace#subscriptions', auth: true },
-  { label: 'Buy in bulk', emoji: '🛍️', href: '/support', auth: true },
-  { label: 'Buy followers & more', emoji: '📈', href: '/marketplace#catalog', auth: true },
-  { label: 'Support Tickets', emoji: '🎫', href: '/support', auth: true },
   { label: 'Need help?', emoji: '👨‍💻', href: '/support', auth: false },
 ] as const;
 

@@ -9,8 +9,8 @@ interface CurrencySelectorProps {
 }
 
 const OPTIONS: Array<{ code: DisplayCurrency; label: string }> = [
-  { code: 'USD', label: 'USD ($)' },
   { code: 'NGN', label: 'NGN (₦)' },
+  { code: 'USD', label: 'USD ($)' },
 ];
 
 export function CurrencySelector({ className, compact = false }: CurrencySelectorProps) {
@@ -21,7 +21,7 @@ export function CurrencySelector({ className, compact = false }: CurrencySelecto
       <select
         value={currency}
         onChange={(event) => setCurrency(event.target.value as DisplayCurrency)}
-        aria-label="Display currency"
+        aria-label="Product price currency"
         className={cn(
           'appearance-none rounded-lg border border-gray-200 dark:border-dm-border bg-white dark:bg-dm-surface',
           'text-xs font-semibold text-gray-700 dark:text-gray-200',

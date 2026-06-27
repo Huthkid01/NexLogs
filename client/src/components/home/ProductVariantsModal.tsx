@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
+import { formatPrice } from '@/lib/utils';
 import { orderService, productService, profileService } from '@/services';
 import type { Product } from '@/types';
 
@@ -265,7 +266,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
             </p>
             <div className="mt-4 space-y-1 text-sm text-gray-700 dark:text-gray-200">
               <p>Required: <span className="font-semibold">{formatProductPrice(requiredAmount)}</span></p>
-              <p>Balance: <span className="font-semibold">{formatProductPrice(stats?.balance ?? 0)}</span></p>
+              <p>Balance: <span className="font-semibold">{formatPrice(stats?.balance ?? 0, 'USD')}</span></p>
             </div>
             <div className="mt-6 flex gap-3">
               <button
