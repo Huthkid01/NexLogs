@@ -290,7 +290,7 @@ export function HtmlCampaignComposer({
         {previewInlineOpen && (
           <div className="max-h-[min(42vh,360px)] shrink-0 overflow-y-auto border-t border-slate-100 bg-slate-50/80 px-4 py-4 dark:border-[#18263b] dark:bg-[#06101d]/50">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold">Inbox preview &amp; placement checks</p>
+              <p className="text-sm font-semibold">Inbox placement checks</p>
               <button
                 type="button"
                 onClick={() => updateHtmlCampaign({ previewInlineOpen: false })}
