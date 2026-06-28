@@ -24,8 +24,8 @@ import {
 } from '@/lib/html-campaign-draft';
 import {
   DEFAULT_HTML_CAMPAIGN_SUBJECT,
+  HTML_CAMPAIGN_TEMPLATE_CATEGORIES,
   HTML_CAMPAIGN_TEMPLATES,
-  WELCOME_CAMPAIGN_SUBJECT,
 } from '@/lib/html-campaign-templates';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +42,8 @@ export interface HtmlCampaignComposerProps {
   onTemplateNameChange: (value: string) => void;
   selectedRecipientIds: string[];
   onSelectedRecipientIdsChange: (ids: string[]) => void;
+  selectedExternalEmails: string[];
+  onSelectedExternalEmailsChange: (emails: string[]) => void;
   onSend: () => void;
   sending?: boolean;
   canSend: boolean;
@@ -58,6 +60,8 @@ export function HtmlCampaignComposer({
   onTemplateNameChange,
   selectedRecipientIds,
   onSelectedRecipientIdsChange,
+  selectedExternalEmails,
+  onSelectedExternalEmailsChange,
   onSend,
   sending = false,
   canSend,
@@ -71,7 +75,7 @@ export function HtmlCampaignComposer({
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
 
-  const sendCount = selectedRecipientIds.length;
+  const sendCount = selectedRecipientIds.length + selectedExternalEmails.length;
   const deliverability = useHtmlCampaignDeliverability(subject, htmlBody, sendCount);
   const selectedTemplate = useMemo(
     () => HTML_CAMPAIGN_TEMPLATES.find((template) => template.id === templateName),
@@ -84,6 +88,7 @@ export function HtmlCampaignComposer({
       htmlBody,
       templateName,
       selectedRecipientIds,
+      selectedExternalEmails,
     });
     setDraftSavedAt(saved.savedAt);
     toast.success('HTML campaign draft saved');
@@ -105,19 +110,28 @@ export function HtmlCampaignComposer({
     if (!template) return;
     onTemplateNameChange(template.id);
     onHtmlBodyChange(template.html);
-    if (template.id === 'welcome-message') {
-      onSubjectChange(WELCOME_CAMPAIGN_SUBJECT);
+    if (template.defaultSubject) {
+      onSubjectChange(template.defaultSubject);
     }
     setTemplateMenuOpen(false);
     toast.success(`Template "${template.name}" loaded`);
   };
 
   const handleSendClick = () => {
-    if (!canSend) {
-      if (!selectedRecipientIds.length) toast.error('Add at least one recipient in the To field.');
-      else if (!htmlBody.trim()) toast.error('Add HTML content before sending.');
-      else if (!subject.trim()) toast.error('Add a subject before sending.');
-      else if (!deliverability.canSend) toast.error('Fix the failed inbox checks before sending.');
+    if (!sendCount) {
+      toast.error('Add at least one recipient in the To field.');
+      return;
+    }
+    if (!htmlBody.trim()) {
+      toast.error('Add HTML content before sending.');
+      return;
+    }
+    if (!subject.trim()) {
+      toast.error('Add a subject before sending.');
+      return;
+    }
+    if (!deliverability.canSend) {
+      toast.error('Fix the failed inbox checks before sending.');
       return;
     }
     onSend();
@@ -191,6 +205,8 @@ export function HtmlCampaignComposer({
           contacts={contacts}
           selectedIds={selectedRecipientIds}
           onChange={onSelectedRecipientIdsChange}
+          selectedExternalEmails={selectedExternalEmails}
+          onExternalEmailsChange={onSelectedExternalEmailsChange}
           loading={contactsLoading}
           variant="composer"
         />
@@ -221,20 +237,46 @@ export function HtmlCampaignComposer({
             {templateMenuOpen && (
               <>
                 <button type="button" className="fixed inset-0 z-10" onClick={() => setTemplateMenuOpen(false)} />
-                <div className="absolute left-0 top-full z-20 mt-1 min-w-[220px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-[#22324a] dark:bg-[#0b1628]">
-                  {HTML_CAMPAIGN_TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => applyTemplate(template.id)}
-                      className={cn(
-                        'block w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-[#06101d]',
-                        template.id === templateName && 'text-violet-600 dark:text-violet-400',
-                      )}
-                    >
-                      {template.name}
-                    </button>
-                  ))}
+                <div className="absolute left-0 top-full z-20 mt-1 max-h-[min(70vh,420px)] w-[min(92vw,320px)] overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 shadow-xl dark:border-[#22324a] dark:bg-[#0b1628]">
+                  {HTML_CAMPAIGN_TEMPLATE_CATEGORIES.map((category) => {
+                    const templates = HTML_CAMPAIGN_TEMPLATES.filter(
+                      (template) => template.category === category.id,
+                    );
+                    if (!templates.length) return null;
+
+                    return (
+                      <div key={category.id} className="px-1 pb-1">
+                        <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                          {category.label}
+                        </p>
+                        {templates.map((template) => (
+                          <button
+                            key={template.id}
+                            type="button"
+                            onClick={() => applyTemplate(template.id)}
+                            className={cn(
+                              'block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-[#06101d]',
+                              template.id === templateName && 'bg-violet-50 dark:bg-violet-950/40',
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'block text-sm font-medium',
+                                template.id === templateName && 'text-violet-600 dark:text-violet-400',
+                              )}
+                            >
+                              {template.name}
+                            </span>
+                            {template.description && (
+                              <span className="mt-0.5 block text-xs leading-snug text-slate-500">
+                                {template.description}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -312,7 +354,7 @@ export function HtmlCampaignComposer({
             <div className="relative flex">
               <button
                 type="button"
-                disabled={sending}
+                disabled={sending || !canSend}
                 onClick={handleSendClick}
                 className="inline-flex h-9 items-center rounded-l-full bg-[#7c3aed] px-5 text-sm font-semibold text-white hover:bg-[#6d28d9] disabled:opacity-50"
               >

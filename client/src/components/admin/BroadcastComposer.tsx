@@ -46,6 +46,8 @@ export interface BroadcastComposerProps {
   onSelectedProductIdsChange: (ids: string[]) => void;
   selectedRecipientIds: string[];
   onSelectedRecipientIdsChange: (ids: string[]) => void;
+  selectedExternalEmails: string[];
+  onSelectedExternalEmailsChange: (emails: string[]) => void;
   onSend: () => void;
   sending?: boolean;
   canSend: boolean;
@@ -64,6 +66,8 @@ export function BroadcastComposer({
   onSelectedProductIdsChange,
   selectedRecipientIds,
   onSelectedRecipientIdsChange,
+  selectedExternalEmails,
+  onSelectedExternalEmailsChange,
   onSend,
   sending = false,
   canSend,
@@ -93,7 +97,7 @@ export function BroadcastComposer({
     selectedProductIds.length,
   );
 
-  const sendCount = selectedRecipientIds.length;
+  const sendCount = selectedRecipientIds.length + selectedExternalEmails.length;
 
   const toggleProduct = (productId: string) => {
     onSelectedProductIdsChange(
@@ -113,6 +117,7 @@ export function BroadcastComposer({
       customMessage,
       selectedProductIds,
       selectedRecipientIds,
+      selectedExternalEmails,
     });
     setDraftSavedAt(saved.savedAt);
     toast.success('Draft saved');
@@ -148,10 +153,16 @@ export function BroadcastComposer({
   };
 
   const handleSendClick = () => {
-    if (!canSend) {
-      if (!selectedRecipientIds.length) toast.error('Add at least one recipient in the To field.');
-      else if (!selectedProductIds.length) toast.error('Select at least one product to include.');
-      else if (!deliverability.canSend) toast.error('Fix the failed inbox checks before sending.');
+    if (!sendCount) {
+      toast.error('Add at least one recipient in the To field.');
+      return;
+    }
+    if (!selectedProductIds.length) {
+      toast.error('Select at least one product to include.');
+      return;
+    }
+    if (!deliverability.canSend) {
+      toast.error('Fix the failed inbox checks before sending.');
       return;
     }
     onSend();
@@ -232,6 +243,8 @@ export function BroadcastComposer({
           contacts={contacts}
           selectedIds={selectedRecipientIds}
           onChange={onSelectedRecipientIdsChange}
+          selectedExternalEmails={selectedExternalEmails}
+          onExternalEmailsChange={onSelectedExternalEmailsChange}
           loading={contactsLoading}
           variant="composer"
           showCcToggle
@@ -303,7 +316,7 @@ export function BroadcastComposer({
             <div className="relative flex">
               <button
                 type="button"
-                disabled={sending}
+                disabled={sending || !canSend}
                 onClick={handleSendClick}
                 className="inline-flex h-9 items-center rounded-l-full bg-[#7c3aed] px-5 text-sm font-semibold text-white hover:bg-[#6d28d9] disabled:opacity-50"
               >

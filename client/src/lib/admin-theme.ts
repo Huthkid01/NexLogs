@@ -39,8 +39,12 @@ export function adminInputClass(isDark: boolean) {
   );
 }
 
-export function adminModalOverlayClass(isDark: boolean) {
-  return cn('fixed inset-0 z-[70] flex items-center justify-center p-4 backdrop-blur-sm', isDark ? 'bg-[#020817]/70' : 'bg-black/40');
+export function adminModalOverlayClass(isDark: boolean, zIndexClass = 'z-[70]') {
+  return cn(
+    'fixed inset-0 flex items-center justify-center p-4 backdrop-blur-sm',
+    zIndexClass,
+    isDark ? 'bg-[#020817]/70' : 'bg-black/40',
+  );
 }
 
 export function adminModalClass(isDark: boolean) {

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 interface EmailSendRecipientsPanelProps {
   recipientUserIds: string[];
+  recipientEmails?: string[];
   contacts: BroadcastContact[];
   failedCount?: number;
   onSelectMissing?: (ids: string[]) => void;
@@ -14,6 +15,7 @@ interface EmailSendRecipientsPanelProps {
 
 export function EmailSendRecipientsPanel({
   recipientUserIds,
+  recipientEmails = [],
   contacts,
   failedCount = 0,
   onSelectMissing,
@@ -26,10 +28,18 @@ export function EmailSendRecipientsPanel({
   const contactById = useMemo(() => new Map(contacts.map((contact) => [contact.id, contact])), [contacts]);
 
   const sentContacts = useMemo(() => {
-    return recipientUserIds
+    const fromUsers = recipientUserIds
       .map((id) => contactById.get(id))
       .filter((contact): contact is BroadcastContact => Boolean(contact));
-  }, [recipientUserIds, contactById]);
+
+    const fromExternal = recipientEmails.map((email) => ({
+      id: `external:${email}`,
+      email,
+      fullName: email.split('@')[0],
+    }));
+
+    return [...fromUsers, ...fromExternal];
+  }, [recipientUserIds, recipientEmails, contactById]);
 
   const missingContacts = useMemo(() => {
     return contacts.filter((contact) => !recipientSet.has(contact.id));
@@ -47,7 +57,7 @@ export function EmailSendRecipientsPanel({
     );
   }, [activeList, query]);
 
-  const hasRecipientLog = recipientUserIds.length > 0;
+  const hasRecipientLog = recipientUserIds.length > 0 || recipientEmails.length > 0;
 
   return (
     <div className="flex h-full min-h-[320px] flex-col gap-4">

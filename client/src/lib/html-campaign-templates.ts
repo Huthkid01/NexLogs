@@ -1,81 +1,286 @@
 import { APP_NAME, APP_URL } from '@/constants';
 import { buildEmailHeroRow, buildEmailLogoHeader } from '@/lib/email-branding';
 
+export type HtmlCampaignTemplateCategory = 'general' | 'marketing' | 'account';
+
 export interface HtmlCampaignTemplate {
   id: string;
   name: string;
+  category: HtmlCampaignTemplateCategory;
+  description?: string;
+  defaultSubject?: string;
   html: string;
 }
 
+export const HTML_CAMPAIGN_TEMPLATE_CATEGORIES: {
+  id: HtmlCampaignTemplateCategory;
+  label: string;
+}[] = [
+  { id: 'marketing', label: 'Email marketing' },
+  { id: 'account', label: 'Account emails' },
+  { id: 'general', label: 'General' },
+];
+
 const appUrl = APP_URL.replace(/\/$/, '');
+const siteHost = appUrl.replace(/^https?:\/\//, '');
 const emailLogoHeader = buildEmailLogoHeader(appUrl, APP_NAME);
 const emailLogoHeaderCompact = buildEmailLogoHeader(appUrl, APP_NAME, {
   padding: '24px 32px 8px',
 });
 
+function buildMarketingEmailHtml(options: {
+  title: string;
+  preheader: string;
+  bodyHtml: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  heroTitle?: string;
+  compactLogo?: boolean;
+}) {
+  const heroTitle = options.heroTitle ?? options.title;
+  const logo = options.compactLogo ? emailLogoHeaderCompact : emailLogoHeader;
+  const heroPadding = options.compactLogo ? '8px 32px 32px' : '32px';
+  const ctaBlock =
+    options.ctaLabel && options.ctaUrl
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 8px;">
+          <tr>
+            <td style="border-radius:8px;background:#f26522;">
+              <a href="${options.ctaUrl}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">${options.ctaLabel}</a>
+            </td>
+          </tr>
+        </table>`
+      : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${options.title}</title>
+</head>
+<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${options.preheader}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.08);">
+          ${logo}
+          ${buildEmailHeroRow(heroTitle)}
+          <tr>
+            <td style="padding:${heroPadding};">
+              ${options.bodyHtml}
+              ${ctaBlock}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
+              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+                Questions? <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
+              </p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+                © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.<br/>
+                <a href="${appUrl}" style="color:#f26522;text-decoration:none;">${siteHost}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
   {
-    id: 'blank',
-    name: 'Blank HTML',
-    html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Email</title>
-</head>
-<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
-          ${emailLogoHeaderCompact}
-          <tr>
-            <td style="padding:8px 32px 32px;">
+    id: 'marketing-intro',
+    name: 'Introduce Nexlogs',
+    category: 'marketing',
+    description: 'Introduce your brand to new subscribers or cold contacts.',
+    defaultSubject: `Discover ${APP_NAME} — digital products made simple`,
+    html: buildMarketingEmailHtml({
+      title: `Discover ${APP_NAME}`,
+      preheader: `Browse digital products on ${APP_NAME}. Simple checkout and fast delivery.`,
+      heroTitle: 'Welcome to Nexlogs',
+      bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Write your message here.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                <strong>${APP_NAME}</strong> is a marketplace for digital products — social accounts, tools, and services you can browse and purchase in a few clicks.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Create a free account to add funds, place orders, and track your purchases from one dashboard.
+              </p>
+              <ul style="margin:0 0 8px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Curated catalog with clear pricing</li>
+                <li>Secure wallet for quick checkout</li>
+                <li>Order history and support when you need it</li>
+              </ul>`,
+      ctaLabel: 'Explore the marketplace',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
   },
   {
-    id: 'announcement',
-    name: 'Simple announcement',
-    html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Announcement</title>
-</head>
-<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
-          ${emailLogoHeader}
-          ${buildEmailHeroRow('Important update')}
-          <tr>
-            <td style="padding:32px;">
+    id: 'marketing-marketplace-update',
+    name: 'Marketplace update',
+    category: 'marketing',
+    description: 'Tell contacts about new listings and catalog updates.',
+    defaultSubject: `New on ${APP_NAME} — see what just landed`,
+    html: buildMarketingEmailHtml({
+      title: 'Marketplace update',
+      preheader: `Fresh listings and updates are live on ${APP_NAME} today.`,
+      heroTitle: 'New on the marketplace',
+      bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">We have an update for you on ${APP_NAME}. Add your announcement text here.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We refreshed our marketplace with new products and updated listings. Whether you are buying for the first time or checking back in, there is plenty to explore.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#111827;">This week on ${APP_NAME}</p>
+                    <p style="margin:0;font-size:14px;line-height:1.7;color:#4b5563;">
+                      • New product categories added<br/>
+                      • Updated pricing on selected items<br/>
+                      • Faster checkout from your wallet balance
+                    </p>
+                  </td>
+                </tr>
+              </table>`,
+      ctaLabel: 'Browse marketplace',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'marketing-newsletter',
+    name: 'Newsletter',
+    category: 'marketing',
+    description: 'Multi-section newsletter for regular marketing sends.',
+    defaultSubject: `${APP_NAME} newsletter — updates and picks for you`,
+    html: buildMarketingEmailHtml({
+      title: `${APP_NAME} newsletter`,
+      preheader: `Your ${APP_NAME} update: marketplace news, tips, and featured picks.`,
+      heroTitle: 'Your Nexlogs update',
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">
+                Here is a quick roundup from ${APP_NAME} — what is new, what is popular, and where to go next.
+              </p>
+              <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#f26522;">Featured</p>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#374151;">
+                Visit the marketplace to see trending products and newly listed items. Edit this section with your own highlights before sending.
+              </p>
+              <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#f26522;">Tip</p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;">
+                Add funds once, then checkout in seconds — no need to re-enter payment details for every order.
+              </p>`,
+      ctaLabel: 'Open marketplace',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'marketing-product-highlight',
+    name: 'Product highlight',
+    category: 'marketing',
+    description: 'Spotlight one product or offer with a clear call to action.',
+    defaultSubject: `A pick for you on ${APP_NAME}`,
+    html: buildMarketingEmailHtml({
+      title: 'Product highlight',
+      preheader: `We picked something you might like on ${APP_NAME}. Take a look inside.`,
+      heroTitle: 'Recommended for you',
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We wanted to share a product worth a closer look. Replace the placeholder below with your product name, price, and a short description before sending.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border:1px solid #fed7aa;border-radius:12px;background:#fff7f2;">
+                <tr>
+                  <td style="padding:20px;">
+                    <p style="margin:0 0 6px;font-size:18px;font-weight:700;color:#111827;">[Product name]</p>
+                    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#6b7280;">[One sentence about why this product is useful]</p>
+                    <p style="margin:0;font-size:16px;font-weight:700;color:#f26522;">[Price]</p>
+                  </td>
+                </tr>
+              </table>`,
+      ctaLabel: 'View product',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'marketing-special-offer',
+    name: 'Special offer',
+    category: 'marketing',
+    description: 'Promote a sale or bundle without spam trigger words.',
+    defaultSubject: `Save on selected items at ${APP_NAME}`,
+    html: buildMarketingEmailHtml({
+      title: 'Special offer',
+      preheader: `Selected items on ${APP_NAME} are available at updated prices this week.`,
+      heroTitle: 'Selected items on sale',
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                For a limited period, selected products on ${APP_NAME} are available at reduced prices. Update the details below with your actual offer before sending.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#111827;border-radius:12px;">
+                <tr>
+                  <td style="padding:24px;text-align:center;">
+                    <p style="margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#fbbf24;">This week only</p>
+                    <p style="margin:0 0 8px;font-size:28px;font-weight:700;color:#ffffff;">[Your offer headline]</p>
+                    <p style="margin:0;font-size:14px;line-height:1.6;color:#d1d5db;">[Short offer details — e.g. selected marketplace items]</p>
+                  </td>
+                </tr>
+              </table>`,
+      ctaLabel: 'Shop the offer',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'marketing-reengagement',
+    name: 'We miss you',
+    category: 'marketing',
+    description: 'Gentle re-engagement email for inactive contacts.',
+    defaultSubject: `Still shopping on ${APP_NAME}?`,
+    html: buildMarketingEmailHtml({
+      title: 'We miss you',
+      preheader: `It has been a while — see what is new on ${APP_NAME}.`,
+      heroTitle: 'We would love to see you back',
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                It has been a while since your last visit. Our marketplace has grown since then — new products, smoother checkout, and the same support team if you need help.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;">
+                Sign in anytime to browse, add funds, or pick up where you left off.
+              </p>`,
+      ctaLabel: 'Return to marketplace',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'marketing-minimal-cta',
+    name: 'Minimal CTA',
+    category: 'marketing',
+    description: 'Short marketing email with one message and button.',
+    defaultSubject: `Quick note from ${APP_NAME}`,
+    html: buildMarketingEmailHtml({
+      title: 'Quick note',
+      preheader: `A short update from ${APP_NAME} — open to read more.`,
+      heroTitle: 'A quick note from us',
+      compactLogo: true,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;">
+                [Write your marketing message here — keep it clear, helpful, and focused on one action.]
+              </p>`,
+      ctaLabel: 'Learn more',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
   },
   {
     id: 'welcome-message',
     name: 'Welcome message',
+    category: 'account',
+    description: 'Onboarding email for new registered users.',
+    defaultSubject: `Welcome to ${APP_NAME}`,
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -110,7 +315,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                   <td style="padding:20px;">
                     <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">How to add funds</p>
                     <ol style="margin:0 0 20px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
-                      <li>Sign in to your account at ${appUrl.replace('https://', '')}</li>
+                      <li>Sign in to your account at ${siteHost}</li>
                       <li>Open <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a> from your account menu</li>
                       <li>Enter an amount and follow the steps to complete payment</li>
                     </ol>
@@ -139,11 +344,11 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
           <tr>
             <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
               <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                You received this because you registered at ${appUrl.replace('https://', '')}.
+                You received this because you registered at ${siteHost}.
               </p>
               <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
                 © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.<br/>
-                <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">${appUrl.replace('https://', '')}</a>
+                <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">${siteHost}</a>
               </p>
             </td>
           </tr>
@@ -155,14 +360,16 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
 </html>`,
   },
   {
-    id: 'promo',
-    name: 'Promo with CTA',
+    id: 'blank',
+    name: 'Blank HTML',
+    category: 'general',
+    description: 'Start from scratch with logo and greeting only.',
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Promo</title>
+  <title>Email</title>
 </head>
 <body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -173,14 +380,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
           <tr>
             <td style="padding:8px 32px 32px;">
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 24px;font-size:16px;line-height:1.7;">Check out what is new on our marketplace today.</p>
-              <table role="presentation" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="border-radius:8px;background:#f26522;">
-                    <a href="${appUrl}/marketplace" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Visit marketplace</a>
-                  </td>
-                </tr>
-              </table>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Write your message here.</p>
             </td>
           </tr>
         </table>
@@ -190,8 +390,50 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
 </body>
 </html>`,
   },
+  {
+    id: 'announcement',
+    name: 'Simple announcement',
+    category: 'general',
+    description: 'General update with hero banner.',
+    defaultSubject: `Update from ${APP_NAME}`,
+    html: buildMarketingEmailHtml({
+      title: 'Announcement',
+      preheader: `An update from ${APP_NAME} for you.`,
+      heroTitle: 'Important update',
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;">We have an update for you on ${APP_NAME}. Add your announcement text here.</p>`,
+    }),
+  },
+  {
+    id: 'promo',
+    name: 'Promo with CTA',
+    category: 'general',
+    description: 'Simple promo layout with marketplace button.',
+    defaultSubject: `See what is new on ${APP_NAME}`,
+    html: buildMarketingEmailHtml({
+      title: 'Promo',
+      preheader: `Browse the latest on ${APP_NAME} today.`,
+      compactLogo: true,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;">Check out what is new on our marketplace today.</p>`,
+      ctaLabel: 'Visit marketplace',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
 ];
 
 export const DEFAULT_HTML_CAMPAIGN_SUBJECT = `Update from ${APP_NAME}`;
 
 export const WELCOME_CAMPAIGN_SUBJECT = `Welcome to ${APP_NAME}`;
+
+export function getHtmlCampaignTemplate(id: string) {
+  return HTML_CAMPAIGN_TEMPLATES.find((template) => template.id === id);
+}
+
+export function getHtmlCampaignTemplatesByCategory(category: HtmlCampaignTemplateCategory) {
+  return HTML_CAMPAIGN_TEMPLATES.filter((template) => template.category === category);
+}
+
+export const MARKETING_HTML_CAMPAIGN_TEMPLATES = getHtmlCampaignTemplatesByCategory('marketing');

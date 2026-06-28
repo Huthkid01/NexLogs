@@ -20,6 +20,27 @@ function maskEmail(email: string) {
   return `${visible}***@${domain}`;
 }
 
+async function recordUnsubscribe(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+  userId: string | null,
+) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const { error: upsertError } = await adminClient.from('marketing_email_unsubscribes').upsert(
+    {
+      user_id: userId,
+      email: normalizedEmail,
+      unsubscribed_at: new Date().toISOString(),
+    },
+    { onConflict: 'email' },
+  );
+
+  if (upsertError) throw upsertError;
+
+  return maskEmail(normalizedEmail);
+}
+
 async function unsubscribeByToken(adminClient: ReturnType<typeof createClient>, token: string) {
   const { data: tokenRow, error: tokenError } = await adminClient
     .from('marketing_email_unsubscribe_tokens')
@@ -28,36 +49,38 @@ async function unsubscribeByToken(adminClient: ReturnType<typeof createClient>, 
     .maybeSingle();
 
   if (tokenError) throw tokenError;
-  if (!tokenRow?.user_id) {
+
+  if (tokenRow?.user_id) {
+    const { data: profile, error: profileError } = await adminClient
+      .from('profiles')
+      .select('email')
+      .eq('id', tokenRow.user_id)
+      .single();
+
+    if (profileError || !profile?.email?.trim()) {
+      return { ok: false as const, status: 404, message: 'Could not find the account for this unsubscribe link.' };
+    }
+
+    return {
+      ok: true as const,
+      email: await recordUnsubscribe(adminClient, profile.email, tokenRow.user_id),
+    };
+  }
+
+  const { data: externalToken, error: externalError } = await adminClient
+    .from('marketing_external_unsubscribe_tokens')
+    .select('email')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (externalError) throw externalError;
+  if (!externalToken?.email?.trim()) {
     return { ok: false as const, status: 404, message: 'This unsubscribe link is invalid or has expired.' };
   }
 
-  const { data: profile, error: profileError } = await adminClient
-    .from('profiles')
-    .select('email')
-    .eq('id', tokenRow.user_id)
-    .single();
-
-  if (profileError || !profile?.email?.trim()) {
-    return { ok: false as const, status: 404, message: 'Could not find the account for this unsubscribe link.' };
-  }
-
-  const email = profile.email.trim().toLowerCase();
-
-  const { error: upsertError } = await adminClient.from('marketing_email_unsubscribes').upsert(
-    {
-      user_id: tokenRow.user_id,
-      email,
-      unsubscribed_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id' },
-  );
-
-  if (upsertError) throw upsertError;
-
   return {
     ok: true as const,
-    email: maskEmail(email),
+    email: await recordUnsubscribe(adminClient, externalToken.email, null),
   };
 }
 

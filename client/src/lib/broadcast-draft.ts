@@ -5,6 +5,7 @@ export interface BroadcastDraft {
   customMessage: string;
   selectedProductIds: string[];
   selectedRecipientIds: string[];
+  selectedExternalEmails: string[];
   savedAt: string;
 }
 

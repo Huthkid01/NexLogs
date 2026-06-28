@@ -16,6 +16,7 @@ interface BroadcastPreviewModalProps {
   title?: string;
   description?: string;
   recipientUserIds?: string[];
+  recipientEmails?: string[];
   contacts?: BroadcastContact[];
   failedCount?: number;
   onSelectMissingRecipients?: (ids: string[]) => void;
@@ -30,6 +31,7 @@ export function BroadcastPreviewModal({
   title = 'Email preview',
   description = 'How recipients will see this announcement in their inbox.',
   recipientUserIds = [],
+  recipientEmails = [],
   contacts = [],
   failedCount = 0,
   onSelectMissingRecipients,
@@ -99,6 +101,7 @@ export function BroadcastPreviewModal({
           ) : (
             <EmailSendRecipientsPanel
               recipientUserIds={recipientUserIds}
+              recipientEmails={recipientEmails}
               contacts={contacts}
               failedCount={failedCount}
               onSelectMissing={onSelectMissingRecipients}

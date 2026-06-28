@@ -20,8 +20,10 @@ function emailLayout(options: {
   ctaLabel?: string;
   ctaUrl?: string;
   unsubscribeUrl?: string;
+  isAccountHolder?: boolean;
 }) {
-  const { appName, appUrl, preheader, title, bodyHtml, ctaLabel, ctaUrl, unsubscribeUrl } = options;
+  const { appName, appUrl, preheader, title, bodyHtml, ctaLabel, ctaUrl, unsubscribeUrl, isAccountHolder = true } =
+    options;
   const logoHeader = buildEmailLogoHeader(appUrl, appName);
   const heroRow = buildEmailHeroRow(title);
   const ctaBlock =
@@ -65,7 +67,11 @@ function emailLayout(options: {
               ${
                 unsubscribeUrl
                   ? `<p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                You received this because you have an account on ${escapeHtml(appName)}.<br/>
+                ${
+                  isAccountHolder
+                    ? `You received this because you have an account on ${escapeHtml(appName)}.`
+                    : `You received this marketing email from ${escapeHtml(appName)}.`
+                }<br/>
                 <a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe from promotional emails</a>
               </p>`
                   : ''
@@ -94,6 +100,7 @@ export function buildNewProductsBroadcastEmail(options: {
   customMessage?: string;
   products: BroadcastProduct[];
   unsubscribeUrl?: string;
+  isAccountHolder?: boolean;
 }) {
   const intro = options.customMessage?.trim()
     ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">${escapeHtml(options.customMessage.trim())}</p>`
@@ -126,6 +133,7 @@ export function buildNewProductsBroadcastEmail(options: {
     ctaLabel: 'Browse marketplace',
     ctaUrl: `${options.appUrl.replace(/\/$/, '')}/marketplace`,
     unsubscribeUrl: options.unsubscribeUrl,
+    isAccountHolder: options.isAccountHolder,
   });
 
   const textUnsubscribe = options.unsubscribeUrl

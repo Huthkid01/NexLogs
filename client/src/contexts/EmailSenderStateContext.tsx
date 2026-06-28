@@ -25,6 +25,7 @@ export interface EmailSenderSessionState {
     customMessage: string;
     selectedProductIds: string[];
     selectedRecipientIds: string[];
+    selectedExternalEmails: string[];
     minimized: boolean;
     expanded: boolean;
     productsPanelOpen: boolean;
@@ -35,6 +36,7 @@ export interface EmailSenderSessionState {
     htmlBody: string;
     templateName: string;
     selectedRecipientIds: string[];
+    selectedExternalEmails: string[];
     minimized: boolean;
     expanded: boolean;
     previewExpanded: boolean;
@@ -54,6 +56,8 @@ function buildInitialState(): EmailSenderSessionState {
       selectedProductIds: broadcastDraft?.selectedProductIds || stored?.broadcast.selectedProductIds || [],
       selectedRecipientIds:
         broadcastDraft?.selectedRecipientIds || stored?.broadcast.selectedRecipientIds || [],
+      selectedExternalEmails:
+        broadcastDraft?.selectedExternalEmails || stored?.broadcast.selectedExternalEmails || [],
       minimized: stored?.broadcast.minimized ?? true,
       expanded: stored?.broadcast.expanded ?? false,
       productsPanelOpen: stored?.broadcast.productsPanelOpen ?? true,
@@ -65,6 +69,8 @@ function buildInitialState(): EmailSenderSessionState {
       templateName: htmlDraft?.templateName || stored?.htmlCampaign.templateName || defaultTemplate.id,
       selectedRecipientIds:
         htmlDraft?.selectedRecipientIds || stored?.htmlCampaign.selectedRecipientIds || [],
+      selectedExternalEmails:
+        htmlDraft?.selectedExternalEmails || stored?.htmlCampaign.selectedExternalEmails || [],
       minimized: stored?.htmlCampaign.minimized ?? true,
       expanded: stored?.htmlCampaign.expanded ?? false,
       previewExpanded: stored?.htmlCampaign.previewExpanded ?? false,
@@ -126,6 +132,7 @@ export function EmailSenderStateProvider({ children }: { children: ReactNode }) 
         customMessage: '',
         selectedProductIds: [],
         selectedRecipientIds: [],
+        selectedExternalEmails: [],
         minimized: true,
         expanded: false,
         productsPanelOpen: true,
@@ -142,6 +149,7 @@ export function EmailSenderStateProvider({ children }: { children: ReactNode }) 
         htmlBody: defaultTemplate.html,
         templateName: defaultTemplate.id,
         selectedRecipientIds: [],
+        selectedExternalEmails: [],
         minimized: true,
         expanded: false,
         previewExpanded: false,

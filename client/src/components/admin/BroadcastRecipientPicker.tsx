@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -14,15 +15,66 @@ interface BroadcastRecipientPickerProps {
   contacts: BroadcastContact[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  selectedExternalEmails?: string[];
+  onExternalEmailsChange?: (emails: string[]) => void;
   loading?: boolean;
   variant?: 'default' | 'composer';
   showCcToggle?: boolean;
+}
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function splitRecipientTokens(value: string) {
+  return value
+    .split(/[,;\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function findContactByToken(
+  token: string,
+  contacts: BroadcastContact[],
+  selectedIds: string[],
+  filteredContacts: BroadcastContact[],
+  allowSingleSuggestion = true,
+): BroadcastContact | null {
+  const normalized = token.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const available = contacts.filter((contact) => !selectedIds.includes(contact.id));
+
+  const exactEmail = available.find((contact) => contact.email.toLowerCase() === normalized);
+  if (exactEmail) return exactEmail;
+
+  const exactName = available.find(
+    (contact) => contact.fullName.trim().toLowerCase() === normalized,
+  );
+  if (exactName) return exactName;
+
+  if (EMAIL_PATTERN.test(normalized)) {
+    return null;
+  }
+
+  const nameMatches = available.filter((contact) =>
+    contact.fullName.toLowerCase().includes(normalized),
+  );
+  if (nameMatches.length === 1) return nameMatches[0];
+
+  if (allowSingleSuggestion && filteredContacts.length === 1) return filteredContacts[0];
+
+  return null;
 }
 
 export function BroadcastRecipientPicker({
   contacts,
   selectedIds,
   onChange,
+  selectedExternalEmails = [],
+  onExternalEmailsChange,
   loading = false,
   variant = 'default',
   showCcToggle = false,
@@ -72,8 +124,124 @@ export function BroadcastRecipientPicker({
     inputRef.current?.focus();
   };
 
+  const isEmailAlreadySelected = (email: string) => {
+    const normalized = normalizeEmail(email);
+    if (selectedExternalEmails.includes(normalized)) return true;
+    return selectedContacts.some((contact) => normalizeEmail(contact.email) === normalized);
+  };
+
+  const addExternalEmail = (rawEmail: string, options?: { silent?: boolean }) => {
+    const normalized = normalizeEmail(rawEmail);
+    if (!EMAIL_PATTERN.test(normalized)) {
+      if (!options?.silent) toast.error('Enter a valid email address');
+      return false;
+    }
+    if (isEmailAlreadySelected(normalized)) return false;
+    if (!onExternalEmailsChange) {
+      if (!options?.silent) toast.error('External email addresses are not enabled for this picker.');
+      return false;
+    }
+    onExternalEmailsChange([...selectedExternalEmails, normalized]);
+    setQuery('');
+    inputRef.current?.focus();
+    return true;
+  };
+
+  const addFromQuery = (rawQuery: string, options?: { silent?: boolean }) => {
+    const tokens = splitRecipientTokens(rawQuery);
+    if (!tokens.length) return false;
+
+    const nextIds = [...selectedIds];
+    const nextExternalEmails = [...selectedExternalEmails];
+    let added = 0;
+
+    for (const token of tokens) {
+      const contact = findContactByToken(
+        token,
+        contacts,
+        nextIds,
+        filteredContacts,
+        tokens.length === 1,
+      );
+
+      if (contact) {
+        if (!nextIds.includes(contact.id)) {
+          nextIds.push(contact.id);
+          added += 1;
+        }
+        continue;
+      }
+
+      const normalized = normalizeEmail(token);
+      if (EMAIL_PATTERN.test(normalized)) {
+        if (nextExternalEmails.includes(normalized)) continue;
+        if (nextIds.some((id) => {
+          const match = contacts.find((entry) => entry.id === id);
+          return match && normalizeEmail(match.email) === normalized;
+        })) {
+          continue;
+        }
+        if (onExternalEmailsChange) {
+          nextExternalEmails.push(normalized);
+          added += 1;
+        } else if (!options?.silent) {
+          toast.error(`No eligible contact found for ${normalized}`);
+        }
+        continue;
+      }
+
+      if (!options?.silent) {
+        toast.error(`No matching contact for "${token.trim()}". Press Enter when one result is shown.`);
+      }
+    }
+
+    if (added > 0) {
+      if (nextIds.length !== selectedIds.length) onChange(nextIds);
+      if (onExternalEmailsChange && nextExternalEmails.length !== selectedExternalEmails.length) {
+        onExternalEmailsChange(nextExternalEmails);
+      }
+      setQuery('');
+      inputRef.current?.focus();
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      if (!query.trim()) return;
+      event.preventDefault();
+      addFromQuery(query);
+      return;
+    }
+
+    if (event.key === 'Backspace' && !query) {
+      if (selectedExternalEmails.length) {
+        onExternalEmailsChange?.(selectedExternalEmails.slice(0, -1));
+        return;
+      }
+      if (selectedIds.length) {
+        onChange(selectedIds.slice(0, -1));
+      }
+    }
+  };
+
+  const handleInputPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const pasted = event.clipboardData.getData('text');
+    const tokens = splitRecipientTokens(pasted);
+    if (tokens.length <= 1) return;
+
+    event.preventDefault();
+    addFromQuery(tokens.join(','));
+  };
+
   const removeContact = (contactId: string) => {
     onChange(selectedIds.filter((id) => id !== contactId));
+  };
+
+  const removeExternalEmail = (email: string) => {
+    onExternalEmailsChange?.(selectedExternalEmails.filter((entry) => entry !== email));
   };
 
   const selectAll = () => {
@@ -84,9 +252,37 @@ export function BroadcastRecipientPicker({
 
   const clearAll = () => {
     onChange([]);
+    onExternalEmailsChange?.([]);
     setQuery('');
     inputRef.current?.focus();
   };
+
+  const pendingContact = useMemo(
+    () => (query.trim() ? findContactByToken(query, contacts, selectedIds, filteredContacts) : null),
+    [contacts, filteredContacts, query, selectedIds],
+  );
+
+  const pendingExternalEmail = useMemo(() => {
+    const normalized = normalizeEmail(query);
+    if (!EMAIL_PATTERN.test(normalized)) return null;
+    if (pendingContact) return null;
+    if (selectedExternalEmails.includes(normalized)) return null;
+    if (
+      contacts.some(
+        (contact) => selectedIds.includes(contact.id) && normalizeEmail(contact.email) === normalized,
+      )
+    ) {
+      return null;
+    }
+    return normalized;
+  }, [contacts, pendingContact, query, selectedExternalEmails, selectedIds]);
+
+  const totalSelectedCount = selectedIds.length + selectedExternalEmails.length;
+
+  const listContacts = useMemo(() => {
+    if (!pendingContact) return filteredContacts;
+    return filteredContacts.filter((contact) => contact.id !== pendingContact.id);
+  }, [filteredContacts, pendingContact]);
 
   const pickerField = (
     <div ref={containerRef} className="relative min-w-0 flex-1">
@@ -131,6 +327,31 @@ export function BroadcastRecipientPicker({
             </span>
           ))}
 
+          {selectedExternalEmails.map((email) => (
+            <span
+              key={`external-${email}`}
+              className={cn(
+                'inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-xs',
+                variant === 'composer'
+                  ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
+                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+              )}
+            >
+              <span className="truncate">{email}</span>
+              <button
+                type="button"
+                className="rounded-full p-0.5 hover:bg-black/5 dark:hover:bg-white/10"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  removeExternalEmail(email);
+                }}
+                aria-label={`Remove ${email}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+
           <div className={cn('flex min-w-[120px] flex-1 items-center gap-2', variant === 'composer' ? 'px-0' : 'px-1')}>
             {variant !== 'composer' && <Search className="h-4 w-4 shrink-0 text-muted-foreground" />}
             <input
@@ -143,14 +364,16 @@ export function BroadcastRecipientPicker({
                 setOpen(true);
               }}
               onFocus={() => setOpen(true)}
+              onKeyDown={handleInputKeyDown}
+              onPaste={handleInputPaste}
               placeholder={
-                selectedIds.length
+                totalSelectedCount
                   ? variant === 'composer'
-                    ? 'Add recipients'
-                    : 'Add more contacts...'
+                    ? 'Add email or contact, press Enter'
+                    : 'Add email or contact, press Enter...'
                   : variant === 'composer'
-                    ? 'Recipients'
-                    : 'Search users by name or email...'
+                    ? 'Users or any email — press Enter'
+                    : 'Search users or type any email, press Enter...'
               }
               className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
               disabled={loading}
@@ -179,7 +402,7 @@ export function BroadcastRecipientPicker({
                 type="button"
                 className="text-xs text-slate-500 hover:underline disabled:opacity-40"
                 onClick={clearAll}
-                disabled={!selectedIds.length}
+                disabled={!totalSelectedCount}
               >
                 Clear
               </button>
@@ -188,12 +411,42 @@ export function BroadcastRecipientPicker({
 
           {loading ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">Loading contacts...</p>
-          ) : filteredContacts.length === 0 ? (
+          ) : pendingContact ? (
+            <button
+              type="button"
+              className="flex w-full flex-col items-start gap-0.5 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-[#18263b] dark:hover:bg-[#06101d]"
+              onClick={() => addContact(pendingContact.id)}
+            >
+              <span className="text-sm font-medium text-[#7c3aed]">
+                Add {pendingContact.fullName || pendingContact.email}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {pendingContact.email} · press Enter
+              </span>
+            </button>
+          ) : pendingExternalEmail ? (
+            <button
+              type="button"
+              className="flex w-full flex-col items-start gap-0.5 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-[#18263b] dark:hover:bg-[#06101d]"
+              onClick={() => addExternalEmail(pendingExternalEmail)}
+            >
+              <span className="text-sm font-medium text-[#7c3aed]">Add external email</span>
+              <span className="text-xs text-muted-foreground">
+                {pendingExternalEmail} · press Enter
+              </span>
+            </button>
+          ) : null}
+
+          {loading ? null : listContacts.length === 0 && !pendingContact && !pendingExternalEmail ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">
-              {query.trim() ? 'No matching contacts found.' : 'All contacts are already selected.'}
+              {query.trim()
+                ? EMAIL_PATTERN.test(query.trim())
+                  ? 'Press Enter to add this email address.'
+                  : 'No matching contacts found.'
+                : 'All contacts are already selected.'}
             </p>
           ) : (
-            filteredContacts.map((contact) => (
+            listContacts.map((contact) => (
               <button
                 key={contact.id}
                 type="button"
@@ -244,7 +497,8 @@ export function BroadcastRecipientPicker({
         <div>
           <Label htmlFor="recipient-search">To</Label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Search and pick user emails like a contact list. Admins are not shown.
+            Pick registered users or type any email address and press Enter. External addresses include an
+            unsubscribe link. Admins are not shown in contacts.
           </p>
         </div>
         <div className="flex gap-2">
@@ -260,8 +514,9 @@ export function BroadcastRecipientPicker({
       {pickerField}
 
       <p className="text-xs text-muted-foreground">
-        {selectedIds.length} contact{selectedIds.length === 1 ? '' : 's'} selected
-        {contacts.length ? ` out of ${contacts.length} eligible users` : ''}
+        {totalSelectedCount} recipient{totalSelectedCount === 1 ? '' : 's'} selected
+        {selectedExternalEmails.length > 0 ? ` (${selectedExternalEmails.length} external)` : ''}
+        {contacts.length ? ` · ${contacts.length} registered contacts available` : ''}
       </p>
     </div>
   );

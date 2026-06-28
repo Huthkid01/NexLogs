@@ -4,9 +4,12 @@ import {
   appendUnsubscribeToText,
   buildOneClickUnsubscribeUrl,
   buildPublicUnsubscribeUrl,
-  getUnsubscribedUserIds,
-  getUnsubscribeTokensForUsers,
 } from '../_shared/marketing-unsubscribe.ts';
+import {
+  loadUnsubscribeTokensForRecipients,
+  parseRecipientEmails,
+  resolveMarketingRecipients,
+} from '../_shared/marketing-recipients.ts';
 import { prependEmailLogoIfMissing } from '../_shared/email-branding.ts';
 import {
   buildDeliverabilityHeaders,
@@ -29,6 +32,7 @@ interface HtmlCampaignRequest {
   html_body?: string;
   template_name?: string;
   recipient_user_ids?: string[];
+  recipient_emails?: string[];
   send_to_all?: boolean;
 }
 
@@ -160,6 +164,7 @@ Deno.serve(async (req) => {
     const requestedRecipientIds = Array.isArray(body.recipient_user_ids)
       ? body.recipient_user_ids.map((id) => String(id).trim()).filter(Boolean)
       : [];
+    const requestedRecipientEmails = parseRecipientEmails(body.recipient_emails);
     const templateName = body.template_name?.trim() || null;
 
     const validated = validateCampaignContent(body.subject?.trim() || '', body.html_body || '');
@@ -173,49 +178,18 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 
-    const { data: recipients, error: recipientsError } = await adminClient
-      .from('profiles')
-      .select('id, email, full_name, created_at')
-      .eq('is_suspended', false)
-      .neq('role', 'admin')
-      .not('email', 'is', null)
-      .order('created_at', { ascending: true });
+    const resolved = await resolveMarketingRecipients(adminClient, {
+      sendToAll,
+      recipientUserIds: requestedRecipientIds,
+      recipientEmails: requestedRecipientEmails,
+    });
 
-    if (recipientsError) throw recipientsError;
-
-    const uniqueRecipients = Array.from(
-      new Map(
-        (recipients ?? [])
-          .filter((recipient) => recipient.email?.trim())
-          .map((recipient) => [recipient.email.trim().toLowerCase(), recipient]),
-      ).values(),
-    );
-
-    if (!uniqueRecipients.length) {
-      return jsonResponse({ error: 'No eligible user emails found' }, 400);
+    if (resolved.error || !resolved.data) {
+      return jsonResponse({ error: resolved.error || 'No recipients selected' }, 400);
     }
 
-    const unsubscribedIds = await getUnsubscribedUserIds(
-      adminClient,
-      uniqueRecipients.map((recipient) => recipient.id),
-    );
-    const eligibleRecipients = uniqueRecipients.filter((recipient) => !unsubscribedIds.has(recipient.id));
-
-    if (!eligibleRecipients.length) {
-      return jsonResponse({ error: 'All selected contacts have unsubscribed from promotional emails' }, 400);
-    }
-
-    let targetRecipients = eligibleRecipients;
-    if (!sendToAll) {
-      if (!requestedRecipientIds.length) {
-        return jsonResponse({ error: 'Select at least one contact in the To field' }, 400);
-      }
-      const selectedSet = new Set(requestedRecipientIds);
-      targetRecipients = eligibleRecipients.filter((recipient) => selectedSet.has(recipient.id));
-      if (!targetRecipients.length) {
-        return jsonResponse({ error: 'Selected contacts are not eligible to receive emails' }, 400);
-      }
-    }
+    const { recipients: targetRecipients, userIds: recipientUserIds, externalEmails: recipientExternalEmails } =
+      resolved.data;
 
     if (targetRecipients.length > MAX_RECIPIENTS) {
       return jsonResponse(
@@ -224,10 +198,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const unsubscribeTokens = await getUnsubscribeTokensForUsers(
-      adminClient,
-      targetRecipients.map((recipient) => recipient.id),
-    );
+    const unsubscribeTokens = await loadUnsubscribeTokensForRecipients(adminClient, targetRecipients);
 
     let sent = 0;
     let failed = 0;
@@ -235,15 +206,17 @@ Deno.serve(async (req) => {
     const plainBase = htmlToPlainText(htmlTemplate);
 
     for (const recipient of targetRecipients) {
-      const emailAddress = recipient.email.trim();
-      const fullName = recipient.full_name?.trim() || emailAddress.split('@')[0];
-      const token = unsubscribeTokens.get(recipient.id);
+      const emailAddress = recipient.email;
+      const fullName = recipient.fullName;
+      const token = unsubscribeTokens.get(emailAddress);
       const publicUnsubscribeUrl = token ? buildPublicUnsubscribeUrl(appUrl, token) : `${appUrl}/support`;
       const oneClickUnsubscribeUrl = token && supabaseUrl
         ? buildOneClickUnsubscribeUrl(supabaseUrl, token)
         : publicUnsubscribeUrl;
       const personalizedHtml = personalizeHtml(htmlTemplate, fullName);
-      const html = appendUnsubscribeToHtml(personalizedHtml, publicUnsubscribeUrl, appName);
+      const html = appendUnsubscribeToHtml(personalizedHtml, publicUnsubscribeUrl, appName, {
+        isAccountHolder: !recipient.isExternal,
+      });
       const text = appendUnsubscribeToText(personalizeHtml(plainBase, fullName), publicUnsubscribeUrl);
       const deliverabilityHeaders = buildDeliverabilityHeaders(appUrl, oneClickUnsubscribeUrl);
 
@@ -268,8 +241,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    const recipientUserIds = targetRecipients.map((recipient) => recipient.id);
-
     try {
       await adminClient.from('email_campaigns').insert({
         sent_by: userId,
@@ -280,6 +251,7 @@ Deno.serve(async (req) => {
         sent_count: sent,
         failed_count: failed,
         recipient_user_ids: recipientUserIds,
+        recipient_emails: recipientExternalEmails,
       });
     } catch (logError) {
       console.error('[send-admin-html-campaign] failed to save campaign history', logError);

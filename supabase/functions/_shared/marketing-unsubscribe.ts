@@ -2,6 +2,10 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 type AdminClient = SupabaseClient;
 
+export function normalizeMarketingEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export function buildPublicUnsubscribeUrl(appUrl: string, token: string) {
   return `${appUrl.replace(/\/$/, '')}/unsubscribe/${token}`;
 }
@@ -11,11 +15,19 @@ export function buildOneClickUnsubscribeUrl(supabaseUrl: string, token: string) 
   return `${base}/functions/v1/process-marketing-unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
-export function buildUnsubscribeFooterHtml(unsubscribeUrl: string, appName: string) {
+export function buildUnsubscribeFooterHtml(
+  unsubscribeUrl: string,
+  appName: string,
+  options?: { isAccountHolder?: boolean },
+) {
+  const reason = options?.isAccountHolder === false
+    ? `You received this marketing email from ${appName}.`
+    : `You received this because you have an account on ${appName}.`;
+
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">
   <tr>
     <td style="font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-      You received this because you have an account on ${appName}.<br/>
+      ${reason}<br/>
       <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">Unsubscribe from promotional emails</a>
     </td>
   </tr>
@@ -26,8 +38,13 @@ export function buildUnsubscribeFooterText(unsubscribeUrl: string) {
   return `\n\n---\nUnsubscribe from promotional emails: ${unsubscribeUrl}`;
 }
 
-export function appendUnsubscribeToHtml(html: string, unsubscribeUrl: string, appName: string) {
-  const footer = buildUnsubscribeFooterHtml(unsubscribeUrl, appName);
+export function appendUnsubscribeToHtml(
+  html: string,
+  unsubscribeUrl: string,
+  appName: string,
+  options?: { isAccountHolder?: boolean },
+) {
+  const footer = buildUnsubscribeFooterHtml(unsubscribeUrl, appName, options);
   if (html.includes('</body>')) {
     return html.replace('</body>', `${footer}</body>`);
   }
@@ -51,6 +68,23 @@ export async function getUnsubscribedUserIds(
 
   if (error) throw error;
   return new Set((data ?? []).map((row) => row.user_id as string));
+}
+
+export async function getUnsubscribedEmails(
+  adminClient: AdminClient,
+  emails: string[],
+): Promise<Set<string>> {
+  const normalized = [...new Set(emails.map((email) => normalizeMarketingEmail(email)).filter(Boolean))];
+  if (!normalized.length) return new Set();
+
+  const { data, error } = await adminClient
+    .from('marketing_email_unsubscribes')
+    .select('email')
+    .in('email', normalized);
+
+  if (error) throw error;
+
+  return new Set((data ?? []).map((row) => normalizeMarketingEmail(row.email as string)));
 }
 
 export async function getUnsubscribeTokensForUsers(
@@ -93,6 +127,53 @@ export async function getUnsubscribeTokensForUsers(
 
     if (created?.token) {
       tokenMap.set(created.user_id as string, created.token as string);
+    }
+  }
+
+  return tokenMap;
+}
+
+export async function getUnsubscribeTokensForEmails(
+  adminClient: AdminClient,
+  emails: string[],
+): Promise<Map<string, string>> {
+  const tokenMap = new Map<string, string>();
+  const normalized = [...new Set(emails.map((email) => normalizeMarketingEmail(email)).filter(Boolean))];
+  if (!normalized.length) return tokenMap;
+
+  const { data: existing, error: existingError } = await adminClient
+    .from('marketing_external_unsubscribe_tokens')
+    .select('email, token')
+    .in('email', normalized);
+
+  if (existingError) throw existingError;
+
+  for (const row of existing ?? []) {
+    tokenMap.set(normalizeMarketingEmail(row.email as string), row.token as string);
+  }
+
+  const missing = normalized.filter((email) => !tokenMap.has(email));
+  for (const email of missing) {
+    const { data: created, error: createError } = await adminClient
+      .from('marketing_external_unsubscribe_tokens')
+      .insert({ email })
+      .select('email, token')
+      .single();
+
+    if (createError) {
+      const { data: retry, error: retryError } = await adminClient
+        .from('marketing_external_unsubscribe_tokens')
+        .select('email, token')
+        .eq('email', email)
+        .single();
+
+      if (retryError || !retry?.token) throw createError;
+      tokenMap.set(normalizeMarketingEmail(retry.email as string), retry.token as string);
+      continue;
+    }
+
+    if (created?.token) {
+      tokenMap.set(normalizeMarketingEmail(created.email as string), created.token as string);
     }
   }
 

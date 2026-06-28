@@ -16,11 +16,12 @@ import { useBroadcastDeliverability } from '@/components/admin/BroadcastEmailPre
 import { useHtmlCampaignDeliverability } from '@/components/admin/HtmlCampaignEmailPreview';
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
 import { broadcastEmailService, htmlCampaignService } from '@/services';
-import type { EmailBroadcastRecord } from '@/services/broadcast-email.service';
-import type { EmailCampaignRecord } from '@/services/html-campaign.service';
+import type { BroadcastEmailPayload, EmailBroadcastRecord } from '@/services/broadcast-email.service';
+import type { EmailCampaignRecord, HtmlCampaignPayload } from '@/services/html-campaign.service';
 import { productService } from '@/services';
 import { clearBroadcastDraft } from '@/lib/broadcast-draft';
 import { clearHtmlCampaignDraft } from '@/lib/html-campaign-draft';
+import { buildMarketingRecipientPayload } from '@/lib/marketing-recipient-payload';
 import { APP_NAME } from '@/constants';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types';
@@ -50,12 +51,14 @@ export default function AdminSenderPage() {
     customMessage,
     selectedProductIds,
     selectedRecipientIds,
+    selectedExternalEmails,
   } = state.broadcast;
   const {
     subject: htmlSubject,
     htmlBody,
     templateName: htmlTemplateName,
     selectedRecipientIds: htmlRecipientIds,
+    selectedExternalEmails: htmlExternalEmails,
   } = state.htmlCampaign;
 
   const [sendFlowOpen, setSendFlowOpen] = useState(false);
@@ -90,45 +93,47 @@ export default function AdminSenderPage() {
     queryFn: () => htmlCampaignService.getRecentCampaigns(8),
   });
 
-  const sendToAll = selectedRecipientIds.length > 0 && selectedRecipientIds.length === (contacts?.length ?? 0);
-  const htmlSendToAll = htmlRecipientIds.length > 0 && htmlRecipientIds.length === (contacts?.length ?? 0);
-  const sendCount = selectedRecipientIds.length;
-  const htmlSendCount = htmlRecipientIds.length;
+  const sendToAll =
+    selectedRecipientIds.length > 0 &&
+    selectedRecipientIds.length === (contacts?.length ?? 0) &&
+    selectedExternalEmails.length === 0;
+  const htmlSendToAll =
+    htmlRecipientIds.length > 0 &&
+    htmlRecipientIds.length === (contacts?.length ?? 0) &&
+    htmlExternalEmails.length === 0;
+  const sendCount = selectedRecipientIds.length + selectedExternalEmails.length;
+  const htmlSendCount = htmlRecipientIds.length + htmlExternalEmails.length;
   const deliverability = useBroadcastDeliverability(subject, customMessage, selectedProductIds.length);
-  const htmlDeliverability = useHtmlCampaignDeliverability(htmlSubject, htmlBody, htmlRecipientIds.length);
+  const htmlDeliverability = useHtmlCampaignDeliverability(htmlSubject, htmlBody, htmlSendCount);
+
+  const contactList = contacts ?? [];
+
+  const broadcastRecipientPayload = useMemo(
+    () => buildMarketingRecipientPayload(contactList, selectedRecipientIds, selectedExternalEmails, sendToAll),
+    [contactList, selectedExternalEmails, selectedRecipientIds, sendToAll],
+  );
+
+  const htmlRecipientPayload = useMemo(
+    () => buildMarketingRecipientPayload(contactList, htmlRecipientIds, htmlExternalEmails, htmlSendToAll),
+    [contactList, htmlExternalEmails, htmlRecipientIds, htmlSendToAll],
+  );
 
   const sendBroadcast = useMutation({
-    mutationFn: () =>
-      broadcastEmailService.send({
-        product_ids: selectedProductIds,
-        subject: deliverability.sanitizedSubject || DEFAULT_SUBJECT,
-        custom_message: deliverability.sanitizedMessage || undefined,
-        recipient_user_ids: sendToAll ? undefined : selectedRecipientIds,
-        send_to_all: sendToAll,
-      }),
+    mutationFn: (payload: BroadcastEmailPayload) => broadcastEmailService.send(payload),
   });
 
   const sendHtmlCampaign = useMutation({
-    mutationFn: () =>
-      htmlCampaignService.send({
-        subject: htmlDeliverability.sanitizedSubject || htmlSubject.trim(),
-        html_body: htmlDeliverability.sanitizedHtml || htmlBody,
-        template_name: htmlTemplateName,
-        recipient_user_ids: htmlSendToAll ? undefined : htmlRecipientIds,
-        send_to_all: htmlSendToAll,
-      }),
+    mutationFn: (payload: HtmlCampaignPayload) => htmlCampaignService.send(payload),
   });
 
   const canSend =
     selectedProductIds.length > 0 &&
-    selectedRecipientIds.length > 0 &&
+    sendCount > 0 &&
     deliverability.canSend;
 
   const canSendHtml =
-    htmlRecipientIds.length > 0 &&
+    htmlSendCount > 0 &&
     htmlDeliverability.canSend;
-
-  const contactList = contacts ?? [];
 
   const historyPreviewProducts = useMemo(
     () => (historyPreview ? resolveBroadcastProducts(historyPreview, products) : []),
@@ -166,7 +171,12 @@ export default function AdminSenderPage() {
   const handleConfirmSend = async () => {
     setSendPhase('sending');
     try {
-      const result = await sendBroadcast.mutateAsync();
+      const result = await sendBroadcast.mutateAsync({
+        product_ids: selectedProductIds,
+        subject: deliverability.sanitizedSubject || DEFAULT_SUBJECT,
+        custom_message: deliverability.sanitizedMessage || undefined,
+        ...broadcastRecipientPayload,
+      });
       void queryClient.invalidateQueries({ queryKey: ['email-broadcasts'] });
       clearBroadcastDraft();
       setSendResult({
@@ -188,7 +198,12 @@ export default function AdminSenderPage() {
   const handleConfirmHtmlSend = async () => {
     setHtmlSendPhase('sending');
     try {
-      const result = await sendHtmlCampaign.mutateAsync();
+      const result = await sendHtmlCampaign.mutateAsync({
+        subject: htmlDeliverability.sanitizedSubject || htmlSubject.trim(),
+        html_body: htmlDeliverability.sanitizedHtml || htmlBody,
+        template_name: htmlTemplateName,
+        ...htmlRecipientPayload,
+      });
       void queryClient.invalidateQueries({ queryKey: ['email-campaigns'] });
       clearHtmlCampaignDraft();
       setHtmlSendResult({
@@ -241,8 +256,8 @@ export default function AdminSenderPage() {
         <h1 className="text-xl font-bold sm:text-2xl">Email Sender</h1>
         <p className="text-sm text-muted-foreground">
           Send product announcements or custom HTML campaigns from <strong>support@nexlogs.store</strong>.
-          Promotional emails include an unsubscribe link. Users who unsubscribe are excluded from future sends.
-          Sign-up and order emails are not affected.
+          Use <strong>Email marketing</strong> templates for external contacts, or add any email in the To field.
+          Promotional sends include an unsubscribe link automatically.
         </p>
       </div>
 
@@ -260,6 +275,8 @@ export default function AdminSenderPage() {
           onSelectedProductIdsChange={(ids) => updateBroadcast({ selectedProductIds: ids })}
           selectedRecipientIds={selectedRecipientIds}
           onSelectedRecipientIdsChange={(ids) => updateBroadcast({ selectedRecipientIds: ids })}
+          selectedExternalEmails={selectedExternalEmails}
+          onSelectedExternalEmailsChange={(emails) => updateBroadcast({ selectedExternalEmails: emails })}
           onSend={openSendFlow}
           sending={sendPhase === 'sending'}
           canSend={canSend}
@@ -276,6 +293,8 @@ export default function AdminSenderPage() {
           onTemplateNameChange={(value) => updateHtmlCampaign({ templateName: value })}
           selectedRecipientIds={htmlRecipientIds}
           onSelectedRecipientIdsChange={(ids) => updateHtmlCampaign({ selectedRecipientIds: ids })}
+          selectedExternalEmails={htmlExternalEmails}
+          onSelectedExternalEmailsChange={(emails) => updateHtmlCampaign({ selectedExternalEmails: emails })}
           onSend={openHtmlSendFlow}
           sending={htmlSendPhase === 'sending'}
           canSend={canSendHtml}
@@ -380,6 +399,7 @@ export default function AdminSenderPage() {
             : undefined
         }
         recipientUserIds={historyPreview?.recipient_user_ids ?? []}
+        recipientEmails={historyPreview?.recipient_emails ?? []}
         contacts={contactList}
         failedCount={historyPreview?.failed_count ?? 0}
         onSelectMissingRecipients={handleBroadcastResendToMissing}
@@ -396,6 +416,7 @@ export default function AdminSenderPage() {
             : undefined
         }
         recipientUserIds={htmlHistoryPreview?.recipient_user_ids ?? []}
+        recipientEmails={htmlHistoryPreview?.recipient_emails ?? []}
         contacts={contactList}
         failedCount={htmlHistoryPreview?.failed_count ?? 0}
         onSelectMissingRecipients={handleHtmlResendToMissing}

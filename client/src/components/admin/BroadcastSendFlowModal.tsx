@@ -55,7 +55,7 @@ export function BroadcastSendFlowModal({
   const backdropClose = phase === 'confirm' || phase === 'success';
 
   return (
-    <div className={adminModalOverlayClass(isDark)}>
+    <div className={adminModalOverlayClass(isDark, 'z-[85]')}>
       {backdropClose && (
         <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Close" />
       )}

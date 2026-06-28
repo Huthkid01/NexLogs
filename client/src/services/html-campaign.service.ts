@@ -6,6 +6,7 @@ export interface HtmlCampaignPayload {
   html_body: string;
   template_name?: string;
   recipient_user_ids?: string[];
+  recipient_emails?: string[];
   send_to_all?: boolean;
 }
 
@@ -28,6 +29,7 @@ export interface EmailCampaignRecord {
   sent_count: number;
   failed_count: number;
   recipient_user_ids?: string[];
+  recipient_emails?: string[];
   created_at: string;
 }
 

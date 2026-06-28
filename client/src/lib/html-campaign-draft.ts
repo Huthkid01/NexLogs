@@ -5,6 +5,7 @@ export interface HtmlCampaignDraft {
   htmlBody: string;
   templateName: string;
   selectedRecipientIds: string[];
+  selectedExternalEmails: string[];
   savedAt: string;
 }
 

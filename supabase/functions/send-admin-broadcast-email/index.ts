@@ -3,9 +3,12 @@ import { buildNewProductsBroadcastEmail } from './templates.ts';
 import {
   buildOneClickUnsubscribeUrl,
   buildPublicUnsubscribeUrl,
-  getUnsubscribedUserIds,
-  getUnsubscribeTokensForUsers,
 } from '../_shared/marketing-unsubscribe.ts';
+import {
+  loadUnsubscribeTokensForRecipients,
+  parseRecipientEmails,
+  resolveMarketingRecipients,
+} from '../_shared/marketing-recipients.ts';
 import {
   buildDeliverabilityHeaders,
   sanitizeBroadcastMessage,
@@ -27,6 +30,7 @@ interface BroadcastRequest {
   subject?: string;
   custom_message?: string;
   recipient_user_ids?: string[];
+  recipient_emails?: string[];
   send_to_all?: boolean;
 }
 
@@ -182,6 +186,7 @@ Deno.serve(async (req) => {
     const requestedRecipientIds = Array.isArray(body.recipient_user_ids)
       ? body.recipient_user_ids.map((id) => String(id).trim()).filter(Boolean)
       : [];
+    const requestedRecipientEmails = parseRecipientEmails(body.recipient_emails);
 
     let subject = sanitizeBroadcastSubject(body.subject?.trim() || 'New products available on Nexlogs');
     let customMessage = sanitizeBroadcastMessage(body.custom_message ?? '');
@@ -218,51 +223,22 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Select at least one active product to include in the email' }, 400);
     }
 
-    const { data: recipients, error: recipientsError } = await adminClient
-      .from('profiles')
-      .select('id, email, full_name, created_at')
-      .eq('is_suspended', false)
-      .neq('role', 'admin')
-      .not('email', 'is', null)
-      .order('created_at', { ascending: true });
+    const resolved = await resolveMarketingRecipients(adminClient, {
+      sendToAll,
+      recipientUserIds: requestedRecipientIds,
+      recipientEmails: requestedRecipientEmails,
+    });
 
-    if (recipientsError) throw recipientsError;
-
-    const uniqueRecipients = Array.from(
-      new Map(
-        (recipients ?? [])
-          .filter((recipient) => recipient.email?.trim())
-          .map((recipient) => [recipient.email.trim().toLowerCase(), recipient]),
-      ).values(),
-    );
-
-    if (!uniqueRecipients.length) {
-      return jsonResponse({ error: 'No eligible user emails found' }, 400);
+    if (resolved.error || !resolved.data) {
+      return jsonResponse({ error: resolved.error || 'No recipients selected' }, 400);
     }
 
-    const unsubscribedIds = await getUnsubscribedUserIds(
-      adminClient,
-      uniqueRecipients.map((recipient) => recipient.id),
-    );
-    const eligibleRecipients = uniqueRecipients.filter((recipient) => !unsubscribedIds.has(recipient.id));
-
-    if (!eligibleRecipients.length) {
-      return jsonResponse({ error: 'All selected contacts have unsubscribed from promotional emails' }, 400);
-    }
-
-    const totalEligible = eligibleRecipients.length;
-
-    let targetRecipients = eligibleRecipients;
-    if (!sendToAll) {
-      if (!requestedRecipientIds.length) {
-        return jsonResponse({ error: 'Select at least one contact in the To field' }, 400);
-      }
-      const selectedSet = new Set(requestedRecipientIds);
-      targetRecipients = eligibleRecipients.filter((recipient) => selectedSet.has(recipient.id));
-      if (!targetRecipients.length) {
-        return jsonResponse({ error: 'Selected contacts are not eligible to receive emails' }, 400);
-      }
-    }
+    const {
+      recipients: targetRecipients,
+      userIds: recipientUserIds,
+      externalEmails: recipientExternalEmails,
+      totalEligibleUsers,
+    } = resolved.data;
 
     if (!targetRecipients.length) {
       return jsonResponse({ error: 'No recipients selected' }, 400);
@@ -275,19 +251,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const unsubscribeTokens = await getUnsubscribeTokensForUsers(
-      adminClient,
-      targetRecipients.map((recipient) => recipient.id),
-    );
+    const unsubscribeTokens = await loadUnsubscribeTokensForRecipients(adminClient, targetRecipients);
 
     let sent = 0;
     let failed = 0;
     const failures: string[] = [];
 
     for (const recipient of targetRecipients) {
-      const emailAddress = recipient.email.trim();
-      const fullName = recipient.full_name?.trim() || emailAddress.split('@')[0];
-      const token = unsubscribeTokens.get(recipient.id);
+      const emailAddress = recipient.email;
+      const fullName = recipient.fullName;
+      const token = unsubscribeTokens.get(emailAddress);
       const publicUnsubscribeUrl = token ? buildPublicUnsubscribeUrl(appUrl, token) : `${appUrl}/support`;
       const oneClickUnsubscribeUrl = token && supabaseUrl
         ? buildOneClickUnsubscribeUrl(supabaseUrl, token)
@@ -304,6 +277,7 @@ Deno.serve(async (req) => {
           price: Number(product.price),
         })),
         unsubscribeUrl: publicUnsubscribeUrl,
+        isAccountHolder: !recipient.isExternal,
       });
       const deliverabilityHeaders = buildDeliverabilityHeaders(appUrl, oneClickUnsubscribeUrl);
 
@@ -329,7 +303,6 @@ Deno.serve(async (req) => {
     }
 
     const productIdList = products.map((product) => product.id);
-    const recipientUserIds = targetRecipients.map((recipient) => recipient.id);
 
     try {
       await adminClient.from('email_broadcasts').insert({
@@ -341,6 +314,7 @@ Deno.serve(async (req) => {
         sent_count: sent,
         failed_count: failed,
         recipient_user_ids: recipientUserIds,
+        recipient_emails: recipientExternalEmails,
       });
     } catch (logError) {
       console.error('[send-admin-broadcast-email] failed to save broadcast history', logError);
@@ -354,7 +328,7 @@ Deno.serve(async (req) => {
         metadata: {
           subject,
           product_ids: productIdList,
-          total_eligible: totalEligible,
+          total_eligible: totalEligibleUsers,
           recipient_count: targetRecipients.length,
           recipient_limit: sendToAll ? null : requestedRecipientIds.length,
           send_to_all: sendToAll,
@@ -368,7 +342,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       ok: true,
-      total_eligible: totalEligible,
+      total_eligible: totalEligibleUsers,
       recipient_count: targetRecipients.length,
       sent_count: sent,
       failed_count: failed,

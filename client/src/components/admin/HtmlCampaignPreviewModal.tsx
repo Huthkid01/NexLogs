@@ -13,6 +13,7 @@ interface HtmlCampaignPreviewModalProps {
   htmlBody: string;
   description?: string;
   recipientUserIds?: string[];
+  recipientEmails?: string[];
   contacts?: BroadcastContact[];
   failedCount?: number;
   onSelectMissingRecipients?: (ids: string[]) => void;
@@ -25,6 +26,7 @@ export function HtmlCampaignPreviewModal({
   htmlBody,
   description,
   recipientUserIds = [],
+  recipientEmails = [],
   contacts = [],
   failedCount = 0,
   onSelectMissingRecipients,
@@ -96,6 +98,7 @@ export function HtmlCampaignPreviewModal({
           ) : (
             <EmailSendRecipientsPanel
               recipientUserIds={recipientUserIds}
+              recipientEmails={recipientEmails}
               contacts={contacts}
               failedCount={failedCount}
               onSelectMissing={onSelectMissingRecipients}
