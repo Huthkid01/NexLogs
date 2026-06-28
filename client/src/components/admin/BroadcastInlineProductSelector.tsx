@@ -54,7 +54,7 @@ export function BroadcastInlineProductSelector({
               selectedProducts.map((product) => (
                 <span
                   key={product.id}
-                  className="inline-flex max-w-full items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs text-violet-900 dark:bg-violet-950/40 dark:text-violet-200"
+                  className="inline-flex max-w-full items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs text-orange-900 dark:bg-orange-950/40 dark:text-orange-200"
                 >
                   <span className="truncate">{product.title}</span>
                 </span>
@@ -64,7 +64,7 @@ export function BroadcastInlineProductSelector({
               type="button"
               size="sm"
               variant="outline"
-              className="h-7 rounded-full border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-900/40 dark:text-violet-300 dark:hover:bg-violet-950/30"
+              className="h-7 rounded-full border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-900/40 dark:text-orange-300 dark:hover:bg-orange-950/30"
               onClick={onToggleOpen}
             >
               <Package className="mr-1.5 h-3.5 w-3.5" />
@@ -93,7 +93,7 @@ export function BroadcastInlineProductSelector({
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
               />
             </div>
-            <Button type="button" size="sm" variant="ghost" className="shrink-0 text-violet-600" onClick={onSelectRecent}>
+            <Button type="button" size="sm" variant="ghost" className="shrink-0 text-primary" onClick={onSelectRecent}>
               Select 5 recent
             </Button>
           </div>
@@ -117,7 +117,7 @@ export function BroadcastInlineProductSelector({
                   >
                     <input
                       type="checkbox"
-                      className="mt-1 accent-[#7c3aed]"
+                      className="mt-1 accent-primary"
                       checked={checked}
                       onChange={() => onToggle(product.id)}
                     />

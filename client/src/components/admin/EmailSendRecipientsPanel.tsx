@@ -75,7 +75,7 @@ export function EmailSendRecipientsPanel({
               className={cn(
                 'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
                 view === 'sent'
-                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                   : 'bg-muted text-muted-foreground hover:text-foreground',
               )}
             >
@@ -134,7 +134,7 @@ export function EmailSendRecipientsPanel({
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by name or email"
               className={cn(
-                'w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-violet-500/30',
+                'w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/30',
                 isDark
                   ? 'border-[#22324a] bg-[#0b1728] text-slate-100 placeholder:text-slate-500'
                   : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',

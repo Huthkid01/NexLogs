@@ -177,7 +177,7 @@ export function BroadcastComposer({
           className={cn(
             'flex w-full max-w-2xl items-center justify-between rounded-xl border px-4 py-3 text-left shadow-lg transition hover:shadow-xl',
             isDark ? 'border-[#22324a] bg-[#0b1628] text-slate-100' : 'border-slate-200 bg-white text-slate-900',
-            !minimized && 'ring-2 ring-violet-500/40',
+            !minimized && 'ring-2 ring-primary/40',
           )}
         >
           <span className="truncate text-sm font-medium">
@@ -293,7 +293,7 @@ export function BroadcastComposer({
               <button
                 type="button"
                 onClick={handlePreviewFullscreen}
-                className="text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+                className="text-xs font-medium text-primary hover:underline dark:text-primary"
               >
                 Open full screen
               </button>
@@ -318,7 +318,7 @@ export function BroadcastComposer({
                 type="button"
                 disabled={sending || !canSend}
                 onClick={handleSendClick}
-                className="inline-flex h-9 items-center rounded-l-full bg-[#7c3aed] px-5 text-sm font-semibold text-white hover:bg-[#6d28d9] disabled:opacity-50"
+                className="inline-flex h-9 items-center rounded-l-full bg-[#f26522] px-5 text-sm font-semibold text-white hover:bg-[#d94e0f] disabled:opacity-50"
               >
                 {sending ? 'Sending…' : 'Send'}
               </button>
@@ -326,7 +326,7 @@ export function BroadcastComposer({
                 type="button"
                 disabled={sending}
                 onClick={() => setSendMenuOpen((value) => !value)}
-                className="inline-flex h-9 items-center rounded-r-full border-l border-violet-500 bg-[#7c3aed] px-2 text-white hover:bg-[#6d28d9] disabled:opacity-50"
+                className="inline-flex h-9 items-center rounded-r-full border-l border-primary bg-[#f26522] px-2 text-white hover:bg-[#d94e0f] disabled:opacity-50"
                 aria-label="Send options"
               >
                 <ChevronDown className="h-4 w-4" />
@@ -455,7 +455,7 @@ function ToolbarIcon({
       aria-label={label}
       className={cn(
         'rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-35 dark:hover:bg-[#06101d] dark:hover:text-slate-200',
-        active && 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300',
+        active && 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
       )}
     >
       <Icon className="h-4 w-4" />

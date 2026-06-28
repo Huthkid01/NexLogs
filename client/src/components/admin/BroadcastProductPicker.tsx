@@ -50,13 +50,13 @@ export function BroadcastProductPicker({
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[#18263b]">
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <Package className="h-4 w-4 text-[#7c3aed]" />
+            <Package className="h-4 w-4 text-[#f26522]" />
             Products to include
           </div>
           <button
             type="button"
             onClick={onSelectRecent}
-            className="text-xs font-medium text-[#7c3aed] hover:underline"
+            className="text-xs font-medium text-[#f26522] hover:underline"
           >
             Select 5 recent
           </button>
@@ -90,7 +90,7 @@ export function BroadcastProductPicker({
                 >
                   <input
                     type="checkbox"
-                    className="mt-1 accent-[#7c3aed]"
+                    className="mt-1 accent-primary"
                     checked={checked}
                     onChange={() => onToggle(product.id)}
                   />

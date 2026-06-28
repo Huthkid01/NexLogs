@@ -167,11 +167,11 @@ export function AdminLayout() {
                     desktopSidebarCollapsed && 'lg:justify-center lg:px-0',
                     active
                       ? isDark
-                        ? 'bg-[#0f2340] text-slate-50 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.2)]'
-                        : 'bg-[#eef4ff] text-[#1d4ed8] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.18)]'
+                        ? 'bg-[#2d1a0f] text-orange-100 shadow-[inset_0_0_0_1px_rgba(242,101,34,0.25)]'
+                        : 'bg-[#fff3eb] text-[#f26522] shadow-[inset_0_0_0_1px_rgba(242,101,34,0.22)]'
                       : isDark
-                        ? 'text-slate-400 hover:bg-[#0b1728] hover:text-slate-100'
-                      : 'text-slate-600 hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'
+                        ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                      : 'text-slate-600 hover:bg-[#fff3eb] hover:text-[#f26522]'
                   )}
                   title={desktopSidebarCollapsed ? item.label : undefined}
                 >
@@ -199,11 +199,11 @@ export function AdminLayout() {
                   desktopSidebarCollapsed && 'lg:justify-center lg:px-0',
                   contentMenuActive
                     ? isDark
-                      ? 'bg-[#0f2340] text-slate-50 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.2)]'
-                      : 'bg-[#eef4ff] text-[#1d4ed8] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.18)]'
+                      ? 'bg-[#2d1a0f] text-orange-100 shadow-[inset_0_0_0_1px_rgba(242,101,34,0.25)]'
+                      : 'bg-[#fff3eb] text-[#f26522] shadow-[inset_0_0_0_1px_rgba(242,101,34,0.22)]'
                     : isDark
-                      ? 'text-slate-400 hover:bg-[#0b1728] hover:text-slate-100'
-                      : 'text-slate-600 hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'
+                      ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                      : 'text-slate-600 hover:bg-[#fff3eb] hover:text-[#f26522]'
                 )}
                 title={desktopSidebarCollapsed ? 'Site Content' : undefined}
               >
@@ -219,7 +219,7 @@ export function AdminLayout() {
                 <div
                   className={cn(
                     'ml-3 max-h-[320px] space-y-1 overflow-y-auto rounded-2xl border px-2 py-2',
-                    isDark ? 'border-[#18263b] bg-[#081321]' : 'border-[#d7e7ff] bg-[#f2f7ff]'
+                    isDark ? 'border-[#18263b] bg-[#081321]' : 'border-[#fde4d4] bg-[#fffaf7]'
                   )}
                 >
                   {siteContentItems.map((item) => {
@@ -237,11 +237,11 @@ export function AdminLayout() {
                           'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
                           active
                             ? isDark
-                              ? 'bg-[#10213a] text-slate-100'
-                              : 'bg-[#dcecff] text-[#1d4ed8]'
+                              ? 'bg-[#2d1a0f] text-orange-100'
+                              : 'bg-[#ffe8d9] text-[#c44d10]'
                             : isDark
-                              ? 'text-slate-400 hover:bg-[#0b1728] hover:text-slate-100'
-                              : 'text-slate-700 hover:bg-[#dcecff] hover:text-[#1d4ed8]'
+                              ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                              : 'text-slate-700 hover:bg-[#fff3eb] hover:text-[#f26522]'
                         )}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -263,7 +263,7 @@ export function AdminLayout() {
                 size="sm"
                 className={cn(
                   'w-full',
-                  isDark ? 'text-slate-100 hover:bg-[#0d1b2d]' : 'text-slate-700 hover:bg-[#e8f1ff] hover:text-[#1d4ed8]',
+                  isDark ? 'text-slate-100 hover:bg-[#0d1b2d]' : 'text-slate-700 hover:bg-[#fff3eb] hover:text-[#f26522]',
                   desktopSidebarCollapsed ? 'justify-center lg:px-0' : 'justify-start'
                 )}
                 onClick={signOut}
@@ -321,11 +321,11 @@ export function AdminLayout() {
                     'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
                     active
                       ? isDark
-                        ? 'bg-[#10213a] text-slate-100'
-                        : 'bg-[#eef4ff] text-[#1d4ed8]'
+                        ? 'bg-[#2d1a0f] text-orange-100'
+                        : 'bg-[#fff3eb] text-[#f26522]'
                       : isDark
-                        ? 'text-slate-400 hover:bg-[#0b1728] hover:text-slate-100'
-                        : 'text-slate-600 hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'
+                        ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                        : 'text-slate-600 hover:bg-[#fff3eb] hover:text-[#f26522]'
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />

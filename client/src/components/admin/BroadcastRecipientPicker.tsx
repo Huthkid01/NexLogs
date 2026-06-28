@@ -305,7 +305,7 @@ export function BroadcastRecipientPicker({
               className={cn(
                 'inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-xs',
                 variant === 'composer'
-                  ? 'bg-violet-50 text-violet-900 dark:bg-violet-950/40 dark:text-violet-200'
+                  ? 'bg-orange-50 text-orange-900 dark:bg-orange-950/40 dark:text-orange-200'
                   : 'bg-[#fff3eb] text-[#9a3412] dark:bg-[#f26522]/10 dark:text-[#fdba74]',
               )}
             >
@@ -392,7 +392,7 @@ export function BroadcastRecipientPicker({
             <div className="flex gap-2">
               <button
                 type="button"
-                className="text-xs font-medium text-[#7c3aed] hover:underline disabled:opacity-40"
+                className="text-xs font-medium text-[#f26522] hover:underline disabled:opacity-40"
                 onClick={selectAll}
                 disabled={loading || !contacts.length}
               >
@@ -417,7 +417,7 @@ export function BroadcastRecipientPicker({
               className="flex w-full flex-col items-start gap-0.5 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-[#18263b] dark:hover:bg-[#06101d]"
               onClick={() => addContact(pendingContact.id)}
             >
-              <span className="text-sm font-medium text-[#7c3aed]">
+              <span className="text-sm font-medium text-[#f26522]">
                 Add {pendingContact.fullName || pendingContact.email}
               </span>
               <span className="text-xs text-muted-foreground">
@@ -430,7 +430,7 @@ export function BroadcastRecipientPicker({
               className="flex w-full flex-col items-start gap-0.5 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-[#18263b] dark:hover:bg-[#06101d]"
               onClick={() => addExternalEmail(pendingExternalEmail)}
             >
-              <span className="text-sm font-medium text-[#7c3aed]">Add external email</span>
+              <span className="text-sm font-medium text-[#f26522]">Add external email</span>
               <span className="text-xs text-muted-foreground">
                 {pendingExternalEmail} · press Enter
               </span>

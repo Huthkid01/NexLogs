@@ -120,7 +120,7 @@ export default function AdminUsersPage() {
       label: `On site now (${SITE_ACTIVE_WINDOW_MINUTES} min)`,
       value: visitorStats?.activeVisitors ?? 0,
       icon: Eye,
-      iconClass: 'bg-violet-500/15 text-violet-300',
+      iconClass: 'bg-orange-500/15 text-orange-300',
     },
     {
       label: 'Site visits today',

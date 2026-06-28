@@ -161,7 +161,7 @@ textarea {
 
 .admin-shell {
   background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 30%),
+    radial-gradient(circle at top right, rgba(242, 101, 34, 0.12), transparent 30%),
     linear-gradient(180deg, #040b16 0%, #07111f 100%);
   color: #e2e8f0;
 }
@@ -246,8 +246,8 @@ textarea {
 .admin-select:focus,
 .admin-textarea:focus {
   outline: none;
-  border-color: rgba(59, 130, 246, 0.7);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  border-color: rgba(242, 101, 34, 0.7);
+  box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.18);
 }
 
 @keyframes broadcast-send-progress {

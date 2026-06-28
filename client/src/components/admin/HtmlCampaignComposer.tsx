@@ -146,7 +146,7 @@ export function HtmlCampaignComposer({
           className={cn(
             'flex w-full max-w-2xl items-center justify-between rounded-xl border px-4 py-3 text-left shadow-lg transition hover:shadow-xl',
             isDark ? 'border-[#22324a] bg-[#0b1628] text-slate-100' : 'border-slate-200 bg-white text-slate-900',
-            !minimized && 'ring-2 ring-violet-500/40',
+            !minimized && 'ring-2 ring-primary/40',
           )}
         >
           <span className="truncate text-sm font-medium">
@@ -228,7 +228,7 @@ export function HtmlCampaignComposer({
             <button
               type="button"
               onClick={() => setTemplateMenuOpen((value) => !value)}
-              className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300"
+              className="flex items-center gap-2 text-sm text-primary hover:text-primary-dark"
             >
               <FileText className="h-4 w-4" />
               {selectedTemplate?.name ?? 'Choose template'}
@@ -256,13 +256,13 @@ export function HtmlCampaignComposer({
                             onClick={() => applyTemplate(template.id)}
                             className={cn(
                               'block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-[#06101d]',
-                              template.id === templateName && 'bg-violet-50 dark:bg-violet-950/40',
+                              template.id === templateName && 'bg-orange-50 dark:bg-orange-950/40',
                             )}
                           >
                             <span
                               className={cn(
                                 'block text-sm font-medium',
-                                template.id === templateName && 'text-violet-600 dark:text-violet-400',
+                                template.id === templateName && 'text-primary dark:text-primary',
                               )}
                             >
                               {template.name}
@@ -309,7 +309,7 @@ export function HtmlCampaignComposer({
               <button
                 type="button"
                 onClick={() => updateHtmlCampaign({ previewExpanded: !previewExpanded })}
-                className="text-xs font-medium text-violet-400 hover:underline"
+                className="text-xs font-medium text-primary hover:underline"
               >
                 {previewExpanded ? 'Compact' : 'Expand'}
               </button>
@@ -336,7 +336,7 @@ export function HtmlCampaignComposer({
               <button
                 type="button"
                 onClick={() => updateHtmlCampaign({ previewInlineOpen: false })}
-                className="text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+                className="text-xs font-medium text-primary hover:underline dark:text-primary"
               >
                 Hide
               </button>
@@ -356,7 +356,7 @@ export function HtmlCampaignComposer({
                 type="button"
                 disabled={sending || !canSend}
                 onClick={handleSendClick}
-                className="inline-flex h-9 items-center rounded-l-full bg-[#7c3aed] px-5 text-sm font-semibold text-white hover:bg-[#6d28d9] disabled:opacity-50"
+                className="inline-flex h-9 items-center rounded-l-full bg-[#f26522] px-5 text-sm font-semibold text-white hover:bg-[#d94e0f] disabled:opacity-50"
               >
                 {sending ? 'Sending…' : 'Send'}
               </button>
@@ -364,7 +364,7 @@ export function HtmlCampaignComposer({
                 type="button"
                 disabled={sending}
                 onClick={() => setSendMenuOpen((value) => !value)}
-                className="inline-flex h-9 items-center rounded-r-full border-l border-violet-500 bg-[#7c3aed] px-2 text-white hover:bg-[#6d28d9] disabled:opacity-50"
+                className="inline-flex h-9 items-center rounded-r-full border-l border-primary bg-[#f26522] px-2 text-white hover:bg-[#d94e0f] disabled:opacity-50"
                 aria-label="Send options"
               >
                 <ChevronDown className="h-4 w-4" />
@@ -404,7 +404,7 @@ export function HtmlCampaignComposer({
               className={cn(
                 'inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors',
                 previewInlineOpen
-                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#06101d]',
               )}
               title="Inbox preview and placement checks"

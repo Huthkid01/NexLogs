@@ -360,6 +360,100 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
 </html>`,
   },
   {
+    id: 'website-navigation-guide',
+    name: 'Website navigation guide',
+    category: 'account',
+    description: 'Step-by-step guide to menus, marketplace, wallet, and support.',
+    defaultSubject: `How to navigate ${APP_NAME}`,
+    html: buildMarketingEmailHtml({
+      title: `Navigate ${APP_NAME}`,
+      preheader: `A quick tour of ${APP_NAME} — marketplace, wallet, purchases, and help.`,
+      heroTitle: 'How to navigate our website',
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">
+                Here is a simple guide to finding your way around <strong>${APP_NAME}</strong>. Sign in at
+                <a href="${appUrl}/login" style="color:#f26522;text-decoration:none;">${siteHost}/login</a>
+                to access everything below.
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">1. Main menu (top left ☰)</p>
+                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
+                      Tap the menu icon to open the side panel. From there you can go to:<br/>
+                      • <strong>Marketplace</strong> — browse all products<br/>
+                      • <strong>Purchase RDP</strong> — RDP orders<br/>
+                      • <strong>My Purchases</strong> — your order history<br/>
+                      • <strong>Buy Numbers</strong> — number products<br/>
+                      • <strong>Need help?</strong> — support page
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">2. Top navigation links</p>
+                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
+                      Use the header links for quick access:<br/>
+                      • <a href="${appUrl}/" style="color:#f26522;text-decoration:none;">Home</a> — landing page<br/>
+                      • <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">Marketplace</a> — shop catalog<br/>
+                      • <a href="${appUrl}/about" style="color:#f26522;text-decoration:none;">About</a> — about ${APP_NAME}<br/>
+                      • <a href="${appUrl}/support" style="color:#f26522;text-decoration:none;">Support</a> — contact &amp; help
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">3. Your account menu (top right)</p>
+                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
+                      Click your profile icon to see your wallet balance, open
+                      <a href="${appUrl}/profile" style="color:#f26522;text-decoration:none;">Profile</a>,
+                      go to <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a>,
+                      or sign out. Your balance is shown here before you buy.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#fff7f2;border:1px solid #fed7aa;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1f2937;">4. Buy a product (quick steps)</p>
+                    <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.9;color:#374151;">
+                      <li>Add money via <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a></li>
+                      <li>Open the <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">Marketplace</a> and pick a product</li>
+                      <li>Confirm your order — payment comes from your wallet balance</li>
+                      <li>Check delivery under <a href="${appUrl}/purchases" style="color:#f26522;text-decoration:none;">My Purchases</a></li>
+                    </ol>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">5. Help &amp; footer links</p>
+                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
+                      • <a href="${appUrl}/faq" style="color:#f26522;text-decoration:none;">FAQ</a> — common questions<br/>
+                      • <a href="${appUrl}/support" style="color:#f26522;text-decoration:none;">Support</a> — open a ticket or find Telegram<br/>
+                      • Footer links for Privacy &amp; Terms at the bottom of every page<br/>
+                      • Email us anytime at <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>`,
+      ctaLabel: 'Open marketplace',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
     id: 'blank',
     name: 'Blank HTML',
     category: 'general',

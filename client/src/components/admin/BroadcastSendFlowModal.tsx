@@ -88,7 +88,7 @@ export function BroadcastSendFlowModal({
               <Button type="button" variant="outline" className={adminOutlineButtonClass(isDark)} onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="button" className="bg-[#7c3aed] text-white hover:bg-[#6d28d9]" onClick={onConfirmSend}>
+              <Button type="button" className="bg-[#f26522] text-white hover:bg-[#d94e0f]" onClick={onConfirmSend}>
                 Send emails
               </Button>
             </div>
@@ -103,14 +103,14 @@ export function BroadcastSendFlowModal({
                 isDark ? 'border-[#22324a] bg-[#0b1628]' : 'border-slate-200 bg-slate-50',
               )}
             >
-              <Mail className="h-7 w-7 animate-pulse text-[#7c3aed]" />
+              <Mail className="h-7 w-7 animate-pulse text-[#f26522]" />
             </div>
             <p className="text-lg font-semibold">Sending emails…</p>
             <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>
               Delivering to {sendCount} recipient{sendCount === 1 ? '' : 's'}. Please wait.
             </p>
             <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#18263b]">
-              <div className="broadcast-send-progress h-full w-1/3 rounded-full bg-[#7c3aed]" />
+              <div className="broadcast-send-progress h-full w-1/3 rounded-full bg-[#f26522]" />
             </div>
           </div>
         )}

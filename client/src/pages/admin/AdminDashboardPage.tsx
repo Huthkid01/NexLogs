@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
 
   const statCards = [
     { label: 'Total users', value: stats?.totalUsers || 0, icon: Users, iconClass: 'bg-blue-500/15 text-blue-300' },
-    { label: 'Total orders', value: stats?.totalOrders || 0, icon: ShoppingBag, iconClass: 'bg-violet-500/15 text-violet-300' },
+    { label: 'Total orders', value: stats?.totalOrders || 0, icon: ShoppingBag, iconClass: 'bg-orange-500/15 text-orange-300' },
     { label: 'Revenue', value: formatPrice(stats?.totalRevenue || 0), icon: DollarSign, iconClass: 'bg-emerald-500/15 text-emerald-300' },
     { label: 'Products', value: stats?.totalProducts || 0, icon: Package, iconClass: 'bg-amber-500/15 text-amber-200' },
     { label: 'Open tickets', value: stats?.openTickets || 0, icon: LifeBuoy, iconClass: 'bg-rose-500/15 text-rose-300' },

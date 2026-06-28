@@ -65,7 +65,7 @@ export function HtmlCampaignPreviewModal({
             className={cn(
               'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               tab === 'preview'
-                ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
+                ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                 : 'text-muted-foreground hover:bg-muted/60',
             )}
           >
@@ -78,7 +78,7 @@ export function HtmlCampaignPreviewModal({
             className={cn(
               'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               tab === 'recipients'
-                ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
+                ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                 : 'text-muted-foreground hover:bg-muted/60',
             )}
           >

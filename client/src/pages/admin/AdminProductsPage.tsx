@@ -360,7 +360,7 @@ export default function AdminProductsPage() {
                   <div className="min-w-[100px]">
                     <Badge
                       variant="outline"
-                      className={product.is_active ? 'border-blue-500/30 bg-blue-500/10 text-blue-200' : isDark ? 'border-slate-600 bg-slate-700/20 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}
+                      className={product.is_active ? 'border-primary/30 bg-primary/10 text-orange-200' : isDark ? 'border-slate-600 bg-slate-700/20 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}
                     >
                       {product.is_active ? 'Active' : 'Draft'}
                     </Badge>
