@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils';
+import { EMAIL_ICON_PATH, EMAIL_LOGO_PATH } from '@/lib/email-branding';
 
-export const NEXLOGS_LOGO_SRC = '/images/nexlogs-logo.svg';
-export const NEXLOGS_ICON_SRC = '/images/nexlogs-icon.svg';
+export const NEXLOGS_LOGO_SRC = EMAIL_LOGO_PATH;
+export const NEXLOGS_ICON_SRC = EMAIL_ICON_PATH;
 
 interface NexLogsLogoProps {
   variant?: 'full' | 'icon';

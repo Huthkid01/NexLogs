@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
-import { activityLogService, adminService, siteVisitService } from '@/services';
+import { activityLogService, adminService, siteVisitService, SITE_ACTIVE_WINDOW_MINUTES } from '@/services';
 import { cn } from '@/lib/utils';
 import { formatVisitorLocation, getVisitorDisplayName } from '@/lib/visitor-location';
 import { toast } from 'sonner';
@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
       iconClass: 'bg-emerald-500/15 text-emerald-300',
     },
     {
-      label: 'On site now (15 min)',
+      label: `On site now (${SITE_ACTIVE_WINDOW_MINUTES} min)`,
       value: visitorStats?.activeVisitors ?? 0,
       icon: Eye,
       iconClass: 'bg-violet-500/15 text-violet-300',
@@ -285,7 +285,7 @@ export default function AdminUsersPage() {
           ) : (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No visitors on the homepage or marketplace in the last 15 minutes.
+                No visitors on the homepage or marketplace in the last {SITE_ACTIVE_WINDOW_MINUTES} minutes.
               </CardContent>
             </Card>
           )}

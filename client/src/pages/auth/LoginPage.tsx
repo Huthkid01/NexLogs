@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +18,7 @@ import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
+import { consumeAuthRedirect, getPostLoginPath, storeAuthRedirect } from '@/lib/auth-redirect';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -26,6 +27,10 @@ const loginSchema = z.object({
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
+
+type LoginLocationState = {
+  from?: { pathname?: string; search?: string };
+};
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -36,14 +41,23 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  useEffect(() => {
+    const from = (location.state as LoginLocationState)?.from;
+    if (from) {
+      storeAuthRedirect(getPostLoginPath(from, '/marketplace'));
+    }
+  }, [location.state]);
+
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
     try {
       await authService.signIn(data.email, data.password);
       resetThemeForLogin();
       resetDisplayCurrencyForLogin();
-      const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
-      navigate(from && from !== '/login' ? from : '/', { replace: true });
+      const redirect = consumeAuthRedirect(
+        getPostLoginPath((location.state as LoginLocationState)?.from, '/marketplace'),
+      );
+      navigate(redirect, { replace: true });
     } catch (err: unknown) {
       const message = normalizeAuthErrorMessage(err);
       toast.error(getUserLoginMessage(message));

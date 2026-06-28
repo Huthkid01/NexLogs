@@ -1,0 +1,319 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  appendUnsubscribeToHtml,
+  appendUnsubscribeToText,
+  buildOneClickUnsubscribeUrl,
+  buildPublicUnsubscribeUrl,
+  getUnsubscribedUserIds,
+  getUnsubscribeTokensForUsers,
+} from '../_shared/marketing-unsubscribe.ts';
+import { prependEmailLogoIfMissing } from '../_shared/email-branding.ts';
+import {
+  buildDeliverabilityHeaders,
+  htmlToPlainText,
+  personalizeHtml,
+  validateCampaignContent,
+} from './deliverability.ts';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+const MAX_RECIPIENTS = 200;
+const SEND_DELAY_MS = 120;
+
+interface HtmlCampaignRequest {
+  subject?: string;
+  html_body?: string;
+  template_name?: string;
+  recipient_user_ids?: string[];
+  send_to_all?: boolean;
+}
+
+async function sendViaSmtp(
+  input: { to: string; subject: string; html: string; text?: string; headers?: Record<string, string> },
+  options: { host: string; port: number; secure: boolean; user: string; pass: string; from: string },
+) {
+  const nodemailer = await import('npm:nodemailer@6.9.16');
+  const transport = nodemailer.default.createTransport({
+    host: options.host,
+    port: options.port,
+    secure: options.secure,
+    auth: { user: options.user, pass: options.pass },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    transport.sendMail(
+      {
+        from: options.from,
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+        headers: input.headers,
+      },
+      (error) => {
+        if (error) reject(error);
+        else resolve();
+      },
+    );
+  });
+}
+
+async function sendMail(input: {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  headers?: Record<string, string>;
+}) {
+  const host = Deno.env.get('SMTP_HOST') || 'smtp.hostinger.com';
+  const user = Deno.env.get('SMTP_USER');
+  const pass = Deno.env.get('SMTP_PASS');
+  const fromAddress = Deno.env.get('EMAIL_FROM_ADDRESS') || user;
+
+  if (!user || !pass || !fromAddress) {
+    throw new Error('SMTP_USER, SMTP_PASS, and EMAIL_FROM_ADDRESS must be set in Supabase Edge Function secrets');
+  }
+
+  const from = `"Nexlogs" <${fromAddress}>`;
+  for (const attempt of [{ port: 465, secure: true }, { port: 587, secure: false }]) {
+    try {
+      await sendViaSmtp(input, { host, port: attempt.port, secure: attempt.secure, user, pass, from });
+      return;
+    } catch (error) {
+      console.error(`[send-admin-html-campaign] SMTP ${host}:${attempt.port} failed:`, error);
+    }
+  }
+  throw new Error('SMTP send failed');
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function requireAdmin(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { error: jsonResponse({ error: 'Missing authorization header' }, 401) };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const serviceRoleKey =
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+    return { error: jsonResponse({ error: 'Missing Supabase environment configuration' }, 500) };
+  }
+
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+  const { data: authData, error: authError } = await authClient.auth.getUser();
+  if (authError || !authData.user) {
+    return { error: jsonResponse({ error: 'Unauthorized' }, 401) };
+  }
+
+  const { data: adminProfile, error: adminProfileError } = await adminClient
+    .from('profiles')
+    .select('role')
+    .eq('id', authData.user.id)
+    .single();
+
+  if (adminProfileError || adminProfile?.role !== 'admin') {
+    return { error: jsonResponse({ error: 'Admin access required' }, 403) };
+  }
+
+  return { adminClient, userId: authData.user.id };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  if (req.method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  try {
+    const auth = await requireAdmin(req);
+    if ('error' in auth && auth.error) return auth.error;
+    const { adminClient, userId } = auth as { adminClient: ReturnType<typeof createClient>; userId: string };
+
+    const body = await req.json() as HtmlCampaignRequest;
+    const sendToAll = Boolean(body.send_to_all);
+    const requestedRecipientIds = Array.isArray(body.recipient_user_ids)
+      ? body.recipient_user_ids.map((id) => String(id).trim()).filter(Boolean)
+      : [];
+    const templateName = body.template_name?.trim() || null;
+
+    const validated = validateCampaignContent(body.subject?.trim() || '', body.html_body || '');
+    const subject = validated.sanitizedSubject;
+    const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://www.nexlogs.store').replace(
+      /\/$/,
+      '',
+    );
+    const appName = Deno.env.get('APP_NAME') || 'Nexlogs';
+    const htmlTemplate = prependEmailLogoIfMissing(validated.sanitizedHtml, appUrl, appName);
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+
+    const { data: recipients, error: recipientsError } = await adminClient
+      .from('profiles')
+      .select('id, email, full_name, created_at')
+      .eq('is_suspended', false)
+      .neq('role', 'admin')
+      .not('email', 'is', null)
+      .order('created_at', { ascending: true });
+
+    if (recipientsError) throw recipientsError;
+
+    const uniqueRecipients = Array.from(
+      new Map(
+        (recipients ?? [])
+          .filter((recipient) => recipient.email?.trim())
+          .map((recipient) => [recipient.email.trim().toLowerCase(), recipient]),
+      ).values(),
+    );
+
+    if (!uniqueRecipients.length) {
+      return jsonResponse({ error: 'No eligible user emails found' }, 400);
+    }
+
+    const unsubscribedIds = await getUnsubscribedUserIds(
+      adminClient,
+      uniqueRecipients.map((recipient) => recipient.id),
+    );
+    const eligibleRecipients = uniqueRecipients.filter((recipient) => !unsubscribedIds.has(recipient.id));
+
+    if (!eligibleRecipients.length) {
+      return jsonResponse({ error: 'All selected contacts have unsubscribed from promotional emails' }, 400);
+    }
+
+    let targetRecipients = eligibleRecipients;
+    if (!sendToAll) {
+      if (!requestedRecipientIds.length) {
+        return jsonResponse({ error: 'Select at least one contact in the To field' }, 400);
+      }
+      const selectedSet = new Set(requestedRecipientIds);
+      targetRecipients = eligibleRecipients.filter((recipient) => selectedSet.has(recipient.id));
+      if (!targetRecipients.length) {
+        return jsonResponse({ error: 'Selected contacts are not eligible to receive emails' }, 400);
+      }
+    }
+
+    if (targetRecipients.length > MAX_RECIPIENTS) {
+      return jsonResponse(
+        { error: `Too many recipients (${targetRecipients.length}). Maximum ${MAX_RECIPIENTS} per campaign.` },
+        400,
+      );
+    }
+
+    const unsubscribeTokens = await getUnsubscribeTokensForUsers(
+      adminClient,
+      targetRecipients.map((recipient) => recipient.id),
+    );
+
+    let sent = 0;
+    let failed = 0;
+    const failures: string[] = [];
+    const plainBase = htmlToPlainText(htmlTemplate);
+
+    for (const recipient of targetRecipients) {
+      const emailAddress = recipient.email.trim();
+      const fullName = recipient.full_name?.trim() || emailAddress.split('@')[0];
+      const token = unsubscribeTokens.get(recipient.id);
+      const publicUnsubscribeUrl = token ? buildPublicUnsubscribeUrl(appUrl, token) : `${appUrl}/support`;
+      const oneClickUnsubscribeUrl = token && supabaseUrl
+        ? buildOneClickUnsubscribeUrl(supabaseUrl, token)
+        : publicUnsubscribeUrl;
+      const personalizedHtml = personalizeHtml(htmlTemplate, fullName);
+      const html = appendUnsubscribeToHtml(personalizedHtml, publicUnsubscribeUrl, appName);
+      const text = appendUnsubscribeToText(personalizeHtml(plainBase, fullName), publicUnsubscribeUrl);
+      const deliverabilityHeaders = buildDeliverabilityHeaders(appUrl, oneClickUnsubscribeUrl);
+
+      try {
+        await sendMail({
+          to: emailAddress,
+          subject,
+          html,
+          text,
+          headers: deliverabilityHeaders,
+        });
+        sent += 1;
+      } catch (error) {
+        failed += 1;
+        const message = error instanceof Error ? error.message : 'Send failed';
+        failures.push(`${emailAddress}: ${message}`);
+        console.error('[send-admin-html-campaign] failed for', emailAddress, message);
+      }
+
+      if (SEND_DELAY_MS > 0) {
+        await sleep(SEND_DELAY_MS);
+      }
+    }
+
+    const recipientUserIds = targetRecipients.map((recipient) => recipient.id);
+
+    try {
+      await adminClient.from('email_campaigns').insert({
+        sent_by: userId,
+        subject,
+        html_body: htmlTemplate,
+        template_name: templateName,
+        recipient_count: targetRecipients.length,
+        sent_count: sent,
+        failed_count: failed,
+        recipient_user_ids: recipientUserIds,
+      });
+    } catch (logError) {
+      console.error('[send-admin-html-campaign] failed to save campaign history', logError);
+    }
+
+    try {
+      await adminClient.from('activity_logs').insert({
+        user_id: userId,
+        action: 'email_html_campaign',
+        entity: 'profiles',
+        metadata: {
+          subject,
+          template_name: templateName,
+          recipient_count: targetRecipients.length,
+          send_to_all: sendToAll,
+          sent_count: sent,
+          failed_count: failed,
+        },
+      });
+    } catch (logError) {
+      console.error('[send-admin-html-campaign] failed to save activity log', logError);
+    }
+
+    return jsonResponse({
+      ok: true,
+      recipient_count: targetRecipients.length,
+      sent_count: sent,
+      failed_count: failed,
+      failures: failures.slice(0, 10),
+      from: 'Nexlogs <support@nexlogs.store>',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'HTML campaign send failed';
+    console.error('[send-admin-html-campaign]', message);
+    return jsonResponse({ error: message }, 500);
+  }
+});

@@ -9,3 +9,12 @@ verify_jwt = false
 
 [functions.send-transactional-email]
 verify_jwt = false
+
+[functions.send-admin-broadcast-email]
+verify_jwt = false
+
+[functions.send-admin-html-campaign]
+verify_jwt = false
+
+[functions.process-marketing-unsubscribe]
+verify_jwt = false

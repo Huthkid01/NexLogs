@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, ArrowUpDown, Monitor,
+  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, ArrowUpDown, Monitor, Mail,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/constants';
 import { NexLogsLogo } from '@/components/common/NexLogsLogo';
+import { EmailSenderStateProvider } from '@/contexts/EmailSenderStateContext';
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/admin/categories', label: 'Categories', icon: Tag },
   { href: '/admin/coupons', label: 'Coupons', icon: Tag },
   { href: '/admin/tickets', label: 'Tickets', icon: LifeBuoy },
+  { href: '/admin/sender', label: 'Email Sender', icon: Mail },
   { href: '/admin/activity', label: 'Activity Logs', icon: Activity },
   { href: '/admin/slides', label: 'Slide Management', icon: Images },
   { href: '/admin/exchange-rates', label: 'Exchange Rates', icon: ArrowUpDown },
@@ -384,7 +386,9 @@ export function AdminLayout() {
           </Button>
         </header>
         <main className="flex-1 bg-transparent p-4 lg:p-8">
-          <Outlet />
+          <EmailSenderStateProvider>
+            <Outlet />
+          </EmailSenderStateProvider>
         </main>
       </div>
     </div>

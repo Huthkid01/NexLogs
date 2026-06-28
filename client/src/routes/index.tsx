@@ -37,8 +37,12 @@ import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 import AdminSlidesPage from '@/pages/admin/AdminSlidesPage';
 import AdminExchangeRatesPage from '@/pages/admin/AdminExchangeRatesPage';
 import AdminRdpPage from '@/pages/admin/AdminRdpPage';
+import AdminSenderPage from '@/pages/admin/AdminSenderPage';
+import UnsubscribePage from '@/pages/UnsubscribePage';
 
 const router = createBrowserRouter([
+  { path: '/unsubscribe/:token', element: <UnsubscribePage /> },
+  { path: '/unsubscribe', element: <UnsubscribePage /> },
   {
     path: '/',
     element: <AdminRedirectGate><MainLayout /></AdminRedirectGate>,
@@ -85,6 +89,7 @@ const router = createBrowserRouter([
       { path: 'slides', element: <AdminSlidesPage /> },
       { path: 'exchange-rates', element: <AdminExchangeRatesPage /> },
       { path: 'rdp', element: <AdminRdpPage /> },
+      { path: 'sender', element: <AdminSenderPage /> },
       { path: 'content', element: <Navigate to="/admin/content/homepage" replace /> },
       { path: 'content/contact', element: <Navigate to="/admin/content/support" replace /> },
       { path: 'content/:section', element: <AdminContentPage /> },

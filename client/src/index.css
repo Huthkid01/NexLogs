@@ -249,3 +249,17 @@ textarea {
   border-color: rgba(59, 130, 246, 0.7);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
+
+@keyframes broadcast-send-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.broadcast-send-progress {
+  animation: broadcast-send-progress 1.25s ease-in-out infinite;
+}

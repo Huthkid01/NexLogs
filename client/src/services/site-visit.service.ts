@@ -52,7 +52,9 @@ export interface SiteVisitorStats {
   visitsToday: number;
 }
 
-const ACTIVE_WINDOW_MINUTES = 15;
+export const SITE_ACTIVE_WINDOW_MINUTES = 5;
+
+const ACTIVE_WINDOW_MINUTES = SITE_ACTIVE_WINDOW_MINUTES;
 
 function getActiveSinceIso() {
   return new Date(Date.now() - ACTIVE_WINDOW_MINUTES * 60 * 1000).toISOString();

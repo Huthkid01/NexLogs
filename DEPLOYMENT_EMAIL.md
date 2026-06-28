@@ -5,6 +5,7 @@
 | Sign up / verify | `support@nexlogs.store` | Supabase Dashboard → SMTP |
 | Password reset | `support@nexlogs.store` | Supabase Dashboard |
 | Purchase + wallet | `support@nexlogs.store` | Edge Function `send-transactional-email` |
+| Product announcements (admin) | `support@nexlogs.store` | Edge Function `send-admin-broadcast-email` |
 
 **Templates:** `supabase/functions/send-transactional-email/templates.ts`
 
@@ -26,7 +27,10 @@ supabase secrets set \
   APP_URL=https://nexlogs.store
 
 supabase functions deploy send-transactional-email
+supabase functions deploy send-admin-broadcast-email
 ```
+
+Run migration `046_email_broadcasts.sql` in Supabase SQL Editor (stores broadcast history for the admin Sender page).
 
 ### 2. Supabase SQL (required)
 
@@ -54,7 +58,15 @@ SELECT queue_user_email('wallet_deposit', NULL, NULL, 'TRANSACTION_UUID'::uuid);
 | **401** | `email_webhook_secret` must match `EMAIL_WEBHOOK_SECRET` |
 | No email, no log | Triggers missing — re-run your local SQL setup file |
 
-Logs: Dashboard → Edge Functions → `send-transactional-email`
+Logs: Dashboard → Edge Functions → `send-transactional-email` or `send-admin-broadcast-email`
+
+### Admin product announcement emails
+
+1. Deploy `send-admin-broadcast-email` (uses the same `SMTP_*` secrets as purchase emails).
+2. Run migration `046_email_broadcasts.sql`.
+3. In admin → **Email Sender**, select products and send. Only admins can call this function (JWT required).
+
+Maximum **200 recipients** per send (non-suspended users, excluding admin accounts).
 
 ---
 

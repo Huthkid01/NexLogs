@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { resetThemeForLogin } from '@/contexts/theme';
 import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
-import { GOOGLE_SIGN_IN_DESTINATION } from '@/lib/google-sign-in';
+import { consumeAuthRedirect } from '@/lib/auth-redirect';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function AuthCallbackPage() {
           } as never)
           .then(() => undefined, () => undefined);
       }
-      navigate(session ? GOOGLE_SIGN_IN_DESTINATION : '/login', { replace: true });
+      navigate(session ? consumeAuthRedirect('/marketplace') : '/login', { replace: true });
     });
   }, [navigate]);
 

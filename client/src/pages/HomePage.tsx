@@ -6,6 +6,7 @@ import { PlatformCarousel } from '@/components/home/PlatformCarousel';
 import { CategoryDropdown } from '@/components/home/CategoryDropdown';
 import { SubscriptionCard } from '@/components/home/SubscriptionCard';
 import { ProductListRow } from '@/components/home/ProductListRow';
+import { ProductVariantsModal } from '@/components/home/ProductVariantsModal';
 import { AppLoader } from '@/components/common/AppLoader';
 import { SHOP_CATEGORIES, SHOP_CATEGORY_LINKS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +15,8 @@ import { useSiteContent } from '@/hooks/useSiteContent';
 import { useSiteVisitTracking } from '@/hooks/useSiteVisitTracking';
 import { productService, categoryService } from '@/services';
 import { SORT_OPTIONS } from '@/constants';
+import { isRdpProduct } from '@/lib/rdp-utils';
+import type { Product } from '@/types';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -21,7 +24,10 @@ export default function HomePage() {
   useSiteVisitTracking();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const productSlug = searchParams.get('product');
+  const [deepLinkProduct, setDeepLinkProduct] = useState<Product | null>(null);
+  const [deepLinkOpen, setDeepLinkOpen] = useState(false);
   const [categorySlug, setCategorySlug] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]['value']>(() => {
@@ -91,6 +97,39 @@ export default function HomePage() {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }, [location.hash]);
+
+  useEffect(() => {
+    if (!user || !productSlug) {
+      setDeepLinkOpen(false);
+      setDeepLinkProduct(null);
+      return;
+    }
+
+    let cancelled = false;
+    void productService.getBySlug(productSlug).then((product) => {
+      if (cancelled || !product) return;
+      if (isRdpProduct(product)) {
+        navigate('/purchase-rdp', { replace: true });
+        return;
+      }
+      setDeepLinkProduct(product);
+      setDeepLinkOpen(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, productSlug, navigate]);
+
+  const closeDeepLink = () => {
+    setDeepLinkOpen(false);
+    setDeepLinkProduct(null);
+    if (productSlug) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('product');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-8 space-y-5">
@@ -233,6 +272,14 @@ export default function HomePage() {
           </>
         )}
       </div>
+
+      {deepLinkProduct && (
+        <ProductVariantsModal
+          product={deepLinkProduct}
+          open={deepLinkOpen}
+          onClose={closeDeepLink}
+        />
+      )}
     </div>
   );
 }
