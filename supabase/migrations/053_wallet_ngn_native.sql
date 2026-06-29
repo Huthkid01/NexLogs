@@ -251,7 +251,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Recreate purchase function with NGN transaction currency.
+-- Recreate purchase function with NGN transaction currency and per-buyer detail allocation.
 CREATE OR REPLACE FUNCTION purchase_product_with_wallet(p_product_id UUID, p_quantity INT DEFAULT 1)
 RETURNS UUID AS $$
 DECLARE
@@ -260,8 +260,15 @@ DECLARE
   v_price NUMERIC;
   v_total NUMERIC;
   v_stock INT;
+  v_product_details TEXT;
+  v_lines TEXT[];
+  v_delivered_lines TEXT[];
+  v_remaining_lines TEXT[];
+  v_delivered TEXT;
+  v_remaining TEXT;
   v_order_id UUID;
   v_tx_id UUID;
+  v_rows INT;
 BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
@@ -272,8 +279,11 @@ BEGIN
     RAISE EXCEPTION 'Invalid quantity' USING ERRCODE = '22023';
   END IF;
 
-  SELECT price, stock
-  INTO v_price, v_stock
+  INSERT INTO wallets (user_id) VALUES (v_user_id)
+  ON CONFLICT (user_id) DO NOTHING;
+
+  SELECT price, stock, product_details
+  INTO v_price, v_stock, v_product_details
   FROM products
   WHERE id = p_product_id AND is_active = TRUE
   FOR UPDATE;
@@ -282,12 +292,25 @@ BEGIN
     RAISE EXCEPTION 'Product not found' USING ERRCODE = 'P0002';
   END IF;
 
+  v_lines := parse_product_detail_items(v_product_details);
+
+  IF COALESCE(array_length(v_lines, 1), 0) < p_quantity THEN
+    RAISE EXCEPTION 'Out of stock' USING ERRCODE = 'P0001';
+  END IF;
+
   IF v_stock < p_quantity THEN
     RAISE EXCEPTION 'Out of stock' USING ERRCODE = 'P0001';
   END IF;
 
-  INSERT INTO wallets (user_id) VALUES (v_user_id)
-  ON CONFLICT (user_id) DO NOTHING;
+  v_delivered_lines := v_lines[1:p_quantity];
+  IF p_quantity = array_length(v_lines, 1) THEN
+    v_remaining_lines := ARRAY[]::TEXT[];
+  ELSE
+    v_remaining_lines := v_lines[p_quantity + 1:array_length(v_lines, 1)];
+  END IF;
+
+  v_delivered := array_to_string(v_delivered_lines, E'\n\n');
+  v_remaining := NULLIF(array_to_string(v_remaining_lines, E'\n<<<ITEM>>>\n'), '');
 
   SELECT balance
   INTO v_balance
@@ -306,16 +329,23 @@ BEGIN
   SET balance = balance - v_total
   WHERE user_id = v_user_id;
 
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows = 0 THEN
+    RAISE EXCEPTION 'Wallet update failed' USING ERRCODE = 'P0001';
+  END IF;
+
   UPDATE products
-  SET stock = stock - p_quantity
+  SET
+    stock = COALESCE(array_length(v_remaining_lines, 1), 0),
+    product_details = v_remaining
   WHERE id = p_product_id;
 
   INSERT INTO orders (user_id, total_amount, discount_amount, status, payment_status)
   VALUES (v_user_id, v_total, 0, 'completed', 'paid')
   RETURNING id INTO v_order_id;
 
-  INSERT INTO order_items (order_id, product_id, quantity, price)
-  VALUES (v_order_id, p_product_id, p_quantity, v_price);
+  INSERT INTO order_items (order_id, product_id, quantity, price, delivered_details)
+  VALUES (v_order_id, p_product_id, p_quantity, v_price, v_delivered);
 
   INSERT INTO wallet_transactions (user_id, ref, kind, payment_method, amount, currency, status, metadata)
   VALUES (

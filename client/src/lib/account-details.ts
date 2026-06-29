@@ -31,8 +31,8 @@ export function getProductLog(
   if (savedDetails) {
     const lines = parseProductDetailLines(savedDetails);
     if (lines.length === 1) return lines[0];
-    if (lines.length > 1) return lines.join('\n\n');
-    return savedDetails;
+    // Never expose unsold inventory when delivered_details was not saved on the order.
+    return NO_DETAILS_MESSAGE;
   }
 
   return NO_DETAILS_MESSAGE;
