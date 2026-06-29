@@ -188,7 +188,7 @@ export default function AddFundsPage() {
 
       const balanceBefore = walletStats?.balance ?? 0;
       setVerifyingPayment(true);
-      await startKoraDeposit({
+      const result = await startKoraDeposit({
         userId: user.id,
         email: user.email,
         name: profile?.full_name,
@@ -197,7 +197,13 @@ export default function AddFundsPage() {
         amountUsd: Number(usdEquivalent),
         paymentMethod: paymentMethod === 'card' ? 'kora_card' : 'kora',
         exchangeRates,
+        onPaymentModalOpened: () => setSubmitting(false),
       });
+
+      if (result.status === 'pending') {
+        toast.info('Payment initiated. Your wallet will update once Kora confirms the transfer.');
+        return;
+      }
 
       await waitForWalletBalanceIncrease(user.id, balanceBefore);
       await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });

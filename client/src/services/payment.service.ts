@@ -21,6 +21,7 @@ export interface StartDepositParams {
   amountUsd: number;
   paymentMethod: string;
   exchangeRates: WalletExchangeRates;
+  onPaymentModalOpened?: () => void;
 }
 
 interface PendingDeposit {
@@ -127,6 +128,14 @@ function loadKoraScript() {
   });
 }
 
+function closeKoraModal() {
+  try {
+    window.Korapay?.close();
+  } catch {
+    // Modal may already be closed.
+  }
+}
+
 async function verifyKoraDeposit(reference: string, paymentMethod: string) {
   const pending = getPendingDeposit();
   const body: Record<string, string | number> = {
@@ -231,7 +240,11 @@ export async function completeKoraRedirect(searchParams: URLSearchParams) {
   return true;
 }
 
-export async function startKoraDeposit(params: StartDepositParams) {
+export interface KoraDepositResult {
+  status: 'completed' | 'pending';
+}
+
+export async function startKoraDeposit(params: StartDepositParams): Promise<KoraDepositResult> {
   if (!isKoraConfigured()) {
     throw new Error('Kora is not configured. Add VITE_KORA_PUBLIC_KEY to your environment.');
   }
@@ -266,7 +279,7 @@ export async function startKoraDeposit(params: StartDepositParams) {
 
   const merchantReference = reference;
 
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<KoraDepositResult>((resolve, reject) => {
     let settled = false;
     let verificationPromise: Promise<unknown> | null = null;
 
@@ -276,16 +289,27 @@ export async function startKoraDeposit(params: StartDepositParams) {
       handler();
     };
 
-    const ensureVerified = () => {
+    const ensureVerified = (reference = merchantReference) => {
       if (!verificationPromise) {
         verificationPromise = verifyKoraDepositWithRetry(
-          merchantReference,
+          reference,
           params.paymentMethod,
         ).then(() => {
           clearPendingDeposit();
         });
       }
       return verificationPromise;
+    };
+
+    const handlePaymentConfirmed = (reference = merchantReference) => {
+      closeKoraModal();
+      void ensureVerified(reference)
+        .then(() => finish(() => resolve({ status: 'completed' })))
+        .catch((err) =>
+          finish(() =>
+            reject(err instanceof Error ? err : new Error('Payment verification failed')),
+          ),
+        );
     };
 
     window.Korapay!.initialize({
@@ -307,20 +331,22 @@ export async function startKoraDeposit(params: StartDepositParams) {
         wallet_currency: params.currency,
         wallet_amount_usd: String(params.amountUsd),
       },
-      onSuccess: () => {
-        void ensureVerified()
-          .then(() => finish(() => resolve()))
-          .catch((err) =>
-            finish(() =>
-              reject(err instanceof Error ? err : new Error('Payment verification failed')),
-            ),
-          );
+      onSuccess: (data) => {
+        const reference = data?.reference?.trim() || merchantReference;
+        handlePaymentConfirmed(reference);
       },
-      onFailed: () => {
-        // Kora sometimes fires onFailed before the charge settles — verify with API first.
-        void ensureVerified()
-          .then(() => finish(() => resolve()))
+      onFailed: (data) => {
+        closeKoraModal();
+        const reference = data?.reference?.trim() || merchantReference;
+        void ensureVerified(reference)
+          .then(() => finish(() => resolve({ status: 'completed' })))
           .catch(() => finish(() => reject(new Error('Payment was not successful'))));
+      },
+      onPending: () => {
+        closeKoraModal();
+        void ensureVerified()
+          .then(() => finish(() => resolve({ status: 'completed' })))
+          .catch(() => finish(() => resolve({ status: 'pending' })));
       },
       onClose: () => {
         void (async () => {
@@ -328,8 +354,9 @@ export async function startKoraDeposit(params: StartDepositParams) {
           if (settled) return;
 
           try {
+            closeKoraModal();
             await ensureVerified();
-            finish(() => resolve());
+            finish(() => resolve({ status: 'completed' }));
           } catch {
             if (!settled) {
               finish(() => reject(new Error('Payment cancelled')));
@@ -338,5 +365,7 @@ export async function startKoraDeposit(params: StartDepositParams) {
         })();
       },
     });
+
+    params.onPaymentModalOpened?.();
   });
 }
