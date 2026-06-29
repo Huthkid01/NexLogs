@@ -60,5 +60,11 @@
   "optionalDependencies": {
     "@rolldown/binding-linux-x64-gnu": "1.0.3",
     "lightningcss-linux-x64-gnu": "1.32.0"
-  }
+  },
+  "browserslist": [
+    "defaults",
+    "iOS >= 15",
+    "Safari >= 15",
+    "Chrome >= 100"
+  ]
 }

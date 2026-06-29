@@ -15,6 +15,7 @@ import {
   convertUsdToCurrency,
   type WalletExchangeRates,
 } from '@/lib/wallet-exchange-rates';
+import { safeStorageGet, safeStorageRemove, safeStorageSet } from '@/lib/safe-storage';
 
 export interface StartDepositParams {
   userId: string;
@@ -56,16 +57,16 @@ const QUICK_VERIFY_DELAYS_MS = [0, 1500, 3000];
 const VERIFY_RETRY_DELAYS_MS = [0, 1500, 3000, 5000, 8000, 12000];
 
 function savePendingDeposit(pending: PendingDeposit) {
-  localStorage.setItem(PENDING_DEPOSIT_KEY, JSON.stringify(pending));
+  safeStorageSet(PENDING_DEPOSIT_KEY, JSON.stringify(pending));
 }
 
 function clearPendingDeposit() {
-  localStorage.removeItem(PENDING_DEPOSIT_KEY);
+  safeStorageRemove(PENDING_DEPOSIT_KEY);
 }
 
 export function getPendingDeposit(): PendingDeposit | null {
   try {
-    const raw = localStorage.getItem(PENDING_DEPOSIT_KEY);
+    const raw = safeStorageGet(PENDING_DEPOSIT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PendingDeposit;
     if (!parsed.provider) {

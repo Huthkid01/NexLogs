@@ -22,53 +22,87 @@ export function useMarketplaceRealtime(options: MarketplaceRealtimeOptions = {})
   const { userId } = options;
 
   useEffect(() => {
-    const channel = supabase
-      .channel('marketplace-catalog-live')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'products' },
-        () => invalidateCatalogQueries(queryClient, userId),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'product_images' },
-        () => invalidateCatalogQueries(queryClient, userId),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'categories' },
-        () => invalidateCatalogQueries(queryClient, userId),
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    try {
+      channel = supabase
+        .channel('marketplace-catalog-live')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'products' },
+          () => invalidateCatalogQueries(queryClient, userId),
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'product_images' },
+          () => invalidateCatalogQueries(queryClient, userId),
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'categories' },
+          () => invalidateCatalogQueries(queryClient, userId),
+        )
+        .subscribe();
+    } catch {
+      channel = null;
+    }
+
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        invalidateCatalogQueries(queryClient, userId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    window.addEventListener('focus', refreshOnFocus);
 
     return () => {
-      void supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+      window.removeEventListener('focus', refreshOnFocus);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [queryClient, userId]);
 
   useEffect(() => {
     if (!userId) return;
 
-    const channel = supabase
-      .channel(`marketplace-orders-live-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'order_items' },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ['user-orders', userId] });
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ['user-orders', userId] });
-        },
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    try {
+      channel = supabase
+        .channel(`marketplace-orders-live-${userId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'order_items' },
+          () => {
+            void queryClient.invalidateQueries({ queryKey: ['user-orders', userId] });
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          () => {
+            void queryClient.invalidateQueries({ queryKey: ['user-orders', userId] });
+          },
+        )
+        .subscribe();
+    } catch {
+      channel = null;
+    }
+
+    const refreshOrders = () => {
+      if (document.visibilityState === 'visible') {
+        void queryClient.invalidateQueries({ queryKey: ['user-orders', userId] });
+      }
+    };
+
+    document.addEventListener('visibilitychange', refreshOrders);
+    window.addEventListener('focus', refreshOrders);
 
     return () => {
-      void supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', refreshOrders);
+      window.removeEventListener('focus', refreshOrders);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [queryClient, userId]);
 }

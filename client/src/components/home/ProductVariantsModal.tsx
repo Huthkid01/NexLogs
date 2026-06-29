@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useModalLock } from '@/hooks/useModalLock';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { openErrorReport } from '@/lib/error-report';
@@ -39,20 +40,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const [requiredAmount, setRequiredAmount] = useState(0);
   const [purchasing, setPurchasing] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [open, onClose]);
+  useModalLock(open, onClose);
 
   const { data: liveProduct } = useQuery({
     queryKey: ['product', product?.id],
@@ -163,7 +151,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
           role="dialog"
           aria-modal="true"
           aria-labelledby="product-variants-title"
-          className="relative flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden bg-white dark:bg-dm-surface rounded-xl shadow-xl"
+          className="relative flex w-full max-w-2xl max-h-modal flex-col overflow-hidden bg-white dark:bg-dm-surface rounded-xl shadow-xl"
         >
           <div className="shrink-0 flex items-start justify-between gap-4 px-5 sm:px-6 pt-5 pb-4 border-b border-gray-300 dark:border-dm-border bg-white dark:bg-dm-surface">
             <h2

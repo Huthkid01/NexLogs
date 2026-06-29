@@ -3,6 +3,7 @@ import { X, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { getTelegramSupportUrl } from '@/lib/telegram-url';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { cn } from '@/lib/utils';
 
 interface SideMenuProps {
@@ -61,6 +62,8 @@ export function SideMenu({ open, onClose }: SideMenuProps) {
   const visibleItems = user ? MENU_ITEMS : GUEST_MENU_ITEMS;
   const telegramHref = getTelegramSupportUrl(content);
 
+  useScrollLock(open);
+
   const getHref = (item: AuthMenuItem) => {
     if (item.auth && !user) return '/login';
     return item.href;
@@ -84,7 +87,7 @@ export function SideMenu({ open, onClose }: SideMenuProps) {
 
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 flex h-screen w-[240px] flex-col border-r border-gray-200 bg-white shadow-xl dark:border-dm-border dark:bg-dm-bg',
+          'fixed top-0 left-0 z-50 flex h-screen-safe w-[240px] flex-col border-r border-gray-200 bg-white shadow-xl dark:border-dm-border dark:bg-dm-bg',
           'transition-transform duration-300 ease-in-out will-change-transform',
           open ? 'translate-x-0' : '-translate-x-full'
         )}

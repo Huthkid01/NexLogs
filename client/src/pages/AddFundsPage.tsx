@@ -258,7 +258,7 @@ export default function AddFundsPage() {
                           onChange={(e) => handleBaseUsdChange(e.target.value)}
                           onBlur={handleBaseUsdBlur}
                           aria-label="USD amount"
-                          className="min-w-0 flex-1 rounded-md border border-[#2f3a53] bg-[#253047] px-3 py-2 text-2xl font-bold leading-none text-white focus:outline-none focus:ring-0 focus:border-[#f26522]"
+                          className="input-large min-w-0 flex-1 rounded-md border border-[#2f3a53] bg-[#253047] px-3 py-2 text-2xl font-bold leading-none text-white focus:outline-none focus:ring-0 focus:border-[#f26522]"
                         />
                       </div>
                       <p className="mt-3 text-sm text-gray-400">United States Dollar</p>

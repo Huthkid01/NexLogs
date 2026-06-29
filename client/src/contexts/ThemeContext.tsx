@@ -6,9 +6,10 @@ import {
   ThemeContext,
   type Theme,
 } from '@/contexts/theme';
+import { safeStorageGet, safeStorageSet } from '@/lib/safe-storage';
 
 function getStoredTheme(): Theme | null {
-  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  const stored = safeStorageGet(THEME_STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') return stored;
   return null;
 }
@@ -16,7 +17,7 @@ function getStoredTheme(): Theme | null {
 function applyTheme(theme: Theme, persist: boolean) {
   document.documentElement.classList.toggle('dark', theme === 'dark');
   if (persist) {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    safeStorageSet(THEME_STORAGE_KEY, theme);
   }
 }
 

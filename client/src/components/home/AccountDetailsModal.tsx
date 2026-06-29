@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { X, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { useModalLock } from '@/hooks/useModalLock';
+import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import type { AccountDetails } from '@/lib/account-details';
 
 interface AccountDetailsModalProps {
@@ -11,29 +13,22 @@ interface AccountDetailsModalProps {
 }
 
 async function copyText(text: string) {
-  await navigator.clipboard.writeText(text);
+  const copied = await copyToClipboard(text);
+  if (!copied) throw new Error('Copy failed');
 }
 
 export function AccountDetailsModal({ title, details, open, onClose }: AccountDetailsModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
+  useModalLock(open, onClose);
+
   useEffect(() => {
-    if (!open) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', handleEscape);
+    if (!open) {
       setCopiedField(null);
       setCopiedAll(false);
-    };
-  }, [open, onClose]);
+    }
+  }, [open]);
 
   if (!open || !details) return null;
 
@@ -74,7 +69,7 @@ export function AccountDetailsModal({ title, details, open, onClose }: AccountDe
         role="dialog"
         aria-modal="true"
         aria-labelledby="account-details-title"
-        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-xl"
+        className="relative w-full max-w-lg max-h-modal overflow-y-auto bg-white rounded-xl shadow-xl"
       >
         <div className="flex items-start justify-between gap-4 px-5 sm:px-6 pt-5 pb-4 border-b border-gray-300">
           <div>

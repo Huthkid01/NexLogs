@@ -28,10 +28,10 @@ export function MainLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-dm-bg">
+    <div className="min-h-screen-safe bg-white dark:bg-dm-bg">
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen-safe flex flex-col">
         <header className="sticky top-0 z-30 shrink-0 border-b border-gray-100 bg-white dark:border-dm-border dark:bg-dm-bg">
           <div className="flex items-center justify-between h-[52px] px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-3">

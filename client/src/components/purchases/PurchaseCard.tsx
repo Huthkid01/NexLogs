@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
 import {
   formatPurchaseAmount,
@@ -27,7 +28,8 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
 
   const handleCopyOrderId = async () => {
     try {
-      await navigator.clipboard.writeText(orderId);
+      const copied = await copyToClipboard(orderId);
+      if (!copied) throw new Error('Copy failed');
       setCopied(true);
       toast.success('Order ID copied');
       setTimeout(() => setCopied(false), 2000);

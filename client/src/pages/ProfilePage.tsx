@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Info, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileService } from '@/services/profile.service';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
@@ -58,7 +59,8 @@ export default function ProfilePage() {
   const copyReferralCode = async () => {
     if (!referral?.code) return;
     try {
-      await navigator.clipboard.writeText(referral.code);
+      const copied = await copyToClipboard(referral.code);
+      if (!copied) throw new Error('Copy failed');
       toast.success('Referral code copied');
     } catch {
       toast.error('Failed to copy');

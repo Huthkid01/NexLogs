@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { useAdminRealtime } from '@/hooks/useAdminRealtime';
 import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,8 @@ export function AdminLayout() {
   const contentMenuActive = location.pathname.startsWith('/admin/content');
   const [contentMenuOpen, setContentMenuOpen] = useState(contentMenuActive);
 
+  useScrollLock(mobileSidebarOpen);
+
   const showCollapsedTooltip = (
     event: React.MouseEvent<HTMLElement>,
     label: string,
@@ -83,7 +86,7 @@ export function AdminLayout() {
   };
 
   return (
-    <div className={cn('min-h-screen transition-colors', isDark ? 'bg-[#040b16] text-slate-100' : 'bg-[#f5f7fb] text-slate-900')}>
+    <div className={cn('min-h-screen-safe transition-colors', isDark ? 'bg-[#040b16] text-slate-100' : 'bg-[#f5f7fb] text-slate-900')}>
       <aside className={cn(
         'fixed inset-y-0 left-0 z-50 overflow-visible border-r transition-[width,transform,background-color,border-color,color] duration-300 lg:translate-x-0',
         isDark ? 'border-[#18263b] bg-[#050d19] text-slate-100' : 'border-slate-200 bg-white text-slate-900 shadow-sm',
@@ -344,7 +347,7 @@ export function AdminLayout() {
 
       <div
         className={cn(
-          'flex min-h-screen min-w-0 flex-col transition-[padding] duration-300',
+          'flex min-h-screen-safe min-w-0 flex-col transition-[padding] duration-300',
           desktopSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
         )}
       >

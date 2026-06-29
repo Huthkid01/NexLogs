@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useModalLock } from '@/hooks/useModalLock';
+import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { getProductLog } from '@/lib/account-details';
 import { formatPurchaseDate } from '@/lib/purchase-utils';
 import { isRdpProduct, RDP_PENDING_DETAILS_MESSAGE } from '@/lib/rdp-utils';
@@ -29,27 +31,14 @@ export function ProductDetailsModal({
   const isPendingRdp =
     product && isRdpProduct(product) && !deliveredDetails?.trim();
 
-  useEffect(() => {
-    if (!open) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', handleEscape);
-      setCopied(false);
-    };
-  }, [open, onClose]);
+  useModalLock(open, onClose);
 
   if (!open || !product) return null;
 
   const handleCopyLog = async () => {
     try {
-      await navigator.clipboard.writeText(logContent);
+      const copied = await copyToClipboard(logContent);
+      if (!copied) throw new Error('Copy failed');
       setCopied(true);
       toast.success('Product log copied');
       setTimeout(() => setCopied(false), 2000);
@@ -71,7 +60,7 @@ export function ProductDetailsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-details-title"
-        className="relative flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden bg-white dark:bg-dm-surface rounded-xl shadow-xl"
+        className="relative flex w-full max-w-2xl max-h-modal flex-col overflow-hidden bg-white dark:bg-dm-surface rounded-xl shadow-xl"
       >
         <div className="shrink-0 flex items-start justify-between gap-4 px-6 pt-6 pb-4">
           <h2
