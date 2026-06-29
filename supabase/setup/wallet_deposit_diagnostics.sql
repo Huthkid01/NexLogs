@@ -18,7 +18,7 @@ SELECT
   wt.ref,
   wt.kind,
   wt.payment_method,
-  wt.amount AS amount_usd,
+  wt.amount AS amount_ngn,
   wt.currency,
   wt.status,
   wt.metadata->>'tx_ref' AS kora_ref,
@@ -36,7 +36,7 @@ ORDER BY wt.created_at DESC;
 SELECT
   p.email,
   p.full_name,
-  wt.amount AS amount_usd,
+  wt.amount AS amount_ngn,
   wt.metadata->>'original_amount' AS original_amount,
   wt.metadata->>'original_currency' AS original_currency,
   wt.metadata->>'tx_ref' AS kora_ref,
@@ -48,7 +48,8 @@ WHERE wt.kind IN ('deposit', 'adjustment')
   AND (
     (wt.metadata->>'original_currency' = 'NGN' AND (wt.metadata->>'original_amount')::numeric = 7000)
     OR wt.metadata->>'charged_amount' = '7000'
-    OR wt.amount BETWEEN 4.00 AND 5.50  -- ~7000 NGN at ~1500 rate
+    OR wt.amount = 7000
+    OR wt.amount BETWEEN 4.00 AND 5.50  -- legacy USD rows before NGN migration
   )
 ORDER BY wt.created_at DESC
 LIMIT 20;
@@ -56,7 +57,7 @@ LIMIT 20;
 -- 5) Recent Kora deposits (all users, last 7 days)
 SELECT
   p.email,
-  wt.amount AS amount_usd,
+  wt.amount AS amount_ngn,
   wt.metadata->>'original_amount' AS paid_amount,
   wt.metadata->>'original_currency' AS paid_currency,
   wt.metadata->>'tx_ref' AS merchant_ref,

@@ -74,11 +74,11 @@ export default function AdminTransactionsPage() {
 
   const stats = useMemo(() => {
     const completed = filtered.filter((tx) => tx.status === 'completed');
-    const totalUsd = completed.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalNgn = completed.reduce((sum, tx) => sum + tx.amount, 0);
     const recoveredCount = filtered.filter(isRecoveredKoraDeposit).length;
     return {
       count: filtered.length,
-      totalUsd,
+      totalNgn,
       completedCount: completed.length,
       recoveredCount,
     };
@@ -143,8 +143,8 @@ export default function AdminTransactionsPage() {
         </Card>
         <Card className={cn(isDark ? 'border-[#18263b] bg-[#0b1628]' : 'border-slate-200 bg-white')}>
           <CardContent className="p-5">
-            <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>Total credited (USD)</p>
-            <p className="text-2xl font-semibold">{formatPrice(stats.totalUsd)}</p>
+            <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>Total credited (NGN)</p>
+            <p className="text-2xl font-semibold">{formatPrice(stats.totalNgn)}</p>
           </CardContent>
         </Card>
       </div>
@@ -205,7 +205,7 @@ export default function AdminTransactionsPage() {
 
                     <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end">
                       <p className="text-2xl font-semibold text-[#f26522]">{formatPrice(tx.amount)}</p>
-                      <p className="text-xs text-muted-foreground">Wallet credit (USD)</p>
+                      <p className="text-xs text-muted-foreground">Wallet credit (NGN)</p>
                       <Link
                         to="/admin/users"
                         className="text-xs font-medium text-[#f26522] hover:underline"

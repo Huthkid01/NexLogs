@@ -10,11 +10,6 @@ import {
   isFlutterwaveConfigured,
 } from '@/lib/flutterwave-config';
 import { profileService } from '@/services/profile.service';
-import {
-  convertCurrencyToUsd,
-  convertUsdToCurrency,
-  type WalletExchangeRates,
-} from '@/lib/wallet-exchange-rates';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from '@/lib/safe-storage';
 
 export interface StartDepositParams {
@@ -23,9 +18,8 @@ export interface StartDepositParams {
   name?: string;
   amount: number;
   currency: string;
-  amountUsd: number;
+  walletAmount: number;
   paymentMethod: string;
-  exchangeRates: WalletExchangeRates;
   onPaymentModalOpened?: () => void;
   onPaymentConfirmed?: () => void;
   onPaymentChecking?: () => void;
@@ -38,7 +32,7 @@ interface PendingDeposit {
   currency: string;
   chargeAmount: number;
   chargeCurrency: string;
-  amountUsd: number;
+  walletAmount: number;
   paymentMethod: string;
   flutterwaveTransactionId?: number;
 }
@@ -47,8 +41,6 @@ const PENDING_DEPOSIT_KEY = 'nexlogs_pending_deposit';
 const KORA_SCRIPT_URL =
   'https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js';
 const FLUTTERWAVE_SCRIPT_URL = 'https://checkout.flutterwave.com/v3.js';
-
-const KORA_SUPPORTED_CURRENCIES = new Set(['NGN', 'KES', 'GHS']);
 
 /** Quick check when user closes modal — don't block for 30s. */
 const QUICK_VERIFY_DELAYS_MS = [0, 1500, 3000];
@@ -78,24 +70,11 @@ export function getPendingDeposit(): PendingDeposit | null {
   }
 }
 
-function getDepositChargeDetails(
-  amount: number,
-  currency: string,
-  exchangeRates: WalletExchangeRates,
-) {
+function getDepositChargeDetails(amount: number, currency: string) {
   const code = currency.toUpperCase();
-  if (KORA_SUPPORTED_CURRENCIES.has(code)) {
-    return {
-      chargeAmount: Math.round(amount),
-      chargeCurrency: code,
-    };
-  }
-
-  const usd = convertCurrencyToUsd(amount, code, exchangeRates);
-  const ngnAmount = convertUsdToCurrency(usd, exchangeRates.NGN ?? 1500);
   return {
-    chargeAmount: Math.round(ngnAmount),
-    chargeCurrency: 'NGN',
+    chargeAmount: Math.round(amount),
+    chargeCurrency: code === 'NGN' ? 'NGN' : 'NGN',
   };
 }
 
@@ -196,7 +175,7 @@ function buildFlutterwaveVerifyBody(
   if (pending?.reference === txRef) {
     body.expected_amount = pending.amount;
     body.expected_currency = pending.currency;
-    body.amount_usd = pending.amountUsd;
+    body.wallet_amount = pending.walletAmount;
     body.original_amount = pending.amount;
     body.original_currency = pending.currency;
   }
@@ -298,7 +277,7 @@ async function verifyKoraDeposit(reference: string, paymentMethod: string) {
   if (pending?.reference === reference) {
     body.expected_amount = pending.amount;
     body.expected_currency = pending.currency;
-    body.expected_amount_usd = pending.amountUsd;
+    body.wallet_amount = pending.walletAmount;
     body.charge_amount = pending.chargeAmount;
     body.charge_currency = pending.chargeCurrency;
   }
@@ -447,7 +426,6 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
   const { chargeAmount, chargeCurrency } = getDepositChargeDetails(
     params.amount,
     params.currency,
-    params.exchangeRates,
   );
 
   if (chargeAmount <= 0) {
@@ -461,7 +439,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
     currency: params.currency,
     chargeAmount,
     chargeCurrency,
-    amountUsd: params.amountUsd,
+    walletAmount: params.walletAmount,
     paymentMethod: params.paymentMethod,
   });
 
@@ -539,7 +517,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
         source: 'nexlogs-wallet',
         wallet_amount: String(params.amount),
         wallet_currency: params.currency,
-        wallet_amount_usd: String(params.amountUsd),
+        wallet_amount_ngn: String(params.walletAmount),
       },
       onSuccess: (data) => {
         const reference = data?.reference?.trim() || merchantReference;
@@ -593,7 +571,6 @@ export async function startFlutterwaveDeposit(params: StartDepositParams): Promi
   const { chargeAmount, chargeCurrency } = getDepositChargeDetails(
     params.amount,
     params.currency,
-    params.exchangeRates,
   );
 
   if (chargeAmount <= 0) {
@@ -607,7 +584,7 @@ export async function startFlutterwaveDeposit(params: StartDepositParams): Promi
     currency: params.currency,
     chargeAmount,
     chargeCurrency,
-    amountUsd: params.amountUsd,
+    walletAmount: params.walletAmount,
     paymentMethod: 'flutterwave',
   });
 

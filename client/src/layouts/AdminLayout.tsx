@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, ArrowUpDown, Monitor, Mail, Wallet,
+  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, Monitor, Mail, Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,13 +25,11 @@ const navItems = [
   { href: '/admin/sender', label: 'Email Sender', icon: Mail },
   { href: '/admin/activity', label: 'Activity Logs', icon: Activity },
   { href: '/admin/slides', label: 'Slide Management', icon: Images },
-  { href: '/admin/exchange-rates', label: 'Exchange Rates', icon: ArrowUpDown },
   { href: '/admin/rdp', label: 'RDP Plans', icon: Monitor },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 const siteContentItems = [
-  { href: '/admin/exchange-rates', label: 'Exchange Rates', icon: ArrowUpDown },
   { href: '/admin/content/homepage', label: 'Homepage', icon: House },
   { href: '/admin/content/footer', label: 'Footer', icon: PanelsTopLeft },
   { href: '/admin/content/about', label: 'About Page', icon: Info },

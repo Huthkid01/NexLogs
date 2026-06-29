@@ -247,9 +247,12 @@ export function getRdpProductSlug(plan: RdpPlan, duration: RdpDuration): string 
   return `${plan.productSlug}-${duration.months}-month`;
 }
 
-export function getPlanPriceUsd(plan: RdpPlan, duration: RdpDuration): number {
-  return Math.round(plan.priceUsdMonthly * duration.months * 100) / 100;
+export function getPlanPriceNgn(plan: RdpPlan, duration: RdpDuration): number {
+  return Math.round(plan.priceUsdMonthly * duration.months);
 }
+
+/** @deprecated Use getPlanPriceNgn — stored prices are NGN. */
+export const getPlanPriceUsd = getPlanPriceNgn;
 
 export function getPlansForLocation(catalog: RdpCatalog, locationId: string): RdpPlan[] {
   return catalog.plans.filter((plan) => plan.locationId === locationId);

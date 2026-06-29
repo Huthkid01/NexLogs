@@ -35,7 +35,6 @@ import AdminActivityLogsPage from '@/pages/admin/AdminActivityLogsPage';
 import AdminContentPage from '@/pages/admin/AdminContentPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 import AdminSlidesPage from '@/pages/admin/AdminSlidesPage';
-import AdminExchangeRatesPage from '@/pages/admin/AdminExchangeRatesPage';
 import AdminRdpPage from '@/pages/admin/AdminRdpPage';
 import AdminSenderPage from '@/pages/admin/AdminSenderPage';
 import AdminTransactionsPage from '@/pages/admin/AdminTransactionsPage';
@@ -89,7 +88,6 @@ const router = createBrowserRouter([
       { path: 'tickets', element: <AdminTicketsPage /> },
       { path: 'activity', element: <AdminActivityLogsPage /> },
       { path: 'slides', element: <AdminSlidesPage /> },
-      { path: 'exchange-rates', element: <AdminExchangeRatesPage /> },
       { path: 'rdp', element: <AdminRdpPage /> },
       { path: 'sender', element: <AdminSenderPage /> },
       { path: 'content', element: <Navigate to="/admin/content/homepage" replace /> },

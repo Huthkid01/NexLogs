@@ -1,13 +1,13 @@
--- Credit xavimar744@gmail.com — Kora ref NEX-37f76f23-1782686828308-01B9112C3E4F
--- 7000 NGN @ 1450 = $4.83 USD
--- Run in Supabase Dashboard → SQL Editor
+-- One-time credit: xavimar744@gmail.com — 7000 NGN
+-- Run in Supabase Dashboard → SQL Editor (as project owner)
+-- Safe to re-run: skips if this adjustment ref already exists
 
 DO $$
 DECLARE
   v_user_id UUID;
   v_tx_id UUID;
-  v_amount NUMERIC := ROUND(7000.0 / 1450.0, 2); -- 4.83 USD
-  v_kora_ref TEXT := 'NEX-37f76f23-1782686828308-01B9112C3E4F';
+  v_amount NUMERIC := 7000;
+  v_external_ref TEXT := 'MANUAL-KORA-7000NGN-xavimar744';
 BEGIN
   SELECT id INTO v_user_id
   FROM profiles
@@ -17,15 +17,15 @@ BEGIN
     RAISE EXCEPTION 'User not found: xavimar744@gmail.com';
   END IF;
 
-  -- Idempotent: skip if this Kora payment was already credited
   SELECT wt.id INTO v_tx_id
   FROM wallet_transactions wt
   WHERE wt.user_id = v_user_id
-    AND wt.metadata->>'tx_ref' = v_kora_ref
+    AND wt.metadata->>'tx_ref' = v_external_ref
   LIMIT 1;
 
   IF v_tx_id IS NOT NULL THEN
-    RAISE NOTICE 'Already credited for Kora ref %. Transaction id: %', v_kora_ref, v_tx_id;
+    RAISE NOTICE 'Already credited. Transaction id: %', v_tx_id;
+    PERFORM reconcile_wallet_balances();
     RETURN;
   END IF;
 
@@ -35,53 +35,47 @@ BEGIN
   INSERT INTO wallet_transactions (user_id, ref, kind, payment_method, amount, currency, status, metadata)
   VALUES (
     v_user_id,
-    'DEP-' || UPPER(SUBSTRING(REPLACE(gen_random_uuid()::TEXT, '-', '') FROM 1 FOR 10)),
-    'deposit',
-    'kora_card',
+    'ADJ-' || UPPER(SUBSTRING(REPLACE(gen_random_uuid()::TEXT, '-', '') FROM 1 FOR 10)),
+    'adjustment',
+    'admin',
     v_amount,
-    'USD',
+    'NGN',
     'completed',
     jsonb_build_object(
-      'reason', 'Manual credit: Kora payment verified in dashboard',
+      'reason', 'Manual credit: Kora 7000 NGN deposit verified',
       'source', 'admin_manual_credit',
-      'provider', 'kora',
       'original_amount', 7000,
       'original_currency', 'NGN',
-      'exchange_rate', 1450,
-      'tx_ref', v_kora_ref,
-      'kora_reference', v_kora_ref
+      'tx_ref', v_external_ref
     )
   )
   RETURNING id INTO v_tx_id;
 
-  UPDATE wallets
-  SET balance = balance + v_amount
-  WHERE user_id = v_user_id;
+  PERFORM reconcile_wallet_balances();
 
   INSERT INTO activity_logs (user_id, action, entity, entity_id, metadata)
   VALUES (
     v_user_id,
-    'wallet_deposit_completed',
+    'wallet_admin_credit',
     'wallet',
     v_tx_id,
     jsonb_build_object(
-      'amount_usd', v_amount,
-      'kora_ref', v_kora_ref,
-      'email', 'xavimar744@gmail.com',
-      'note', 'Admin manual credit after Kora success'
+      'amount_ngn', v_amount,
+      'reason', 'Kora 7000 NGN',
+      'email', 'xavimar744@gmail.com'
     )
   );
 
-  RAISE NOTICE 'Credited % USD to xavimar744@gmail.com for Kora ref %', v_amount, v_kora_ref;
+  RAISE NOTICE 'Credited % NGN to xavimar744@gmail.com (tx %)', v_amount, v_tx_id;
 END $$;
 
--- Verify
-SELECT p.email, p.id, w.balance AS balance_usd
+-- Verify after running:
+SELECT p.email, w.balance AS balance_ngn
 FROM profiles p
 LEFT JOIN wallets w ON w.user_id = p.id
 WHERE lower(p.email) = lower('xavimar744@gmail.com');
 
-SELECT wt.ref, wt.kind, wt.amount AS usd, wt.metadata->>'tx_ref' AS kora_ref, wt.created_at
+SELECT wt.ref, wt.kind, wt.amount, wt.currency, wt.metadata, wt.created_at
 FROM wallet_transactions wt
 JOIN profiles p ON p.id = wt.user_id
 WHERE lower(p.email) = lower('xavimar744@gmail.com')

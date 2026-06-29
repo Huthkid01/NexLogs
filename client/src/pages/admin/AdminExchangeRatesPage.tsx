@@ -103,7 +103,7 @@ export default function AdminExchangeRatesPage() {
             Wallet Conversion Rates
           </CardTitle>
           <CardDescription className={adminMutedTextClass(isDark)}>
-            Each value is how much of that currency equals 1 USD. Example: 1500 NGN means ₦1,500 = $1.
+            Each value is how much of that currency equals 1 USD. Example: 1500 NGN means ₦1,500 = 1 USD.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">

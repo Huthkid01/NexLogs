@@ -39,8 +39,12 @@ function escapeHtml(value: string) {
     .replaceAll('>', '&gt;');
 }
 
-function formatUsd(amount: number) {
-  return `$${Number(amount).toFixed(2)}`;
+function formatNgn(amount: number) {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(Number(amount));
 }
 
 function isRdpSlug(slug: string | null | undefined) {
@@ -64,7 +68,7 @@ function buildTelegramMessage(
     const title = product?.title ?? 'Unknown product';
     const slug = product?.slug ?? '';
     const type = isRdpSlug(slug) ? 'RDP' : (product?.niche ?? product?.platform ?? 'Product');
-    return `• ${escapeHtml(title)} (${escapeHtml(type)}) x${item.quantity} — ${formatUsd(item.price)}`;
+    return `• ${escapeHtml(title)} (${escapeHtml(type)}) x${item.quantity} — ${formatNgn(item.price)}`;
   });
 
   const header = hasRdp
@@ -80,7 +84,7 @@ function buildTelegramMessage(
     '',
     `<b>Buyer:</b> ${escapeHtml(buyer.full_name)}`,
     `<b>Email:</b> ${escapeHtml(buyer.email)}`,
-    `<b>Total:</b> ${formatUsd(order.total_amount)}`,
+    `<b>Total:</b> ${formatNgn(order.total_amount)}`,
     `<b>Status:</b> ${escapeHtml(order.status)} / ${escapeHtml(order.payment_status)}`,
     `<b>Order ID:</b> <code>${escapeHtml(order.id)}</code>`,
     '',

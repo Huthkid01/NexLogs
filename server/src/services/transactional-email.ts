@@ -19,6 +19,14 @@ function normalizeProduct(product: unknown) {
   return product as { title: string; slug: string };
 }
 
+function formatNgn(amount: number) {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(Number(amount));
+}
+
 export async function sendTransactionalEmail(input: {
   type: TransactionalEmailType;
   userId?: string;
@@ -93,7 +101,7 @@ export async function sendTransactionalEmail(input: {
     const items = orderRow.order_items ?? [];
     const productLines = items.map((item) => {
       const product = normalizeProduct(item.product);
-      return `${product?.title ?? 'Product'} x${item.quantity} — $${Number(item.price).toFixed(2)}`;
+      return `${product?.title ?? 'Product'} x${item.quantity} — ${formatNgn(item.price)}`;
     });
     const pendingRdp =
       items.some((item) => isRdpSlug(normalizeProduct(item.product)?.slug)) &&
@@ -147,7 +155,7 @@ export async function sendTransactionalEmail(input: {
       appName,
       appUrl,
       fullName: profileRow.full_name || profileRow.email.split('@')[0],
-      amountUsd: Number(txRow.amount),
+      amountNgn: Number(txRow.amount),
       newBalance: Number(walletRow.balance),
       reference: txRow.ref || txRow.id,
     });

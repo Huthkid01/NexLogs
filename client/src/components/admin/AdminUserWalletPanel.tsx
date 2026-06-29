@@ -21,7 +21,7 @@ export function AdminUserWalletPanel({
 }: AdminUserWalletPanelProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [creditUsd, setCreditUsd] = useState('');
+  const [creditNgn, setCreditNgn] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [creditRef, setCreditRef] = useState('');
 
@@ -29,13 +29,13 @@ export function AdminUserWalletPanel({
     mutationFn: () =>
       adminService.creditUserWallet({
         userId,
-        amountUsd: Number(creditUsd),
+        amountUsd: Number(creditNgn),
         reason: creditReason.trim(),
         externalRef: creditRef.trim() || undefined,
       }),
     onSuccess: () => {
-      toast.success(`Added ${formatPrice(Number(creditUsd))} to ${userName || userEmail}'s wallet`);
-      setCreditUsd('');
+      toast.success(`Added ${formatPrice(Number(creditNgn))} to ${userName || userEmail}'s wallet`);
+      setCreditNgn('');
       setCreditReason('');
       setCreditRef('');
       void queryClient.invalidateQueries({ queryKey: ['admin-users-wallets'] });
@@ -48,9 +48,9 @@ export function AdminUserWalletPanel({
   });
 
   const handleCredit = () => {
-    const amount = Number(creditUsd);
-    if (!creditUsd.trim() || Number.isNaN(amount) || amount <= 0) {
-      toast.error('Enter a valid USD amount');
+    const amount = Number(creditNgn);
+    if (!creditNgn.trim() || Number.isNaN(amount) || amount <= 0) {
+      toast.error('Enter a valid NGN amount');
       return;
     }
     if (!creditReason.trim()) {
@@ -88,17 +88,17 @@ export function AdminUserWalletPanel({
           </p>
           <p className="text-xs text-muted-foreground">
             Use when a user paid via Kora but the balance did not update. Confirm the payment in
-            Kora first, then add the correct USD amount here. View full history under Wallet
+            Kora first, then add the correct NGN amount here. View full history under Wallet
             Transactions.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <input
               type="number"
               min="0"
-              step="0.01"
-              placeholder="Amount in USD"
-              value={creditUsd}
-              onChange={(event) => setCreditUsd(event.target.value)}
+              step="1"
+              placeholder="Amount in NGN"
+              value={creditNgn}
+              onChange={(event) => setCreditNgn(event.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             />
             <input

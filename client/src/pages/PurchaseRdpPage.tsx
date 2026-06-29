@@ -6,10 +6,9 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { formatDisplayPriceWithPeriod } from '@/lib/display-currency';
 import {
-  getPlanPriceUsd,
+  getPlanPriceNgn,
   getPlansForLocation,
   getRdpProductSlug,
   type RdpDuration,
@@ -29,9 +28,7 @@ export default function PurchaseRdpPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { content } = useSiteContent();
-  const { currency } = useDisplayCurrency();
   const catalog = content.rdp;
-  const rates = content.wallet.exchangeRates;
 
   const [locationId, setLocationId] = useState(catalog.locations[0]?.id ?? '');
   const [durationId, setDurationId] = useState(catalog.durations[0]?.id ?? '1-month');
@@ -66,12 +63,12 @@ export default function PurchaseRdpPage() {
     }
 
     const productSlug = getRdpProductSlug(plan, selectedDuration);
-    const priceUsd = getPlanPriceUsd(plan, selectedDuration);
+    const priceNgn = getPlanPriceNgn(plan, selectedDuration);
     setPurchasingPlanId(plan.id);
 
     try {
       const balance = stats?.balance ?? 0;
-      if (balance < priceUsd) {
+      if (balance < priceNgn) {
         toast.error('Insufficient wallet balance. Please add funds.');
         navigate('/add-funds');
         return;
@@ -144,13 +141,13 @@ export default function PurchaseRdpPage() {
           <section className="mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {visiblePlans.map((plan) => {
-                const priceUsd = selectedDuration ? getPlanPriceUsd(plan, selectedDuration) : plan.priceUsdMonthly;
+                const priceNgn = selectedDuration ? getPlanPriceNgn(plan, selectedDuration) : plan.priceUsdMonthly;
                 const isSelected = selectedPlanId === plan.id;
                 const isPurchasing = purchasingPlanId === plan.id;
 
                 return (
                   <div
-                    key={`${plan.id}-${currency}-${durationId}`}
+                    key={`${plan.id}-${durationId}`}
                     className={cn(
                       'rounded-2xl border bg-white dark:bg-dm-surface p-5 shadow-sm transition-colors',
                       isSelected ? 'border-[#f26522] ring-1 ring-[#f26522]/30' : 'border-gray-200 dark:border-dm-border',
@@ -178,7 +175,7 @@ export default function PurchaseRdpPage() {
                       {plan.title} ({plan.ramLabel})
                     </h3>
                     <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {formatDisplayPriceWithPeriod(priceUsd, currency, rates, selectedDuration?.label ?? 'Month')}
+                      {formatDisplayPriceWithPeriod(priceNgn, selectedDuration?.label ?? 'Month')}
                     </p>
 
                     <ul className="mt-5 space-y-2">

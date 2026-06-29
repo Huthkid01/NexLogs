@@ -9,8 +9,12 @@ function escapeHtml(value: string) {
     .replaceAll('"', '&quot;');
 }
 
-function formatUsd(amount: number) {
-  return `$${Number(amount).toFixed(2)}`;
+function formatNgn(amount: number) {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(Number(amount));
 }
 
 function emailLayout(options: {
@@ -135,7 +139,7 @@ export function buildPurchaseEmail(options: {
 
   const html = emailLayout({
     appName: options.appName,
-    preheader: `Order ${options.orderNumber} confirmed — ${formatUsd(options.totalAmount)}`,
+    preheader: `Order ${options.orderNumber} confirmed — ${formatNgn(options.totalAmount)}`,
     title: 'Purchase confirmed',
     bodyHtml: `
       <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi ${escapeHtml(options.fullName || 'there')},</p>
@@ -146,7 +150,7 @@ export function buildPurchaseEmail(options: {
             <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">Order ID</p>
             <p style="margin:0 0 14px;font-size:18px;font-weight:700;color:#111827;">${escapeHtml(options.orderNumber)}</p>
             <ul style="margin:0;padding-left:18px;">${productsHtml}</ul>
-            <p style="margin:16px 0 0;font-size:18px;font-weight:700;color:${BRAND_DARK};">Total: ${formatUsd(options.totalAmount)}</p>
+            <p style="margin:16px 0 0;font-size:18px;font-weight:700;color:${BRAND_DARK};">Total: ${formatNgn(options.totalAmount)}</p>
           </td>
         </tr>
       </table>
@@ -159,7 +163,7 @@ export function buildPurchaseEmail(options: {
   return {
     subject: `${options.appName} order confirmed — ${options.orderNumber}`,
     html,
-    text: `Your ${options.appName} order ${options.orderNumber} is confirmed. Total: ${formatUsd(options.totalAmount)}.`,
+    text: `Your ${options.appName} order ${options.orderNumber} is confirmed. Total: ${formatNgn(options.totalAmount)}.`,
   };
 }
 
@@ -167,13 +171,13 @@ export function buildWalletDepositEmail(options: {
   appName: string;
   appUrl: string;
   fullName: string;
-  amountUsd: number;
+  amountNgn: number;
   newBalance: number;
   reference: string;
 }) {
   const html = emailLayout({
     appName: options.appName,
-    preheader: `${formatUsd(options.amountUsd)} added to your wallet`,
+    preheader: `${formatNgn(options.amountNgn)} added to your wallet`,
     title: 'Wallet funded',
     bodyHtml: `
       <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi ${escapeHtml(options.fullName || 'there')},</p>
@@ -182,9 +186,9 @@ export function buildWalletDepositEmail(options: {
         <tr>
           <td style="padding:18px 20px;">
             <p style="margin:0 0 6px;font-size:13px;color:#166534;">Amount added</p>
-            <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">${formatUsd(options.amountUsd)}</p>
+            <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">${formatNgn(options.amountNgn)}</p>
             <p style="margin:0 0 6px;font-size:13px;color:#166534;">New balance</p>
-            <p style="margin:0 0 14px;font-size:20px;font-weight:700;color:#14532d;">${formatUsd(options.newBalance)}</p>
+            <p style="margin:0 0 14px;font-size:20px;font-weight:700;color:#14532d;">${formatNgn(options.newBalance)}</p>
             <p style="margin:0;font-size:13px;color:#166534;">Reference: ${escapeHtml(options.reference)}</p>
           </td>
         </tr>
@@ -196,9 +200,9 @@ export function buildWalletDepositEmail(options: {
   });
 
   return {
-    subject: `${options.appName} wallet credited — ${formatUsd(options.amountUsd)}`,
+    subject: `${options.appName} wallet credited — ${formatNgn(options.amountNgn)}`,
     html,
-    text: `${formatUsd(options.amountUsd)} was added to your ${options.appName} wallet. New balance: ${formatUsd(options.newBalance)}.`,
+    text: `${formatNgn(options.amountNgn)} was added to your ${options.appName} wallet. New balance: ${formatNgn(options.newBalance)}.`,
   };
 }
 

@@ -26,6 +26,14 @@ function normalizeProduct(product: unknown) {
   return product as { title: string; slug: string };
 }
 
+function formatNgn(amount: number) {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(Number(amount));
+}
+
 async function sendViaSmtp(
   input: { to: string; subject: string; html: string; text?: string },
   options: { host: string; port: number; secure: boolean; user: string; pass: string; from: string },
@@ -191,7 +199,7 @@ Deno.serve(async (req) => {
         product: { title: string; slug: string } | { title: string; slug: string }[] | null;
       }) => {
         const product = normalizeProduct(item.product);
-        return `${product?.title ?? 'Product'} x${item.quantity} — $${Number(item.price).toFixed(2)}`;
+        return `${product?.title ?? 'Product'} x${item.quantity} — ${formatNgn(item.price)}`;
       });
 
       const pendingRdp =
@@ -241,7 +249,7 @@ Deno.serve(async (req) => {
         appName,
         appUrl,
         fullName: profile.full_name || profile.email.split('@')[0],
-        amountUsd: Number(tx.amount),
+        amountNgn: Number(tx.amount),
         newBalance: Number(wallet.balance),
         reference: tx.ref || tx.id,
       });

@@ -21,7 +21,6 @@ import {
   type RdpCatalog,
   type RdpPlan,
 } from '@/lib/rdp-catalog';
-import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
 import { AdminDualCurrencyPriceInput } from '@/components/admin/AdminDualCurrencyPriceInput';
 import { syncRdpCatalogProducts } from '@/lib/rdp-product-sync';
 import { cn } from '@/lib/utils';
@@ -43,8 +42,6 @@ export default function AdminRdpPage() {
     () => catalog.plans.filter((plan) => plan.locationId === activeLocationId),
     [catalog.plans, activeLocationId],
   );
-  const ngnRate = content.wallet.exchangeRates.NGN ?? 1500;
-
   const saveCatalog = async () => {
     setContent({
       ...content,
@@ -145,16 +142,14 @@ export default function AdminRdpPage() {
         </div>
         <div>
           <AdminDualCurrencyPriceInput
-            usdAmount={plan.priceUsdMonthly}
-            onUsdChange={(priceUsdMonthly) => updatePlanPrice(plan.id, priceUsdMonthly)}
-            rates={content.wallet.exchangeRates}
-            usdLabel="Monthly price (USD)"
-            ngnLabel="Monthly price (NGN)"
+            ngnAmount={plan.priceUsdMonthly}
+            onNgnChange={(priceNgnMonthly) => updatePlanPrice(plan.id, priceNgnMonthly)}
+            label="Monthly price (NGN)"
             isDark={isDark}
             className="md:col-span-2"
           />
           <p className={cn('mt-2 text-xs', adminMutedTextClass(isDark))}>
-            Uses your exchange rate: {formatRatePerUsd('NGN', ngnRate)}. Wallet charges stay in USD.
+            Wallet charges use Naira. Total plan price = monthly price × duration months.
           </p>
         </div>
         <div>
@@ -185,8 +180,7 @@ export default function AdminRdpPage() {
         <div>
           <h1 className={cn('text-2xl font-bold', adminStrongTextClass(isDark))}>RDP Plans</h1>
           <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>
-            Edit Forex and city RDP plans. Set monthly prices in USD or NGN — the other amount updates using your
-            Exchange Rates settings.
+            Edit Forex and city RDP plans. Set monthly prices in Naira (NGN).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

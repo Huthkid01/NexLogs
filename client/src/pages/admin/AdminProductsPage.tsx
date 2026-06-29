@@ -33,7 +33,6 @@ import {
   adminSubtleTextClass,
 } from '@/lib/admin-theme';
 import { useTheme } from '@/hooks/useTheme';
-import { useSiteContent } from '@/hooks/useSiteContent';
 import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { PlatformType, Product } from '@/types';
@@ -145,7 +144,6 @@ export default function AdminProductsPage() {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { content } = useSiteContent();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -513,11 +511,9 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="md:col-span-2">
                       <AdminDualCurrencyPriceInput
-                        usdAmount={Number(form.price) || 0}
-                        onUsdChange={(price) => setForm((current) => ({ ...current, price: String(price) }))}
-                        rates={content.wallet.exchangeRates}
-                        usdLabel="Price (USD)"
-                        ngnLabel="Price (NGN)"
+                        ngnAmount={Number(form.price) || 0}
+                        onNgnChange={(price) => setForm((current) => ({ ...current, price: String(price) }))}
+                        label="Price (NGN)"
                         isDark={isDark}
                       />
                     </div>

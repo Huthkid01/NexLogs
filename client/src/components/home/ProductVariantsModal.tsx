@@ -14,9 +14,7 @@ import {
 } from '@/lib/purchase-errors';
 import { getProductVariants } from '@/lib/product-variants';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSiteContent } from '@/hooks/useSiteContent';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
-import { formatRatePerUsd } from '@/lib/wallet-exchange-rates';
 import { orderService, productService, profileService } from '@/services';
 import type { Product } from '@/types';
 
@@ -29,7 +27,6 @@ interface ProductVariantsModalProps {
 export function ProductVariantsModal({ product, open, onClose }: ProductVariantsModalProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { content } = useSiteContent();
   const { user } = useAuth();
   const { formatProductPrice, formatDisplayAmount } = useFormatDisplayPrice();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -124,11 +121,6 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     window.open(previewUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleCheckRate = () => {
-    const ngnRate = content.wallet.exchangeRates.NGN;
-    toast.info(formatRatePerUsd('NGN', ngnRate));
-  };
-
   const handleDetailsClose = () => {
     setDetailsOpen(false);
     setLogSeed('');
@@ -200,14 +192,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                       <span className="text-[#1b5e20] font-semibold">{formatProductPrice(variant.price)}</span>
                     </p>
 
-                    <div className="flex items-center justify-between gap-3 mt-3">
-                      <button
-                        type="button"
-                        onClick={handleCheckRate}
-                        className="text-sm font-medium text-[#f26522] hover:underline"
-                      >
-                        Check Rate
-                      </button>
+                    <div className="flex items-center justify-end gap-3 mt-3">
                       <div className="flex items-center gap-4">
                         <button
                           type="button"

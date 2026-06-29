@@ -10,7 +10,7 @@ interface CurrencySelectorProps {
 
 const OPTIONS: Array<{ code: DisplayCurrency; label: string }> = [
   { code: 'NGN', label: 'NGN (₦)' },
-  { code: 'USD', label: 'USD ($)' },
+  { code: 'USD', label: 'USD' },
 ];
 
 export function CurrencySelector({ className, compact = false }: CurrencySelectorProps) {

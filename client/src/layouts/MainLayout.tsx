@@ -6,7 +6,6 @@ import { APP_NAME } from '@/constants';
 import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { SideMenu } from '@/components/layout/SideMenu';
 import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
-import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { FloatingActions } from '@/components/layout/FloatingActions';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
@@ -53,7 +52,6 @@ export function MainLayout() {
             </div>
 
             <div className="flex items-center gap-3 ml-auto">
-              {user ? <CurrencySelector compact /> : null}
               {user ? (
                 <UserMenuDropdown />
               ) : !hideAuthLink ? (

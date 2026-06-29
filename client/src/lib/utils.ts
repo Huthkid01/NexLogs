@@ -5,8 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number, currency = 'USD'): string {
+export function formatPrice(price: number, currency = 'NGN'): string {
+  if (currency === 'NGN') {
+    return formatNgnPrice(price);
+  }
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price);
+}
+
+export function formatNgnPrice(price: number): string {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(price);
 }
 
 export function formatNumber(num: number): string {

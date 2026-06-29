@@ -364,11 +364,11 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     name: 'Wallet credit notice',
     category: 'account',
     description:
-      'Notify a user their wallet was credited ($4.83) after a delayed deposit. Includes fix notice for add-funds.',
-    defaultSubject: `Your ${APP_NAME} wallet has been updated — $4.83 added`,
+      'Notify a user their wallet was credited (₦7,000) after a delayed deposit. Includes fix notice for add-funds.',
+    defaultSubject: `Your ${APP_NAME} wallet has been updated — ₦7,000 added`,
     html: buildMarketingEmailHtml({
       title: 'Wallet updated',
-      preheader: `$4.83 has been added to your ${APP_NAME} wallet. The add-funds issue is fixed.`,
+      preheader: `₦7,000 has been added to your ${APP_NAME} wallet. The add-funds issue is fixed.`,
       heroTitle: 'Your wallet has been updated',
       compactLogo: true,
       bodyHtml: `
@@ -381,7 +381,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                 <tr>
                   <td style="padding:18px 20px;">
                     <p style="margin:0 0 6px;font-size:13px;color:#166534;">Amount added</p>
-                    <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">$4.83 USD</p>
+                    <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">₦7,000</p>
                     <p style="margin:0 0 6px;font-size:13px;color:#166534;">Status</p>
                     <p style="margin:0;font-size:16px;font-weight:700;color:#15803d;">Funds added to your wallet</p>
                   </td>

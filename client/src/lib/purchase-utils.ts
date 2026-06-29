@@ -22,7 +22,11 @@ export function formatPurchaseDate(date: string) {
 }
 
 export function formatPurchaseAmount(amount: number) {
-  return `$ ${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 export function getPurchasePlatformLabel(product: Product) {

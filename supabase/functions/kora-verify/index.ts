@@ -24,7 +24,7 @@ interface VerifyRequestBody {
   payment_method?: string;
   expected_amount?: number;
   expected_currency?: string;
-  expected_amount_usd?: number;
+  wallet_amount?: number;
   charge_amount?: number;
   charge_currency?: string;
 }
@@ -116,7 +116,10 @@ function resolveExpectedFromBodyOrMetadata(
   const metadata = payment.metadata;
   const amount = body.expected_amount ?? readMetadataNumber(metadata, 'wallet_amount');
   const currency = body.expected_currency ?? readMetadataString(metadata, 'wallet_currency');
-  const amountUsd = body.expected_amount_usd ?? readMetadataNumber(metadata, 'wallet_amount_usd');
+  const walletAmount =
+    body.wallet_amount ??
+    readMetadataNumber(metadata, 'wallet_amount_ngn') ??
+    readMetadataNumber(metadata, 'wallet_amount');
   const chargeAmount = body.charge_amount ?? amount;
   const chargeCurrency = body.charge_currency ?? currency;
 
@@ -127,7 +130,7 @@ function resolveExpectedFromBodyOrMetadata(
   return {
     amount,
     currency,
-    amountUsd,
+    walletAmount,
     chargeAmount,
     chargeCurrency,
   };
@@ -144,11 +147,9 @@ function resolveChargedAmount(payment: KoraChargeData) {
 
 function resolveCreditAmount(
   payment: KoraChargeData,
-  exchangeRates: Record<string, number>,
   expected?: {
     amount?: number;
     currency?: string;
-    amountUsd?: number;
     chargeAmount?: number;
     chargeCurrency?: string;
   },
@@ -163,16 +164,10 @@ function resolveCreditAmount(
     if (expectedCurrency === chargedCurrency || chargeCurrency === chargedCurrency) {
       const paidEnough = hasPaidExpectedAmount(chargedAmount, expected.amount);
       if (paidEnough) {
-        const amountUsd = convertCurrencyToUsd(
-          expected.amount,
-          expectedCurrency,
-          exchangeRates,
-        );
-
         return {
           amount: expected.amount,
           currency: expectedCurrency,
-          amountUsd,
+          walletAmount: expected.amount,
         };
       }
     }
@@ -181,7 +176,7 @@ function resolveCreditAmount(
   return {
     amount: chargedAmount,
     currency: chargedCurrency,
-    amountUsd: convertCurrencyToUsd(chargedAmount, chargedCurrency, exchangeRates),
+    walletAmount: chargedAmount,
   };
 }
 
@@ -326,23 +321,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: walletContent } = await supabase
-      .from('site_content_blocks')
-      .select('value')
-      .eq('key', 'wallet')
-      .maybeSingle();
-
-    const walletValue = walletContent?.value as { exchangeRates?: Record<string, number> } | null;
-    const exchangeRates = normalizeWalletExchangeRates(walletValue?.exchangeRates);
-
     const credit = resolveCreditAmount(
       payment,
-      exchangeRates,
       resolveExpectedFromBodyOrMetadata(body, payment),
     );
 
     const depositId = await creditWalletDeposit(supabase, {
-      amountUsd: credit.amountUsd,
+      amountUsd: credit.walletAmount,
       verifiedAmount: credit.amount,
       verifiedCurrency: credit.currency,
       paymentMethod: payment_method || 'kora',
@@ -354,7 +339,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         deposit_id: depositId,
-        amount_usd: credit.amountUsd,
+        amount_ngn: credit.walletAmount,
         original_amount: credit.amount,
         original_currency: credit.currency,
       }),

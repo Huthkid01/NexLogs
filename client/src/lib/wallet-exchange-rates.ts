@@ -26,7 +26,7 @@ export const DEFAULT_WALLET_EXCHANGE_RATES: WalletExchangeRates = {
 };
 
 export const ADMIN_RATE_FIELDS = [
-  { code: 'NGN', label: 'Nigerian Naira (NGN)', helper: 'How much NGN equals 1 USD. Example: 1500 means ₦1,500 = $1.' },
+  { code: 'NGN', label: 'Nigerian Naira (NGN)', helper: 'How much NGN equals 1 USD. Example: 1500 means ₦1,500 = 1 USD.' },
   { code: 'EUR', label: 'Euro (EUR)', helper: 'How much EUR equals 1 USD.' },
   { code: 'GBP', label: 'British Pound (GBP)', helper: 'How much GBP equals 1 USD.' },
   { code: 'GHS', label: 'Ghanaian Cedi (GHS)', helper: 'Shown on the public exchange rates panel.' },
