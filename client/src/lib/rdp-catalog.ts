@@ -227,19 +227,13 @@ export function mergeRdpCatalog(catalog?: Partial<RdpCatalog> | null): RdpCatalo
   }
 
   const savedPlans = catalog.plans.filter((plan) => !DEPRECATED_PLAN_IDS.has(plan.id));
-  const savedPlanIds = new Set(savedPlans.map((plan) => plan.id));
-  const savedLocationIds = new Set((catalog.locations ?? []).map((location) => location.id));
-  const missingPlans = defaults.plans.filter((plan) => !savedPlanIds.has(plan.id));
-  const missingLocations = defaults.locations.filter((location) => !savedLocationIds.has(location.id));
 
   return {
     pageTitle: catalog.pageTitle ?? defaults.pageTitle,
     pageSubtitle: catalog.pageSubtitle ?? defaults.pageSubtitle,
-    locations: catalog.locations?.length
-      ? [...catalog.locations, ...missingLocations]
-      : defaults.locations,
-    durations: defaults.durations,
-    plans: [...savedPlans, ...missingPlans],
+    locations: catalog.locations?.length ? catalog.locations : defaults.locations,
+    durations: catalog.durations?.length ? catalog.durations : defaults.durations,
+    plans: savedPlans,
   };
 }
 

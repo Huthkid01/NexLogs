@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Monitor, Zap } from 'lucide-react';
@@ -14,12 +14,13 @@ import {
   type RdpDuration,
   type RdpPlan,
 } from '@/lib/rdp-catalog';
+import { buildLiveRdpCatalog } from '@/lib/rdp-live-catalog';
 import {
   getPurchaseErrorMessage,
   isInsufficientFundsError,
 } from '@/lib/purchase-errors';
 import { cn } from '@/lib/utils';
-import { orderService, profileService } from '@/services';
+import { orderService, productService, profileService } from '@/services';
 
 const ORANGE_LIGHT = 'bg-[#fff4ef] text-[#c2410c] border-[#f26522] dark:bg-[#f26522]/10 dark:text-orange-200 dark:border-[#f26522]';
 
@@ -28,17 +29,35 @@ export default function PurchaseRdpPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { content } = useSiteContent();
-  const catalog = content.rdp;
+  const baseCatalog = content.rdp;
 
-  const [locationId, setLocationId] = useState(catalog.locations[0]?.id ?? '');
-  const [durationId, setDurationId] = useState(catalog.durations[0]?.id ?? '1-month');
+  const { data: rdpProducts = [] } = useQuery({
+    queryKey: ['rdp-products'],
+    queryFn: () => productService.getActiveRdpProducts(),
+    staleTime: 30_000,
+  });
+
+  const [locationId, setLocationId] = useState(baseCatalog.locations[0]?.id ?? '');
+  const [durationId, setDurationId] = useState(baseCatalog.durations[0]?.id ?? '1-month');
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
 
   const selectedDuration = useMemo(
-    () => catalog.durations.find((duration) => duration.id === durationId) ?? catalog.durations[0],
-    [catalog.durations, durationId],
+    () => baseCatalog.durations.find((duration) => duration.id === durationId) ?? baseCatalog.durations[0],
+    [baseCatalog.durations, durationId],
   );
+
+  const catalog = useMemo(() => {
+    if (!selectedDuration) return baseCatalog;
+    return buildLiveRdpCatalog(baseCatalog, rdpProducts, selectedDuration);
+  }, [baseCatalog, rdpProducts, selectedDuration]);
+
+  useEffect(() => {
+    if (!catalog.locations.some((location) => location.id === locationId)) {
+      setLocationId(catalog.locations[0]?.id ?? '');
+      setSelectedPlanId(null);
+    }
+  }, [catalog.locations, locationId]);
 
   const visiblePlans = useMemo(
     () => getPlansForLocation(catalog, locationId),

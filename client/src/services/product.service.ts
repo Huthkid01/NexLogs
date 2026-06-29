@@ -114,6 +114,18 @@ export const productService = {
     return (data || []) as Product[];
   },
 
+  async getActiveRdpProducts(): Promise<Product[]> {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, slug, title, price, is_active, description')
+      .like('slug', '%-rdp-%')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
+    if (error) throw error;
+    return (data || []) as Product[];
+  },
+
   async create(product: Partial<Product>) {
     const sort_order = await getNextProductSortOrder();
     const { data, error } = await supabase.from('products').insert({ ...product, sort_order } as never).select().single();

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Monitor, Save } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ import { cn } from '@/lib/utils';
 type PlanField = 'title' | 'ramLabel' | 'productSlug';
 
 export default function AdminRdpPage() {
+  const queryClient = useQueryClient();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const { content, setContent } = useSiteContent();
@@ -50,6 +52,8 @@ export default function AdminRdpPage() {
 
     try {
       await syncRdpCatalogProducts(catalog);
+      void queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast.success('RDP catalog updated and products synced.');
     } catch {
       toast.success('RDP catalog saved. Run migration 024 on Supabase if purchases fail.');

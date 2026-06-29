@@ -14,6 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { categoryService, productService } from '@/services';
 import { supabase } from '@/lib/supabase';
+import { applyRdpProductToCatalog, removeRdpProductFromCatalog } from '@/lib/rdp-live-catalog';
+import { useSiteContent } from '@/hooks/useSiteContent';
 import { getPlatformFromCategory, resolveCategoryIconUrl, resolveProductIconUrl } from '@/lib/platform-icons';
 import { isRdpProduct, isRdpFormProduct } from '@/lib/rdp-utils';
 import { countProductDetailLines, normalizeProductDetailsStorage } from '@/lib/product-details';
@@ -143,6 +145,7 @@ const PRODUCT_TABLE_GRID =
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
+  const { content, setContent } = useSiteContent();
   const isDark = theme === 'dark';
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -207,10 +210,17 @@ export default function AdminProductsPage() {
 
       return saved;
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['home-products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+      queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
+      if (isRdpProduct(saved)) {
+        setContent({
+          ...content,
+          rdp: applyRdpProductToCatalog(content.rdp, saved),
+        });
+      }
       toast.success(editingProduct ? 'Product updated' : 'Product created');
       setIsModalOpen(false);
       setEditingProduct(null);
@@ -218,11 +228,19 @@ export default function AdminProductsPage() {
   });
 
   const deleteProduct = useMutation({
-    mutationFn: productService.delete,
-    onSuccess: (result) => {
+    mutationFn: (product: Product) => productService.delete(product.id),
+    onSuccess: (result, product) => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['home-products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+      queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
+      if (isRdpProduct(product)) {
+        const remaining = (products ?? []).filter((entry) => entry.id !== product.id);
+        setContent({
+          ...content,
+          rdp: removeRdpProductFromCatalog(content.rdp, product.slug, remaining),
+        });
+      }
       toast.success(result.archived ? 'Product archived (it has past orders)' : 'Product deleted');
     },
     onError: (error: Error) => {
@@ -686,7 +704,7 @@ export default function AdminProductsPage() {
         }}
         onConfirm={() => {
           if (!productPendingDelete) return;
-          deleteProduct.mutate(productPendingDelete.id, {
+          deleteProduct.mutate(productPendingDelete, {
             onSuccess: () => setProductPendingDelete(null),
           });
         }}
