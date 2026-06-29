@@ -23,6 +23,7 @@ export const HTML_CAMPAIGN_TEMPLATE_CATEGORIES: {
 
 const appUrl = APP_URL.replace(/\/$/, '');
 const siteHost = appUrl.replace(/^https?:\/\//, '');
+const telegramSupportUrl = 'https://t.me/nexlogs_support';
 const emailLogoHeader = buildEmailLogoHeader(appUrl, APP_NAME);
 const emailLogoHeaderCompact = buildEmailLogoHeader(appUrl, APP_NAME, {
   padding: '24px 32px 8px',
@@ -400,6 +401,123 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
       ctaLabel: 'Browse marketplace',
       ctaUrl: `${appUrl}/marketplace`,
     }),
+  },
+  {
+    id: 'service-restored',
+    name: 'Service restored',
+    category: 'account',
+    description:
+      'Notify users that maintenance is complete. Includes add-funds, marketplace links, and Telegram support.',
+    defaultSubject: `${APP_NAME} service restored — you can add funds and shop again`,
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${APP_NAME} · service restored</title>
+</head>
+<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    ${APP_NAME} service restored. You can now add funds, purchase, and reach support on Telegram.
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+          ${emailLogoHeader}
+          ${buildEmailHeroRow('Service restored')}
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                The scheduled work on <strong>${APP_NAME}</strong> has been completed. All systems are now operational.
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1f2937;">What you can do now</p>
+                    <ul style="margin:0 0 8px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
+                      <li><strong>Add funds</strong> to your wallet in Naira (NGN)</li>
+                      <li><strong>Browse the marketplace</strong> and place orders</li>
+                      <li>Access your <strong>order history</strong> and purchase details</li>
+                    </ul>
+                    <p style="margin:0;font-size:14px;color:#374151;">
+                      Everything is back to normal. Thank you for your patience.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+                <tr>
+                  <td style="border-radius:8px;background:#f26522;padding-right:8px;">
+                    <a href="${appUrl}/add-funds" style="display:inline-block;padding:14px 24px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Add funds</a>
+                  </td>
+                  <td style="border-radius:8px;background:#1f2937;">
+                    <a href="${appUrl}/marketplace" style="display:inline-block;padding:14px 24px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Marketplace</a>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">Support</p>
+                    <p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#374151;">
+                      If you experienced any issues during the maintenance window or need assistance, contact our support team:
+                    </p>
+                    <ul style="margin:0 0 4px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
+                      <li>
+                        <strong>Telegram:</strong>
+                        <a href="${telegramSupportUrl}" style="color:#f26522;text-decoration:none;">@nexlogs_support</a>
+                      </li>
+                      <li>
+                        <strong>Support page:</strong>
+                        <a href="${appUrl}/support" style="color:#f26522;text-decoration:none;">${siteHost}/support</a>
+                      </li>
+                      <li>
+                        <strong>Email:</strong>
+                        <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
+                      </li>
+                    </ul>
+                    <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">
+                      We usually respond within a few hours on Telegram and email.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#1f2937;">
+                Thank you for being part of ${APP_NAME}.
+              </p>
+              <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">
+                If you have any feedback, feel free to reply to this email.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
+              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+                This notification is sent to registered users of ${siteHost}.
+              </p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+                © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.<br/>
+                <a href="${appUrl}" style="color:#f26522;text-decoration:none;">${siteHost}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:16px auto 0;font-size:12px;color:#9ca3af;text-align:center;max-width:560px;">
+          All systems operational. If you notice anything unusual, message us on
+          <a href="${telegramSupportUrl}" style="color:#f26522;text-decoration:none;">Telegram</a>
+          or email support.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
   },
   {
     id: 'website-navigation-guide',
