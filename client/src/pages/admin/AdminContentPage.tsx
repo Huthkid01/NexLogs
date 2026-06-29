@@ -385,6 +385,7 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
             ))}
           </div>
 
+          {/* Video tutorials admin — hidden until real videos are ready
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label htmlFor="support-tutorial-title">Tutorial Section Title</Label>
@@ -453,6 +454,7 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
               </div>
             ))}
           </div>
+          */}
         </CardContent>
       </Card>}
 

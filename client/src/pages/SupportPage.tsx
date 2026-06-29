@@ -75,6 +75,7 @@ export default function SupportPage() {
             })}
           </div>
 
+          {/* Video tutorials — hidden until real videos are ready
           <div className="space-y-3 pt-4">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{content.support.tutorialTitle}</h2>
             <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
@@ -103,6 +104,7 @@ export default function SupportPage() {
               </div>
             ))}
           </div>
+          */}
         </div>
       </div>
     </div>

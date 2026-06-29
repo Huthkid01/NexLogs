@@ -169,21 +169,22 @@ export const defaultSiteContent: SiteContent = {
     tutorialTitle: 'Video Tutorials',
     tutorialIntro: 'Watch step-by-step guides on how to use the platform.',
     tutorials: [
-      {
-        title: 'How To Add Funds',
-        description: 'A quick guide on funding your wallet securely.',
-        label: 'How to add funds in wallet',
-      },
-      {
-        title: 'How To Copy Order ID',
-        description: 'Learn how to find and copy your order ID for support.',
-        label: 'How to copy ORDER ID',
-      },
-      {
-        title: 'How To Buy Foreign Numbers',
-        description: 'Step-by-step guide to purchasing foreign numbers.',
-        label: 'How to buy Foreign numbers',
-      },
+      // Hidden on Support page until real videos are ready.
+      // {
+      //   title: 'How To Add Funds',
+      //   description: 'A quick guide on funding your wallet securely.',
+      //   label: 'How to add funds in wallet',
+      // },
+      // {
+      //   title: 'How To Copy Order ID',
+      //   description: 'Learn how to find and copy your order ID for support.',
+      //   label: 'How to copy ORDER ID',
+      // },
+      // {
+      //   title: 'How To Buy Foreign Numbers',
+      //   description: 'Step-by-step guide to purchasing foreign numbers.',
+      //   label: 'How to buy Foreign numbers',
+      // },
     ],
   },
   terms: {

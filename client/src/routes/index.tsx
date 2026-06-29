@@ -39,13 +39,16 @@ import AdminRdpPage from '@/pages/admin/AdminRdpPage';
 import AdminSenderPage from '@/pages/admin/AdminSenderPage';
 import AdminTransactionsPage from '@/pages/admin/AdminTransactionsPage';
 import UnsubscribePage from '@/pages/UnsubscribePage';
+import NotFoundPage from '@/pages/NotFoundPage';
+import { RouterErrorPage } from '@/routes/RouterErrorPage';
 
 const router = createBrowserRouter([
-  { path: '/unsubscribe/:token', element: <UnsubscribePage /> },
-  { path: '/unsubscribe', element: <UnsubscribePage /> },
+  { path: '/unsubscribe/:token', element: <UnsubscribePage />, errorElement: <RouterErrorPage /> },
+  { path: '/unsubscribe', element: <UnsubscribePage />, errorElement: <RouterErrorPage /> },
   {
     path: '/',
     element: <AdminRedirectGate><MainLayout /></AdminRedirectGate>,
+    errorElement: <RouterErrorPage />,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'marketplace', element: <ProtectedRoute><HomePage /></ProtectedRoute> },
@@ -70,13 +73,15 @@ const router = createBrowserRouter([
       { path: 'add-funds', element: <ProtectedRoute><AddFundsPage /></ProtectedRoute> },
       { path: 'purchase-rdp', element: <ProtectedRoute><PurchaseRdpPage /></ProtectedRoute> },
       { path: 'buy-numbers', element: <ProtectedRoute><BuyNumbersPage /></ProtectedRoute> },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
-  { path: '/admin/login', element: <AdminGuestRoute><AdminLoginPage /></AdminGuestRoute> },
+  { path: '/admin/login', element: <AdminGuestRoute><AdminLoginPage /></AdminGuestRoute>, errorElement: <RouterErrorPage /> },
   { path: '/dashboard/*', element: <ProtectedRoute><AdminRedirectGate><Navigate to="/profile" replace /></AdminRedirectGate></ProtectedRoute> },
   {
     path: '/admin',
     element: <ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>,
+    errorElement: <RouterErrorPage />,
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'users', element: <AdminUsersPage /> },
@@ -94,7 +99,18 @@ const router = createBrowserRouter([
       { path: 'content/contact', element: <Navigate to="/admin/content/support" replace /> },
       { path: 'content/:section', element: <AdminContentPage /> },
       { path: 'analytics', element: <AdminAnalyticsPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
+  },
+  {
+    path: '*',
+    element: (
+      <AdminRedirectGate>
+        <MainLayout />
+      </AdminRedirectGate>
+    ),
+    errorElement: <RouterErrorPage />,
+    children: [{ path: '*', element: <NotFoundPage /> }],
   },
 ]);
 
