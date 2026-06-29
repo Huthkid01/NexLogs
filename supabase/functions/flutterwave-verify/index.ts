@@ -47,7 +47,36 @@ function convertCurrencyToUsd(
     throw new Error(`Unsupported currency: ${currency}`);
   }
 
-  return Math.round((amount / rate) * 100) / 100;
+  return Math.round((amount / rate) * 1_000_000) / 1_000_000;
+}
+
+function hasPaidExpectedAmount(chargedAmount: number, expectedAmount: number) {
+  if (chargedAmount + 0.01 >= expectedAmount) return true;
+  return chargedAmount >= expectedAmount * 0.985;
+}
+
+function resolveCreditAmount(
+  verifiedAmount: number,
+  verifiedCurrency: string,
+  exchangeRates: Record<string, number>,
+  expected?: { amount?: number; currency?: string },
+) {
+  if (expected?.amount && expected.amount > 0 && expected.currency) {
+    const expectedCurrency = expected.currency.toUpperCase();
+    if (expectedCurrency === verifiedCurrency && hasPaidExpectedAmount(verifiedAmount, expected.amount)) {
+      return {
+        amount: expected.amount,
+        currency: expectedCurrency,
+        amountUsd: convertCurrencyToUsd(expected.amount, expectedCurrency, exchangeRates),
+      };
+    }
+  }
+
+  return {
+    amount: verifiedAmount,
+    currency: verifiedCurrency,
+    amountUsd: convertCurrencyToUsd(verifiedAmount, verifiedCurrency, exchangeRates),
+  };
 }
 
 function extractBearerToken(authHeader: string) {
@@ -168,6 +197,8 @@ Deno.serve(async (req) => {
       transaction_id,
       tx_ref,
       payment_method,
+      expected_amount,
+      expected_currency,
     } = body;
 
     if (!transaction_id || !tx_ref) {
@@ -241,16 +272,21 @@ Deno.serve(async (req) => {
 
     const walletValue = walletContent?.value as { exchangeRates?: Record<string, number> } | null;
     const exchangeRates = normalizeWalletExchangeRates(walletValue?.exchangeRates);
-    const computedAmountUsd = convertCurrencyToUsd(
+
+    const credit = resolveCreditAmount(
       verifiedAmount,
       verifiedCurrency,
       exchangeRates,
+      {
+        amount: expected_amount,
+        currency: expected_currency,
+      },
     );
 
     const depositId = await creditWalletDeposit(supabase, {
-      amountUsd: computedAmountUsd,
-      verifiedAmount,
-      verifiedCurrency,
+      amountUsd: credit.amountUsd,
+      verifiedAmount: credit.amount,
+      verifiedCurrency: credit.currency,
       paymentMethod: payment_method || 'flutterwave',
       txRef: tx_ref,
       transactionId: transaction_id,
@@ -261,9 +297,9 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         deposit_id: depositId,
-        amount_usd: computedAmountUsd,
-        original_amount: verifiedAmount,
-        original_currency: verifiedCurrency,
+        amount_usd: credit.amountUsd,
+        original_amount: credit.amount,
+        original_currency: credit.currency,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
