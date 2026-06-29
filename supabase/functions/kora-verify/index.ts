@@ -60,7 +60,13 @@ function convertCurrencyToUsd(
     throw new Error(`Unsupported currency: ${currency}`);
   }
 
-  return Math.round((amount / rate) * 100) / 100;
+  return Math.round((amount / rate) * 1_000_000) / 1_000_000;
+}
+
+function hasPaidExpectedAmount(chargedAmount: number, expectedAmount: number) {
+  if (chargedAmount + 0.01 >= expectedAmount) return true;
+  // Kora fees can make amount_accepted slightly lower than the charge amount.
+  return chargedAmount >= expectedAmount * 0.985;
 }
 
 function extractBearerToken(authHeader: string) {
@@ -155,14 +161,13 @@ function resolveCreditAmount(
     const chargeCurrency = (expected.chargeCurrency ?? expectedCurrency).toUpperCase();
 
     if (expectedCurrency === chargedCurrency || chargeCurrency === chargedCurrency) {
-      // Credit the amount the user entered only if Kora confirms they paid at least that much.
-      // Never trust client-only fields without matching Kora charge amount.
-      const paidEnough = chargedAmount + 0.01 >= expected.amount;
+      const paidEnough = hasPaidExpectedAmount(chargedAmount, expected.amount);
       if (paidEnough) {
-        const amountUsd =
-          expected.amountUsd && expected.amountUsd > 0
-            ? Math.round(expected.amountUsd * 100) / 100
-            : convertCurrencyToUsd(expected.amount, expectedCurrency, exchangeRates);
+        const amountUsd = convertCurrencyToUsd(
+          expected.amount,
+          expectedCurrency,
+          exchangeRates,
+        );
 
         return {
           amount: expected.amount,

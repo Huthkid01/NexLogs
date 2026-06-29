@@ -10,7 +10,7 @@ import { profileService } from '@/services/profile.service';
 import { isKoraConfigured, isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
-  convertCurrencyToUsd,
+  convertCurrencyToUsdForWallet,
   convertUsdToCurrency,
   DISPLAY_RATE_CURRENCIES,
 } from '@/lib/wallet-exchange-rates';
@@ -142,8 +142,17 @@ export default function AddFundsPage() {
   const usdEquivalent = useMemo(() => {
     const value = parseFloat(amount);
     if (!amount || Number.isNaN(value) || value <= 0) return '0.00';
-    return convertCurrencyToUsd(value, currency, exchangeRates).toFixed(2);
+    return convertCurrencyToUsdForWallet(value, currency, exchangeRates).toFixed(4);
   }, [amount, currency, exchangeRates]);
+
+  const depositPreview = useMemo(() => {
+    const value = parseFloat(amount);
+    if (!amount || Number.isNaN(value) || value <= 0) return null;
+    if (currency === 'NGN') {
+      return `₦${value.toLocaleString('en-NG')} will be added to your wallet`;
+    }
+    return `≈ $${usdEquivalent} USD will be added to your wallet`;
+  }, [amount, currency, usdEquivalent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -360,7 +369,9 @@ export default function AddFundsPage() {
                       onChange={(e) => setAmount(e.target.value)}
                       className={`${inputClassName} placeholder:text-gray-400`}
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">≈ ${usdEquivalent} USD added to wallet</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                      {depositPreview ?? 'Enter an amount to see wallet credit'}
+                    </p>
                   </div>
 
                   <div>

@@ -52,6 +52,8 @@ export function normalizeWalletExchangeRates(
   return normalized;
 }
 
+const WALLET_USD_DECIMALS = 6;
+
 export function convertCurrencyToUsd(
   amount: number,
   currency: string,
@@ -65,6 +67,23 @@ export function convertCurrencyToUsd(
   }
 
   return Math.round((amount / rate) * 100) / 100;
+}
+
+/** Higher precision for wallet deposits so NGN balances round-trip correctly (500 NGN stays 500, not 493). */
+export function convertCurrencyToUsdForWallet(
+  amount: number,
+  currency: string,
+  rates: WalletExchangeRates,
+): number {
+  const code = currency.toUpperCase();
+  const rate = rates[code];
+
+  if (!rate || rate <= 0 || Number.isNaN(amount) || amount <= 0) {
+    return 0;
+  }
+
+  const factor = 10 ** WALLET_USD_DECIMALS;
+  return Math.round((amount / rate) * factor) / factor;
 }
 
 export function convertUsdToCurrency(usdAmount: number, ratePerUsd: number) {
