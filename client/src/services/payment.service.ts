@@ -177,19 +177,22 @@ function loadFlutterwaveScript() {
   });
 }
 
-async function verifyFlutterwaveDeposit(input: {
-  transactionId: number;
-  txRef: string;
-  paymentMethod: string;
-}) {
+function buildFlutterwaveVerifyBody(
+  txRef: string,
+  paymentMethod: string,
+  transactionId?: number,
+) {
   const pending = getPendingDeposit();
   const body: Record<string, string | number> = {
-    transaction_id: input.transactionId,
-    tx_ref: input.txRef,
-    payment_method: input.paymentMethod,
+    tx_ref: txRef,
+    payment_method: paymentMethod,
   };
 
-  if (pending?.reference === input.txRef) {
+  if (transactionId && transactionId > 0) {
+    body.transaction_id = transactionId;
+  }
+
+  if (pending?.reference === txRef) {
     body.expected_amount = pending.amount;
     body.expected_currency = pending.currency;
     body.amount_usd = pending.amountUsd;
@@ -197,9 +200,11 @@ async function verifyFlutterwaveDeposit(input: {
     body.original_currency = pending.currency;
   }
 
-  const { data, error } = await supabase.functions.invoke('flutterwave-verify', {
-    body,
-  });
+  return body;
+}
+
+async function invokeFlutterwaveVerify(body: Record<string, string | number>) {
+  const { data, error } = await supabase.functions.invoke('flutterwave-verify', { body });
 
   if (error) {
     throw new Error(await readFunctionErrorMessage(error, data));
@@ -212,10 +217,24 @@ async function verifyFlutterwaveDeposit(input: {
   return data;
 }
 
-async function verifyFlutterwaveDepositWithRetry(
-  transactionId: number,
-  txRef: string,
-  paymentMethod: string,
+async function verifyFlutterwaveDeposit(input: {
+  transactionId: number;
+  txRef: string;
+  paymentMethod: string;
+}) {
+  return invokeFlutterwaveVerify(
+    buildFlutterwaveVerifyBody(input.txRef, input.paymentMethod, input.transactionId),
+  );
+}
+
+async function verifyFlutterwaveDepositByRef(input: { txRef: string; paymentMethod: string }) {
+  return invokeFlutterwaveVerify(
+    buildFlutterwaveVerifyBody(input.txRef, input.paymentMethod),
+  );
+}
+
+async function verifyFlutterwaveWithRetry(
+  verify: () => Promise<unknown>,
   delays = VERIFY_RETRY_DELAYS_MS,
 ) {
   let lastError: Error | null = null;
@@ -226,7 +245,7 @@ async function verifyFlutterwaveDepositWithRetry(
     }
 
     try {
-      return await verifyFlutterwaveDeposit({ transactionId, txRef, paymentMethod });
+      return await verify();
     } catch (err) {
       lastError = err instanceof Error ? err : new Error('Payment verification failed');
       const message = lastError.message.toLowerCase();
@@ -243,6 +262,29 @@ async function verifyFlutterwaveDepositWithRetry(
   }
 
   throw lastError ?? new Error('Payment verification failed');
+}
+
+async function verifyFlutterwaveDepositWithRetry(
+  transactionId: number,
+  txRef: string,
+  paymentMethod: string,
+  delays = VERIFY_RETRY_DELAYS_MS,
+) {
+  return verifyFlutterwaveWithRetry(
+    () => verifyFlutterwaveDeposit({ transactionId, txRef, paymentMethod }),
+    delays,
+  );
+}
+
+async function verifyFlutterwaveDepositByRefWithRetry(
+  txRef: string,
+  paymentMethod: string,
+  delays = VERIFY_RETRY_DELAYS_MS,
+) {
+  return verifyFlutterwaveWithRetry(
+    () => verifyFlutterwaveDepositByRef({ txRef, paymentMethod }),
+    delays,
+  );
 }
 
 async function verifyKoraDeposit(reference: string, paymentMethod: string) {
@@ -313,12 +355,16 @@ export async function resumePendingDeposit() {
   const pending = getPendingDeposit();
   if (!pending?.reference) return false;
 
-  if (pending.provider === 'flutterwave' && pending.flutterwaveTransactionId) {
-    await verifyFlutterwaveDepositWithRetry(
-      pending.flutterwaveTransactionId,
-      pending.reference,
-      pending.paymentMethod,
-    );
+  if (pending.provider === 'flutterwave') {
+    if (pending.flutterwaveTransactionId) {
+      await verifyFlutterwaveDepositWithRetry(
+        pending.flutterwaveTransactionId,
+        pending.reference,
+        pending.paymentMethod,
+      );
+    } else {
+      await verifyFlutterwaveDepositByRefWithRetry(pending.reference, pending.paymentMethod);
+    }
   } else {
     await verifyKoraDepositWithRetry(pending.reference, pending.paymentMethod);
   }
@@ -329,6 +375,18 @@ export async function resumePendingDeposit() {
 
 /** @deprecated Use resumePendingDeposit */
 export const resumePendingKoraDeposit = resumePendingDeposit;
+
+export async function finalizeDepositSuccess(
+  userId: string,
+  previousBalance: number,
+  refetch: () => Promise<unknown>,
+) {
+  await Promise.race([
+    waitForWalletBalanceIncrease(userId, previousBalance, 15_000),
+    new Promise((resolve) => setTimeout(resolve, 8000)),
+  ]);
+  await refetch();
+}
 
 export async function waitForWalletBalanceIncrease(
   userId: string,
@@ -442,12 +500,6 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
         );
     };
 
-    const handlePaymentCancelled = () => {
-      closeKoraModal();
-      clearPendingDeposit();
-      finish(() => reject(new Error('Payment cancelled')));
-    };
-
     const handleCloseMaybePaid = () => {
       closeKoraModal();
       void (async () => {
@@ -464,7 +516,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
           clearPendingDeposit();
           finish(() => resolve({ status: 'completed' }));
         } catch {
-          handlePaymentCancelled();
+          finish(() => resolve({ status: 'pending' }));
         }
       })();
     };
@@ -500,7 +552,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
             clearPendingDeposit();
             finish(() => resolve({ status: 'completed' }));
           })
-          .catch(() => handlePaymentCancelled());
+          .catch(() => finish(() => resolve({ status: 'pending' })));
       },
       onPending: () => {
         closeKoraModal();
@@ -560,6 +612,8 @@ export async function startFlutterwaveDeposit(params: StartDepositParams): Promi
 
   return new Promise<DepositResult>((resolve, reject) => {
     let settled = false;
+    let callbackReceived = false;
+    let verificationPromise: Promise<unknown> | null = null;
 
     const finish = (handler: () => void) => {
       if (settled) return;
@@ -567,23 +621,79 @@ export async function startFlutterwaveDeposit(params: StartDepositParams): Promi
       handler();
     };
 
+    const persistFlutterwaveTransactionId = (transactionId?: number) => {
+      if (!transactionId || transactionId <= 0) return;
+      const pending = getPendingDeposit();
+      if (pending) {
+        savePendingDeposit({ ...pending, flutterwaveTransactionId: transactionId });
+      }
+    };
+
+    const ensureVerified = (transactionId: number | undefined, reference: string) => {
+      if (!verificationPromise) {
+        verificationPromise = (async () => {
+          if (transactionId && transactionId > 0) {
+            await verifyFlutterwaveDepositWithRetry(transactionId, reference, 'flutterwave');
+          } else {
+            await verifyFlutterwaveDepositByRefWithRetry(reference, 'flutterwave');
+          }
+          clearPendingDeposit();
+        })();
+      }
+      return verificationPromise;
+    };
+
     const handlePaymentCancelled = () => {
       clearPendingDeposit();
       finish(() => reject(new Error('Payment cancelled')));
     };
 
-    const handlePaymentSuccess = (transactionId: number, reference: string) => {
+    const handlePaymentSuccess = (transactionId: number | undefined, reference: string) => {
+      callbackReceived = true;
+      persistFlutterwaveTransactionId(transactionId);
       params.onPaymentConfirmed?.();
-      void verifyFlutterwaveDepositWithRetry(transactionId, reference, 'flutterwave')
-        .then(() => {
-          clearPendingDeposit();
-          finish(() => resolve({ status: 'completed' }));
-        })
+      void ensureVerified(transactionId, reference)
+        .then(() => finish(() => resolve({ status: 'completed' })))
         .catch((err) =>
           finish(() =>
             reject(err instanceof Error ? err : new Error('Payment verification failed')),
           ),
         );
+    };
+
+    const handleCloseMaybePaid = () => {
+      void (async () => {
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 1000));
+        if (settled) return;
+        if (callbackReceived) return;
+
+        params.onPaymentChecking?.();
+        const pending = getPendingDeposit();
+        const reference = pending?.reference ?? txRef;
+
+        try {
+          const txId = pending?.flutterwaveTransactionId;
+          if (txId) {
+            await verifyFlutterwaveDepositWithRetry(
+              txId,
+              reference,
+              'flutterwave',
+              QUICK_VERIFY_DELAYS_MS,
+            );
+          } else {
+            await verifyFlutterwaveDepositByRefWithRetry(
+              reference,
+              'flutterwave',
+              QUICK_VERIFY_DELAYS_MS,
+            );
+          }
+          params.onPaymentConfirmed?.();
+          clearPendingDeposit();
+          finish(() => resolve({ status: 'completed' }));
+        } catch {
+          finish(() => resolve({ status: 'pending' }));
+        }
+      })();
     };
 
     window.FlutterwaveCheckout!({
@@ -611,12 +721,8 @@ export async function startFlutterwaveDeposit(params: StartDepositParams): Promi
         const transactionId = Number(response.transaction_id);
         const reference = String(response.tx_ref ?? txRef);
 
-        if (status === 'successful' && transactionId > 0) {
-          const pending = getPendingDeposit();
-          if (pending) {
-            savePendingDeposit({ ...pending, flutterwaveTransactionId: transactionId });
-          }
-          handlePaymentSuccess(transactionId, reference);
+        if (status === 'successful') {
+          handlePaymentSuccess(transactionId > 0 ? transactionId : undefined, reference);
           return;
         }
 
@@ -626,7 +732,7 @@ export async function startFlutterwaveDeposit(params: StartDepositParams): Promi
       },
       onclose: () => {
         if (settled) return;
-        handlePaymentCancelled();
+        handleCloseMaybePaid();
       },
     });
 

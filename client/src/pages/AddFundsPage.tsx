@@ -8,7 +8,6 @@ import { useSiteContent } from '@/hooks/useSiteContent';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { profileService } from '@/services/profile.service';
 import { isKoraConfigured, isKoraTestMode } from '@/lib/kora-config';
-import { isFlutterwaveConfigured, isFlutterwaveTestMode } from '@/lib/flutterwave-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
   convertCurrencyToUsdForWallet,
@@ -18,9 +17,8 @@ import {
 import {
   completeKoraRedirect,
   resumePendingDeposit,
-  startFlutterwaveDeposit,
   startKoraDeposit,
-  waitForWalletBalanceIncrease,
+  finalizeDepositSuccess,
 } from '@/services/payment.service';
 
 const CURRENCIES = [
@@ -28,12 +26,6 @@ const CURRENCIES = [
   { code: 'USD', label: 'USD' },
   { code: 'EUR', label: 'EUR' },
   { code: 'GBP', label: 'GBP' },
-] as const;
-
-const PAYMENT_METHODS = [
-  { value: '', label: 'Select method' },
-  { value: 'card', label: 'Kora — Card / Bank Transfer' },
-  { value: 'flutterwave', label: 'Flutterwave — Card / Bank / USSD' },
 ] as const;
 
 const inputClassName =
@@ -53,7 +45,6 @@ export default function AddFundsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]['code']>('NGN');
-  const [paymentMethod, setPaymentMethod] = useState('');
   const [showRates, setShowRates] = useState(false);
   const [baseUsdAmount, setBaseUsdAmount] = useState('1');
   const [submitting, setSubmitting] = useState(false);
@@ -74,9 +65,10 @@ export default function AddFundsPage() {
 
         setVerifyingRedirect(true);
         const stats = await profileService.getStats(user.id);
-        await waitForWalletBalanceIncrease(user.id, stats.balance);
-        await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
-        await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+        await finalizeDepositSuccess(user.id, stats.balance, async () => {
+          await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
+          await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+        });
         toast.success('Payment verified. Funds added to your wallet.');
       } catch {
         // No pending deposit or verification still in progress elsewhere.
@@ -97,9 +89,10 @@ export default function AddFundsPage() {
         const completed = await completeKoraRedirect(searchParams);
         if (!completed) return;
 
-        await waitForWalletBalanceIncrease(user.id, walletStats?.balance ?? 0);
-        await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
-        await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+        await finalizeDepositSuccess(user.id, walletStats?.balance ?? 0, async () => {
+          await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
+          await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+        });
         toast.success('Payment successful. Funds added to your wallet.');
         setSearchParams({}, { replace: true });
       } catch (err: unknown) {
@@ -169,21 +162,9 @@ export default function AddFundsPage() {
       toast.error('Please enter a valid amount');
       return;
     }
-    if (!paymentMethod) {
-      toast.error('Please select a payment method');
+    if (!isKoraConfigured()) {
+      toast.error('Kora is not configured. Add VITE_KORA_PUBLIC_KEY to your environment.');
       return;
-    }
-
-    if (paymentMethod === 'flutterwave') {
-      if (!isFlutterwaveConfigured()) {
-        toast.error('Flutterwave is not configured. Add VITE_FLUTTERWAVE_PUBLIC_KEY to your environment.');
-        return;
-      }
-    } else if (paymentMethod === 'card') {
-      if (!isKoraConfigured()) {
-        toast.error('Kora is not configured. Add VITE_KORA_PUBLIC_KEY to your environment.');
-        return;
-      }
     }
 
     setSubmitting(true);
@@ -207,29 +188,28 @@ export default function AddFundsPage() {
         amount: value,
         currency,
         amountUsd: Number(usdEquivalent),
-        paymentMethod: paymentMethod === 'card' ? 'kora_card' : 'flutterwave',
+        paymentMethod: 'kora_card',
         exchangeRates,
         onPaymentModalOpened: () => setSubmitting(false),
         onPaymentConfirmed: () => setPaymentNotice('verifying'),
         onPaymentChecking: () => setPaymentNotice('checking'),
       };
 
-      const result =
-        paymentMethod === 'flutterwave'
-          ? await startFlutterwaveDeposit(depositParams)
-          : await startKoraDeposit(depositParams);
+      const result = await startKoraDeposit(depositParams);
 
       if (result.status === 'pending') {
-        toast.info('Payment initiated. Your wallet will update once the payment is confirmed.');
+        toast.info(
+          'Payment is still being confirmed. Stay on this page or refresh — your wallet will update automatically.',
+        );
         return;
       }
 
-      await waitForWalletBalanceIncrease(user.id, balanceBefore);
-      await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
-      await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+      await finalizeDepositSuccess(user.id, balanceBefore, async () => {
+        await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
+        await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+      });
       toast.success('Payment successful. Funds added to your wallet.');
       setAmount('');
-      setPaymentMethod('');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Payment failed';
       if (message !== 'Payment cancelled') {
@@ -336,14 +316,14 @@ export default function AddFundsPage() {
                 </button>
               </div>
 
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Choose amount and payment method</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Choose amount — pay with Kora (card or bank transfer)</p>
 
               {(verifyingRedirect || paymentNotice) && (
                 <div className="flex items-center gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
                   <Info className="h-4 w-4 text-[#f26522] shrink-0" />
                   <p className="text-sm text-gray-800">
                     {verifyingRedirect
-                      ? 'Verifying your payment with Kora…'
+                      ? 'Verifying your payment…'
                       : paymentNotice === 'verifying'
                         ? 'Payment received. Verifying and adding funds to your wallet…'
                         : 'Checking payment status…'}
@@ -351,7 +331,7 @@ export default function AddFundsPage() {
                 </div>
               )}
 
-              {(isKoraTestMode() || isFlutterwaveTestMode()) && import.meta.env.DEV && (
+              {isKoraTestMode() && import.meta.env.DEV && (
                 <div className="flex items-start gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
                   <Info className="h-4 w-4 text-[#f26522] shrink-0 mt-0.5" />
                   <p className="text-sm text-gray-800">
@@ -362,7 +342,7 @@ export default function AddFundsPage() {
 
               <div className="flex items-start gap-2 rounded-lg bg-[#fff8e6] dark:bg-[#f26522] border border-[#f5e6b8] dark:border-[#f26522] px-3 py-2.5 mb-6">
                 <Info className="h-4 w-4 text-amber-700 dark:text-white shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-900 dark:text-white">Payments are processed securely by Kora or Flutterwave. We do not store your card details.</p>
+                <p className="text-sm text-amber-900 dark:text-white">Payments are processed securely by Kora. We do not store your card details.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
@@ -401,24 +381,6 @@ export default function AddFundsPage() {
                       ))}
                     </select>
                   </div>
-                </div>
-
-                <div>
-                  <label htmlFor="payment-method" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1.5">
-                    Payment Method
-                  </label>
-                  <select
-                    id="payment-method"
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className={`${inputClassName} ${paymentMethod ? '' : 'text-gray-500 dark:text-gray-400'}`}
-                  >
-                    {PAYMENT_METHODS.map((method) => (
-                      <option key={method.value || 'default'} value={method.value}>
-                        {method.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 <button

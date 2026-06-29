@@ -6,14 +6,14 @@ const corsHeaders = {
 };
 
 interface VerifyRequestBody {
-  transaction_id: number;
+  transaction_id?: number;
   tx_ref: string;
-  expected_amount: number;
-  expected_currency: string;
-  amount_usd: number;
-  original_amount: number;
-  original_currency: string;
-  payment_method: string;
+  expected_amount?: number;
+  expected_currency?: string;
+  amount_usd?: number;
+  original_amount?: number;
+  original_currency?: string;
+  payment_method?: string;
 }
 
 const DEFAULT_WALLET_EXCHANGE_RATES: Record<string, number> = {
@@ -94,6 +94,37 @@ function flutterwaveErrorMessage(status: number, payload: { message?: string; st
     return 'Flutterwave secret key is invalid or missing. In Supabase Dashboard → Edge Functions → Secrets, set FLUTTERWAVE_SECRET_KEY to the secret that matches your VITE_FLUTTERWAVE_PUBLIC_KEY (same test or live mode).';
   }
   return message;
+}
+
+async function fetchFlutterwavePayment(
+  secretKey: string,
+  input: { transactionId?: number; txRef: string },
+) {
+  const verifyUrl =
+    input.transactionId && input.transactionId > 0
+      ? `https://api.flutterwave.com/v3/transactions/${input.transactionId}/verify`
+      : `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(input.txRef)}`;
+
+  const verifyResponse = await fetch(verifyUrl, {
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const verifyPayload = await verifyResponse.json();
+
+  if (!verifyResponse.ok || verifyPayload.status !== 'success') {
+    throw new Error(flutterwaveErrorMessage(verifyResponse.status, verifyPayload));
+  }
+
+  return verifyPayload.data as {
+    id?: number;
+    status?: string;
+    tx_ref?: string;
+    amount?: number;
+    currency?: string;
+  };
 }
 
 async function creditWalletDeposit(
@@ -201,28 +232,18 @@ Deno.serve(async (req) => {
       expected_currency,
     } = body;
 
-    if (!transaction_id || !tx_ref) {
+    if (!tx_ref?.trim()) {
       throw new Error('Missing payment reference');
     }
 
-    const { data: existingByTxId } = await supabase
-      .from('wallet_transactions')
-      .select('id')
-      .eq('user_id', user.id)
-      .contains('metadata', { flutterwave_tx_id: String(transaction_id) })
-      .maybeSingle();
-
-    if (existingByTxId) {
-      return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByTxId.id }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const normalizedTxRef = tx_ref.trim();
+    const transactionId = Number(transaction_id);
 
     const { data: existingByRef } = await supabase
       .from('wallet_transactions')
       .select('id')
       .eq('user_id', user.id)
-      .filter('metadata->>tx_ref', 'eq', tx_ref)
+      .filter('metadata->>tx_ref', 'eq', normalizedTxRef)
       .maybeSingle();
 
     if (existingByRef) {
@@ -231,30 +252,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    const verifyResponse = await fetch(
-      `https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`,
-      {
-        headers: {
-          Authorization: `Bearer ${flutterwaveSecretKey}`,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
+    if (transactionId > 0) {
+      const { data: existingByTxId } = await supabase
+        .from('wallet_transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .contains('metadata', { flutterwave_tx_id: String(transactionId) })
+        .maybeSingle();
 
-    const verifyPayload = await verifyResponse.json();
-
-    if (!verifyResponse.ok || verifyPayload.status !== 'success') {
-      throw new Error(flutterwaveErrorMessage(verifyResponse.status, verifyPayload));
+      if (existingByTxId) {
+        return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByTxId.id }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
-    const payment = verifyPayload.data;
+    const payment = await fetchFlutterwavePayment(flutterwaveSecretKey, {
+      transactionId: transactionId > 0 ? transactionId : undefined,
+      txRef: normalizedTxRef,
+    });
 
     if (payment.status !== 'successful') {
       throw new Error('Payment was not successful');
     }
 
-    if (String(payment.tx_ref) !== String(tx_ref)) {
+    if (String(payment.tx_ref) !== normalizedTxRef) {
       throw new Error('Transaction reference mismatch');
+    }
+
+    const resolvedTransactionId = Number(payment.id ?? transactionId);
+    if (!resolvedTransactionId || resolvedTransactionId <= 0) {
+      throw new Error('Missing Flutterwave transaction id');
     }
 
     const verifiedAmount = Number(payment.amount);
@@ -288,8 +316,8 @@ Deno.serve(async (req) => {
       verifiedAmount: credit.amount,
       verifiedCurrency: credit.currency,
       paymentMethod: payment_method || 'flutterwave',
-      txRef: tx_ref,
-      transactionId: transaction_id,
+      txRef: normalizedTxRef,
+      transactionId: resolvedTransactionId,
       payment,
     });
 
