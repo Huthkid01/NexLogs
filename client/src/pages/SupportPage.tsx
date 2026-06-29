@@ -74,37 +74,6 @@ export default function SupportPage() {
               );
             })}
           </div>
-
-          {/* Video tutorials — hidden until real videos are ready
-          <div className="space-y-3 pt-4">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{content.support.tutorialTitle}</h2>
-            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
-              {content.support.tutorialIntro}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 text-left">
-            {content.support.tutorials.map((tutorial, index) => (
-              <div
-                key={`${tutorial.title}-${index}`}
-                className="bg-white dark:bg-dm-surface border border-gray-200 dark:border-dm-border rounded-xl overflow-hidden shadow-sm"
-              >
-                <div className="aspect-video bg-black flex items-center justify-center p-4">
-                  <p className="text-center text-sm font-bold leading-snug">
-                    <span className="text-red-500">How to</span>
-                    <span className="text-white"> {tutorial.label.replace(/^How to\s*/i, '')}</span>
-                  </p>
-                </div>
-                <div className="p-4">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{tutorial.title}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-                    {tutorial.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          */}
         </div>
       </div>
     </div>
