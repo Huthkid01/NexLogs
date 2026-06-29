@@ -227,7 +227,7 @@ export default function HomePage() {
               <div className="py-10">
                 <AppLoader iconClassName="h-9 w-9" />
               </div>
-            ) : products?.data.length === 0 ? (
+            ) : !products?.data?.length ? (
               <div className="py-12 text-gray-500 dark:text-gray-400 text-center">
                 <p>No products found.</p>
                 <button
@@ -240,7 +240,7 @@ export default function HomePage() {
               </div>
             ) : (
               <div>
-                {products?.data.map((product) => (
+                {(products?.data ?? []).map((product) => (
                   <ProductListRow key={product.id} product={product} />
                 ))}
               </div>

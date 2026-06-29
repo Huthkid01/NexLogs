@@ -128,11 +128,22 @@ function loadKoraScript() {
 }
 
 async function verifyKoraDeposit(reference: string, paymentMethod: string) {
+  const pending = getPendingDeposit();
+  const body: Record<string, string | number> = {
+    reference,
+    payment_method: paymentMethod,
+  };
+
+  if (pending?.reference === reference) {
+    body.expected_amount = pending.amount;
+    body.expected_currency = pending.currency;
+    body.expected_amount_usd = pending.amountUsd;
+    body.charge_amount = pending.chargeAmount;
+    body.charge_currency = pending.chargeCurrency;
+  }
+
   const { data, error } = await supabase.functions.invoke('kora-verify', {
-    body: {
-      reference,
-      payment_method: paymentMethod,
-    },
+    body,
   });
 
   if (error) {
@@ -292,6 +303,9 @@ export async function startKoraDeposit(params: StartDepositParams) {
       metadata: {
         userId: params.userId.slice(0, 20),
         source: 'nexlogs-wallet',
+        wallet_amount: String(params.amount),
+        wallet_currency: params.currency,
+        wallet_amount_usd: String(params.amountUsd),
       },
       onSuccess: () => {
         void ensureVerified()

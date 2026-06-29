@@ -30,20 +30,25 @@ function ensureWalletBalanceChannel(userId: string) {
 
   teardownWalletBalanceChannel();
 
-  walletRealtime.channel = supabase
-    .channel(`wallet-balance-${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'wallets',
-        filter: `user_id=eq.${userId}`,
-      },
-      () => notifyWalletBalanceListeners(),
-    )
-    .subscribe();
-  walletRealtime.userId = userId;
+  try {
+    walletRealtime.channel = supabase
+      .channel(`wallet-balance-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'wallets',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => notifyWalletBalanceListeners(),
+      )
+      .subscribe();
+    walletRealtime.userId = userId;
+  } catch {
+    walletRealtime.channel = null;
+    walletRealtime.userId = null;
+  }
 }
 
 function subscribeWalletBalance(userId: string, listener: WalletBalanceListener) {

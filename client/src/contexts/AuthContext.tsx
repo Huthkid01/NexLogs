@@ -59,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void authService.getSession().then((s) => {
       if (!mounted) return;
       void applySession(s, true);
+    }).catch(() => {
+      if (mounted) setLoading(false);
     });
 
     const { data: { subscription } } = authService.onAuthStateChange((event, s) => {

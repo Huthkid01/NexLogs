@@ -22,6 +22,11 @@ const DEFAULT_WALLET_EXCHANGE_RATES: Record<string, number> = {
 interface VerifyRequestBody {
   reference: string;
   payment_method?: string;
+  expected_amount?: number;
+  expected_currency?: string;
+  expected_amount_usd?: number;
+  charge_amount?: number;
+  charge_currency?: string;
 }
 
 interface KoraChargeData {
@@ -33,6 +38,7 @@ interface KoraChargeData {
   amount_paid?: string | number;
   amount_accepted?: string | number;
   currency?: string;
+  metadata?: Record<string, unknown>;
 }
 
 function normalizeWalletExchangeRates(rates?: Record<string, number> | null) {
@@ -86,13 +92,92 @@ function resolveMerchantReference(clientReference: string, payment: KoraChargeDa
   return clientReference.trim();
 }
 
-function resolvePaidAmount(payment: KoraChargeData) {
-  const raw = payment.amount_accepted ?? payment.amount_paid ?? payment.amount;
+function readMetadataNumber(metadata: Record<string, unknown> | undefined, key: string) {
+  const raw = metadata?.[key];
+  const value = Number(raw);
+  return value > 0 && !Number.isNaN(value) ? value : undefined;
+}
+
+function readMetadataString(metadata: Record<string, unknown> | undefined, key: string) {
+  const raw = metadata?.[key];
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined;
+}
+
+function resolveExpectedFromBodyOrMetadata(
+  body: VerifyRequestBody,
+  payment: KoraChargeData,
+) {
+  const metadata = payment.metadata;
+  const amount = body.expected_amount ?? readMetadataNumber(metadata, 'wallet_amount');
+  const currency = body.expected_currency ?? readMetadataString(metadata, 'wallet_currency');
+  const amountUsd = body.expected_amount_usd ?? readMetadataNumber(metadata, 'wallet_amount_usd');
+  const chargeAmount = body.charge_amount ?? amount;
+  const chargeCurrency = body.charge_currency ?? currency;
+
+  if (!amount || !currency) {
+    return undefined;
+  }
+
+  return {
+    amount,
+    currency,
+    amountUsd,
+    chargeAmount,
+    chargeCurrency,
+  };
+}
+
+function resolveChargedAmount(payment: KoraChargeData) {
+  const raw = payment.amount ?? payment.amount_paid ?? payment.amount_accepted;
   const amount = Number(raw);
   if (!amount || amount <= 0 || Number.isNaN(amount)) {
     throw new Error('Invalid payment amount from Kora');
   }
   return amount;
+}
+
+function resolveCreditAmount(
+  payment: KoraChargeData,
+  exchangeRates: Record<string, number>,
+  expected?: {
+    amount?: number;
+    currency?: string;
+    amountUsd?: number;
+    chargeAmount?: number;
+    chargeCurrency?: string;
+  },
+) {
+  const chargedAmount = resolveChargedAmount(payment);
+  const chargedCurrency = String(payment.currency || 'NGN').toUpperCase();
+
+  if (expected?.amount && expected.amount > 0 && expected.currency) {
+    const expectedCurrency = expected.currency.toUpperCase();
+    const chargeCurrency = (expected.chargeCurrency ?? expectedCurrency).toUpperCase();
+
+    if (expectedCurrency === chargedCurrency || chargeCurrency === chargedCurrency) {
+      // Credit the amount the user entered only if Kora confirms they paid at least that much.
+      // Never trust client-only fields without matching Kora charge amount.
+      const paidEnough = chargedAmount + 0.01 >= expected.amount;
+      if (paidEnough) {
+        const amountUsd =
+          expected.amountUsd && expected.amountUsd > 0
+            ? Math.round(expected.amountUsd * 100) / 100
+            : convertCurrencyToUsd(expected.amount, expectedCurrency, exchangeRates);
+
+        return {
+          amount: expected.amount,
+          currency: expectedCurrency,
+          amountUsd,
+        };
+      }
+    }
+  }
+
+  return {
+    amount: chargedAmount,
+    currency: chargedCurrency,
+    amountUsd: convertCurrencyToUsd(chargedAmount, chargedCurrency, exchangeRates),
+  };
 }
 
 async function creditWalletDeposit(
@@ -236,9 +321,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const verifiedAmount = resolvePaidAmount(payment);
-    const verifiedCurrency = String(payment.currency || 'NGN').toUpperCase();
-
     const { data: walletContent } = await supabase
       .from('site_content_blocks')
       .select('value')
@@ -247,16 +329,17 @@ Deno.serve(async (req) => {
 
     const walletValue = walletContent?.value as { exchangeRates?: Record<string, number> } | null;
     const exchangeRates = normalizeWalletExchangeRates(walletValue?.exchangeRates);
-    const computedAmountUsd = convertCurrencyToUsd(
-      verifiedAmount,
-      verifiedCurrency,
+
+    const credit = resolveCreditAmount(
+      payment,
       exchangeRates,
+      resolveExpectedFromBodyOrMetadata(body, payment),
     );
 
     const depositId = await creditWalletDeposit(supabase, {
-      amountUsd: computedAmountUsd,
-      verifiedAmount,
-      verifiedCurrency,
+      amountUsd: credit.amountUsd,
+      verifiedAmount: credit.amount,
+      verifiedCurrency: credit.currency,
       paymentMethod: payment_method || 'kora',
       reference: merchantReference,
       payment,
@@ -266,9 +349,9 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         deposit_id: depositId,
-        amount_usd: computedAmountUsd,
-        original_amount: verifiedAmount,
-        original_currency: verifiedCurrency,
+        amount_usd: credit.amountUsd,
+        original_amount: credit.amount,
+        original_currency: credit.currency,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

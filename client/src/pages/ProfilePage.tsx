@@ -118,7 +118,7 @@ export default function ProfilePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions?.data.map((tx) => (
+                    {(transactions?.data ?? []).map((tx) => (
                       <tr key={tx.id} className="border-b border-gray-100 dark:border-dm-border last:border-b-0">
                         <td className="px-4 sm:px-6 py-3.5 font-medium text-gray-900 dark:text-gray-100">{tx.ref}</td>
                         <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDateTime(tx.created_at)}</td>

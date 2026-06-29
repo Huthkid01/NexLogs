@@ -24,6 +24,8 @@ export default function AuthCallbackPage() {
           .then(() => undefined, () => undefined);
       }
       navigate(session ? consumeAuthRedirect('/marketplace') : '/login', { replace: true });
+    }).catch(() => {
+      navigate('/login', { replace: true });
     });
   }, [navigate]);
 
