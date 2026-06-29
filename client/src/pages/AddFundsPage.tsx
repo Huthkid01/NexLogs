@@ -55,7 +55,7 @@ export default function AddFundsPage() {
   const [showRates, setShowRates] = useState(false);
   const [baseUsdAmount, setBaseUsdAmount] = useState('1');
   const [submitting, setSubmitting] = useState(false);
-  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [paymentNotice, setPaymentNotice] = useState<'checking' | 'verifying' | null>(null);
   const [verifyingRedirect, setVerifyingRedirect] = useState(false);
   const redirectHandled = useRef(false);
   const pendingHandled = useRef(false);
@@ -178,7 +178,7 @@ export default function AddFundsPage() {
     }
 
     setSubmitting(true);
-    setVerifyingPayment(false);
+    setPaymentNotice(null);
     try {
       if (!hasSupabaseConfig()) {
         toast.error('Wallet deposits require Supabase. Add your Supabase keys and redeploy.');
@@ -196,7 +196,6 @@ export default function AddFundsPage() {
       }
 
       const balanceBefore = walletStats?.balance ?? 0;
-      setVerifyingPayment(true);
       const result = await startKoraDeposit({
         userId: user.id,
         email: user.email,
@@ -207,6 +206,8 @@ export default function AddFundsPage() {
         paymentMethod: paymentMethod === 'card' ? 'kora_card' : 'kora',
         exchangeRates,
         onPaymentModalOpened: () => setSubmitting(false),
+        onPaymentConfirmed: () => setPaymentNotice('verifying'),
+        onPaymentChecking: () => setPaymentNotice('checking'),
       });
 
       if (result.status === 'pending') {
@@ -226,7 +227,7 @@ export default function AddFundsPage() {
         toast.error(message);
       }
     } finally {
-      setVerifyingPayment(false);
+      setPaymentNotice(null);
       setSubmitting(false);
     }
   };
@@ -328,13 +329,15 @@ export default function AddFundsPage() {
 
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Choose amount and payment method</p>
 
-              {(verifyingRedirect || verifyingPayment) && (
+              {(verifyingRedirect || paymentNotice) && (
                 <div className="flex items-center gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
                   <Info className="h-4 w-4 text-[#f26522] shrink-0" />
                   <p className="text-sm text-gray-800">
                     {verifyingRedirect
                       ? 'Verifying your payment with Kora…'
-                      : 'Payment received. Verifying and adding funds to your wallet…'}
+                      : paymentNotice === 'verifying'
+                        ? 'Payment received. Verifying and adding funds to your wallet…'
+                        : 'Checking payment status…'}
                   </p>
                 </div>
               )}
@@ -411,11 +414,13 @@ export default function AddFundsPage() {
 
                 <button
                   type="submit"
-                  disabled={submitting || verifyingPayment}
+                  disabled={submitting || !!paymentNotice}
                   className="w-full max-w-md btn-orange py-2.5 text-sm disabled:opacity-60"
                 >
-                  {verifyingPayment
+                  {paymentNotice === 'verifying'
                     ? 'Verifying payment…'
+                    : paymentNotice === 'checking'
+                      ? 'Checking payment…'
                     : submitting
                       ? 'Opening payment…'
                       : 'Proceed to Payment'}

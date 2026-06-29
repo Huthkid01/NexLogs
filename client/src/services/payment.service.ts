@@ -22,6 +22,8 @@ export interface StartDepositParams {
   paymentMethod: string;
   exchangeRates: WalletExchangeRates;
   onPaymentModalOpened?: () => void;
+  onPaymentConfirmed?: () => void;
+  onPaymentChecking?: () => void;
 }
 
 interface PendingDeposit {
@@ -40,7 +42,10 @@ const KORA_SCRIPT_URL =
 
 const KORA_SUPPORTED_CURRENCIES = new Set(['NGN', 'KES', 'GHS']);
 
-/** Retry up to ~30s — Kora can lag after the user closes the modal. */
+/** Quick check when user closes modal — don't block for 30s. */
+const QUICK_VERIFY_DELAYS_MS = [0, 1500, 3000];
+
+/** Retry up to ~30s — Kora can lag after successful payment. */
 const VERIFY_RETRY_DELAYS_MS = [0, 1500, 3000, 5000, 8000, 12000];
 
 function savePendingDeposit(pending: PendingDeposit) {
@@ -166,10 +171,14 @@ async function verifyKoraDeposit(reference: string, paymentMethod: string) {
   return data;
 }
 
-async function verifyKoraDepositWithRetry(reference: string, paymentMethod: string) {
+async function verifyKoraDepositWithRetry(
+  reference: string,
+  paymentMethod: string,
+  delays = VERIFY_RETRY_DELAYS_MS,
+) {
   let lastError: Error | null = null;
 
-  for (const delayMs of VERIFY_RETRY_DELAYS_MS) {
+  for (const delayMs of delays) {
     if (delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
@@ -303,6 +312,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Kora
 
     const handlePaymentConfirmed = (reference = merchantReference) => {
       closeKoraModal();
+      params.onPaymentConfirmed?.();
       void ensureVerified(reference)
         .then(() => finish(() => resolve({ status: 'completed' })))
         .catch((err) =>
@@ -310,6 +320,33 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Kora
             reject(err instanceof Error ? err : new Error('Payment verification failed')),
           ),
         );
+    };
+
+    const handlePaymentCancelled = () => {
+      closeKoraModal();
+      clearPendingDeposit();
+      finish(() => reject(new Error('Payment cancelled')));
+    };
+
+    const handleCloseMaybePaid = () => {
+      closeKoraModal();
+      void (async () => {
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+        if (settled) return;
+
+        try {
+          await verifyKoraDepositWithRetry(
+            merchantReference,
+            params.paymentMethod,
+            QUICK_VERIFY_DELAYS_MS,
+          );
+          params.onPaymentConfirmed?.();
+          clearPendingDeposit();
+          finish(() => resolve({ status: 'completed' }));
+        } catch {
+          handlePaymentCancelled();
+        }
+      })();
     };
 
     window.Korapay!.initialize({
@@ -336,33 +373,28 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Kora
         handlePaymentConfirmed(reference);
       },
       onFailed: (data) => {
-        closeKoraModal();
         const reference = data?.reference?.trim() || merchantReference;
-        void ensureVerified(reference)
-          .then(() => finish(() => resolve({ status: 'completed' })))
-          .catch(() => finish(() => reject(new Error('Payment was not successful'))));
+        params.onPaymentChecking?.();
+        void verifyKoraDepositWithRetry(reference, params.paymentMethod, QUICK_VERIFY_DELAYS_MS)
+          .then(() => {
+            clearPendingDeposit();
+            finish(() => resolve({ status: 'completed' }));
+          })
+          .catch(() => handlePaymentCancelled());
       },
       onPending: () => {
         closeKoraModal();
-        void ensureVerified()
-          .then(() => finish(() => resolve({ status: 'completed' })))
+        params.onPaymentChecking?.();
+        void verifyKoraDepositWithRetry(merchantReference, params.paymentMethod, QUICK_VERIFY_DELAYS_MS)
+          .then(() => {
+            clearPendingDeposit();
+            finish(() => resolve({ status: 'completed' }));
+          })
           .catch(() => finish(() => resolve({ status: 'pending' })));
       },
       onClose: () => {
-        void (async () => {
-          await new Promise((resolveDelay) => setTimeout(resolveDelay, 800));
-          if (settled) return;
-
-          try {
-            closeKoraModal();
-            await ensureVerified();
-            finish(() => resolve({ status: 'completed' }));
-          } catch {
-            if (!settled) {
-              finish(() => reject(new Error('Payment cancelled')));
-            }
-          }
-        })();
+        if (settled) return;
+        handleCloseMaybePaid();
       },
     });
 
