@@ -73,7 +73,17 @@ function koraErrorMessage(status: number, payload: { message?: string }) {
 function isSuccessfulCharge(payment: KoraChargeData) {
   const status = String(payment.status ?? '').toLowerCase();
   const txStatus = String(payment.transaction_status ?? '').toLowerCase();
-  return status === 'success' || txStatus === 'success';
+  return (
+    status === 'success' ||
+    txStatus === 'success' ||
+    txStatus === 'overpaid'
+  );
+}
+
+function resolveMerchantReference(clientReference: string, payment: KoraChargeData) {
+  const merchantRef = String(payment.payment_reference ?? '').trim();
+  if (merchantRef) return merchantRef;
+  return clientReference.trim();
 }
 
 function resolvePaidAmount(payment: KoraChargeData) {
@@ -187,21 +197,10 @@ Deno.serve(async (req) => {
       throw new Error('Missing payment reference');
     }
 
-    const { data: existingByRef } = await supabase
-      .from('wallet_transactions')
-      .select('id')
-      .eq('user_id', user.id)
-      .filter('metadata->>tx_ref', 'eq', reference)
-      .maybeSingle();
-
-    if (existingByRef) {
-      return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByRef.id }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const clientReference = reference.trim();
 
     const verifyResponse = await fetch(
-      `${KORA_API_BASE}/charges/${encodeURIComponent(reference)}`,
+      `${KORA_API_BASE}/charges/${encodeURIComponent(clientReference)}`,
       {
         headers: {
           Authorization: `Bearer ${koraSecretKey}`,
@@ -222,11 +221,19 @@ Deno.serve(async (req) => {
       throw new Error('Payment was not successful');
     }
 
-    if (
-      payment.payment_reference &&
-      String(payment.payment_reference) !== String(reference)
-    ) {
-      throw new Error('Transaction reference mismatch');
+    const merchantReference = resolveMerchantReference(clientReference, payment);
+
+    const { data: existingByRef } = await supabase
+      .from('wallet_transactions')
+      .select('id')
+      .eq('user_id', user.id)
+      .filter('metadata->>tx_ref', 'eq', merchantReference)
+      .maybeSingle();
+
+    if (existingByRef) {
+      return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByRef.id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const verifiedAmount = resolvePaidAmount(payment);
@@ -251,7 +258,7 @@ Deno.serve(async (req) => {
       verifiedAmount,
       verifiedCurrency,
       paymentMethod: payment_method || 'kora',
-      reference,
+      reference: merchantReference,
       payment,
     });
 

@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Globe2, MapPin, Trash2, Users, UserCheck } from 'lucide-react';
+import { Eye, Globe2, MapPin, Search, Trash2, Users, UserCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminUserWalletPanel } from '@/components/admin/AdminUserWalletPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { activityLogService, adminService, siteVisitService, SITE_ACTIVE_WINDOW_MINUTES } from '@/services';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { formatVisitorLocation, getVisitorDisplayName } from '@/lib/visitor-location';
 import { toast } from 'sonner';
 
@@ -30,10 +31,11 @@ export default function AdminUsersPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [activeTab, setActiveTab] = useState<UsersTab>('registered');
+  const [userSearch, setUserSearch] = useState('');
 
   const { data: users, isLoading: usersLoading } = useQuery({
-    queryKey: ['admin-users'],
-    queryFn: adminService.getUsers,
+    queryKey: ['admin-users-wallets'],
+    queryFn: adminService.getUsersWithWallets,
   });
 
   const { data: visitorStats, isLoading: statsLoading } = useQuery({
@@ -57,7 +59,7 @@ export default function AdminUsersPage() {
     mutationFn: ({ id, updates }: { id: string; updates: Record<string, unknown> }) =>
       adminService.updateUser(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users-wallets'] });
       toast.success('User updated');
     },
   });
@@ -92,7 +94,7 @@ export default function AdminUsersPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users-wallets'] });
       queryClient.invalidateQueries({ queryKey: ['admin-activity-logs'] });
       toast.success('User flagged for terms violation');
     },
@@ -129,6 +131,16 @@ export default function AdminUsersPage() {
       iconClass: 'bg-amber-500/15 text-amber-200',
     },
   ];
+
+  const filteredUsers = useMemo(() => {
+    const query = userSearch.trim().toLowerCase();
+    if (!query) return users ?? [];
+    return (users ?? []).filter(
+      (user) =>
+        user.email.toLowerCase().includes(query) ||
+        user.full_name.toLowerCase().includes(query),
+    );
+  }, [users, userSearch]);
 
   const tabs: Array<{ id: UsersTab; label: string }> = [
     { id: 'registered', label: 'Registered Users' },
@@ -189,10 +201,21 @@ export default function AdminUsersPage() {
 
       {activeTab === 'registered' && (
         <div className="space-y-3">
-          {users?.map((user) => (
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={userSearch}
+              onChange={(event) => setUserSearch(event.target.value)}
+              placeholder="Search by name or email…"
+              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm"
+            />
+          </div>
+
+          {filteredUsers.map((user) => (
             <Card key={user.id}>
-              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium">{user.full_name}</p>
                   <p className="text-sm text-muted-foreground">{user.email}</p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -200,12 +223,21 @@ export default function AdminUsersPage() {
                   </p>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     <Badge variant={user.role === 'admin' ? 'accent' : 'secondary'}>{user.role}</Badge>
+                    <Badge variant="outline">{formatPrice(user.wallet_balance ?? 0)} wallet</Badge>
                     {user.is_suspended ? (
                       <Badge variant="destructive">Suspended</Badge>
                     ) : (
                       <Badge variant="success">Active account</Badge>
                     )}
                   </div>
+                  {user.role !== 'admin' && (
+                    <AdminUserWalletPanel
+                      userId={user.id}
+                      userEmail={user.email}
+                      userName={user.full_name}
+                      walletBalance={user.wallet_balance ?? 0}
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button
@@ -228,6 +260,14 @@ export default function AdminUsersPage() {
               </CardContent>
             </Card>
           ))}
+
+          {!filteredUsers.length && (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                No users match your search.
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

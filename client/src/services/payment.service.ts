@@ -5,7 +5,7 @@ import {
   getKoraPublicKey,
   isKoraConfigured,
 } from '@/lib/kora-config';
-import type { KoraCheckoutSuccess } from '@/types/kora';
+import { profileService } from '@/services/profile.service';
 import {
   convertCurrencyToUsd,
   convertUsdToCurrency,
@@ -39,6 +39,9 @@ const KORA_SCRIPT_URL =
 
 const KORA_SUPPORTED_CURRENCIES = new Set(['NGN', 'KES', 'GHS']);
 
+/** Retry up to ~30s — Kora can lag after the user closes the modal. */
+const VERIFY_RETRY_DELAYS_MS = [0, 1500, 3000, 5000, 8000, 12000];
+
 function savePendingDeposit(pending: PendingDeposit) {
   localStorage.setItem(PENDING_DEPOSIT_KEY, JSON.stringify(pending));
 }
@@ -47,7 +50,7 @@ function clearPendingDeposit() {
   localStorage.removeItem(PENDING_DEPOSIT_KEY);
 }
 
-function getPendingDeposit(): PendingDeposit | null {
+export function getPendingDeposit(): PendingDeposit | null {
   try {
     const raw = localStorage.getItem(PENDING_DEPOSIT_KEY);
     if (!raw) return null;
@@ -143,6 +146,64 @@ async function verifyKoraDeposit(reference: string, paymentMethod: string) {
   return data;
 }
 
+async function verifyKoraDepositWithRetry(reference: string, paymentMethod: string) {
+  let lastError: Error | null = null;
+
+  for (const delayMs of VERIFY_RETRY_DELAYS_MS) {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+
+    try {
+      return await verifyKoraDeposit(reference, paymentMethod);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error('Payment verification failed');
+      const message = lastError.message.toLowerCase();
+
+      const retryable =
+        message.includes('not successful') ||
+        message.includes('verification failed') ||
+        message.includes('network') ||
+        message.includes('fetch');
+
+      if (!retryable) {
+        throw lastError;
+      }
+    }
+  }
+
+  throw lastError ?? new Error('Payment verification failed');
+}
+
+/** If a previous Kora session was not verified, try again (e.g. user refreshed the page). */
+export async function resumePendingKoraDeposit() {
+  const pending = getPendingDeposit();
+  if (!pending || !pending.reference) return false;
+
+  await verifyKoraDepositWithRetry(pending.reference, pending.paymentMethod);
+  clearPendingDeposit();
+  return true;
+}
+
+export async function waitForWalletBalanceIncrease(
+  userId: string,
+  previousBalance: number,
+  maxWaitMs = 20_000,
+) {
+  const started = Date.now();
+
+  while (Date.now() - started < maxWaitMs) {
+    const stats = await profileService.getStats(userId);
+    if (stats.balance > previousBalance) {
+      return stats.balance;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  const stats = await profileService.getStats(userId);
+  return stats.balance > previousBalance ? stats.balance : null;
+}
+
 export async function completeKoraRedirect(searchParams: URLSearchParams) {
   const reference = searchParams.get('reference');
   if (!reference) return false;
@@ -154,7 +215,7 @@ export async function completeKoraRedirect(searchParams: URLSearchParams) {
     );
   }
 
-  await verifyKoraDeposit(reference, pending?.paymentMethod ?? 'kora');
+  await verifyKoraDepositWithRetry(reference, pending?.paymentMethod ?? 'kora');
   clearPendingDeposit();
   return true;
 }
@@ -192,9 +253,11 @@ export async function startKoraDeposit(params: StartDepositParams) {
     paymentMethod: params.paymentMethod,
   });
 
+  const merchantReference = reference;
+
   return new Promise<void>((resolve, reject) => {
     let settled = false;
-    let verifying = false;
+    let verificationPromise: Promise<unknown> | null = null;
 
     const finish = (handler: () => void) => {
       if (settled) return;
@@ -202,9 +265,21 @@ export async function startKoraDeposit(params: StartDepositParams) {
       handler();
     };
 
+    const ensureVerified = () => {
+      if (!verificationPromise) {
+        verificationPromise = verifyKoraDepositWithRetry(
+          merchantReference,
+          params.paymentMethod,
+        ).then(() => {
+          clearPendingDeposit();
+        });
+      }
+      return verificationPromise;
+    };
+
     window.Korapay!.initialize({
       key: publicKey,
-      reference,
+      reference: merchantReference,
       amount: chargeAmount,
       currency: chargeCurrency,
       narration: 'Add funds to your Nexlogs wallet',
@@ -218,29 +293,35 @@ export async function startKoraDeposit(params: StartDepositParams) {
         userId: params.userId.slice(0, 20),
         source: 'nexlogs-wallet',
       },
-      onSuccess: (data: KoraCheckoutSuccess) => {
-        void (async () => {
-          try {
-            verifying = true;
-            await verifyKoraDeposit(data.reference || reference, params.paymentMethod);
-            clearPendingDeposit();
-            finish(() => resolve());
-          } catch (err) {
-            finish(() => reject(err instanceof Error ? err : new Error('Payment verification failed')));
-          } finally {
-            verifying = false;
-          }
-        })();
+      onSuccess: () => {
+        void ensureVerified()
+          .then(() => finish(() => resolve()))
+          .catch((err) =>
+            finish(() =>
+              reject(err instanceof Error ? err : new Error('Payment verification failed')),
+            ),
+          );
       },
       onFailed: () => {
-        finish(() => reject(new Error('Payment was not successful')));
+        // Kora sometimes fires onFailed before the charge settles — verify with API first.
+        void ensureVerified()
+          .then(() => finish(() => resolve()))
+          .catch(() => finish(() => reject(new Error('Payment was not successful'))));
       },
       onClose: () => {
-        setTimeout(() => {
-          if (!settled && !verifying) {
-            finish(() => reject(new Error('Payment cancelled')));
+        void (async () => {
+          await new Promise((resolveDelay) => setTimeout(resolveDelay, 800));
+          if (settled) return;
+
+          try {
+            await ensureVerified();
+            finish(() => resolve());
+          } catch {
+            if (!settled) {
+              finish(() => reject(new Error('Payment cancelled')));
+            }
           }
-        }, 5000);
+        })();
       },
     });
   });

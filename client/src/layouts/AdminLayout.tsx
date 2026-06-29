@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, ArrowUpDown, Monitor, Mail,
+  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, ArrowUpDown, Monitor, Mail, Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/products', label: 'Products', icon: Package },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+  { href: '/admin/transactions', label: 'Wallet Transactions', icon: Wallet },
   { href: '/admin/categories', label: 'Categories', icon: Tag },
   { href: '/admin/coupons', label: 'Coupons', icon: Tag },
   { href: '/admin/tickets', label: 'Tickets', icon: LifeBuoy },

@@ -1,6 +1,45 @@
 import { supabase } from '@/lib/supabase';
-import type { Notification, Category, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog, Coupon } from '@/types';
 import { buildAdminAnalyticsSnapshot, EMPTY_ADMIN_ANALYTICS } from '@/lib/admin-analytics';
+import type { Notification, Category, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog, Coupon, AdminWalletTransaction, AdminWalletDepositRecord } from '@/types';
+
+function isKoraWalletDeposit(tx: Pick<AdminWalletDepositRecord, 'kind' | 'payment_method' | 'metadata'>) {
+  const meta = tx.metadata ?? {};
+
+  if (meta.provider === 'flutterwave' || tx.payment_method === 'flutterwave' || meta.flutterwave_tx_id) {
+    return false;
+  }
+
+  if (meta.provider === 'kora' || tx.payment_method.startsWith('kora')) {
+    return true;
+  }
+
+  const txRef = meta.tx_ref ? String(meta.tx_ref) : '';
+  if (txRef.startsWith('NEX-')) return true;
+
+  if (meta.kora_reference) return true;
+
+  const reason = meta.reason ? String(meta.reason).toLowerCase() : '';
+  const note = meta.note ? String(meta.note).toLowerCase() : '';
+
+  // Recovered Kora payment — admin credited after Kora succeeded but wallet was not updated
+  if (txRef.toUpperCase().includes('KORA') || reason.includes('kora') || note.includes('kora')) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isRecoveredKoraDeposit(tx: Pick<AdminWalletDepositRecord, 'kind' | 'payment_method' | 'metadata'>) {
+  const meta = tx.metadata ?? {};
+  const isDirectKora = meta.provider === 'kora' || tx.payment_method.startsWith('kora');
+  if (isDirectKora && tx.kind === 'deposit') return false;
+
+  return (
+    tx.kind === 'adjustment' ||
+    tx.payment_method === 'admin' ||
+    meta.source === 'admin_manual_credit'
+  ) && isKoraWalletDeposit(tx);
+}
 
 export const notificationService = {
   async getNotifications(userId: string): Promise<Notification[]> {
@@ -228,6 +267,118 @@ export const adminService = {
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []) as Profile[];
+  },
+
+  async getUsersWithWallets(): Promise<Profile[]> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*, wallet:wallets(balance)')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return ((data || []) as Array<Profile & { wallet?: { balance: number } | { balance: number }[] | null }>).map(
+      (row) => {
+        const wallet = Array.isArray(row.wallet) ? row.wallet[0] : row.wallet;
+        return {
+          ...row,
+          wallet_balance: wallet?.balance != null ? Number(wallet.balance) : 0,
+        };
+      },
+    );
+  },
+
+  async getUserWalletTransactions(userId: string, limit = 15): Promise<AdminWalletTransaction[]> {
+    const { data, error } = await supabase
+      .from('wallet_transactions')
+      .select('id, ref, kind, payment_method, amount, currency, status, metadata, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    return (data || []).map((row) => ({
+      id: row.id as string,
+      ref: row.ref as string,
+      kind: row.kind as string,
+      payment_method: row.payment_method as string,
+      amount: Number(row.amount || 0),
+      currency: row.currency as string,
+      status: row.status as AdminWalletTransaction['status'],
+      metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+      created_at: row.created_at as string,
+    }));
+  },
+
+  async getWalletFundTransactions(limit = 200): Promise<AdminWalletDepositRecord[]> {
+    const { data, error } = await supabase
+      .from('wallet_transactions')
+      .select(`
+        id,
+        user_id,
+        ref,
+        kind,
+        payment_method,
+        amount,
+        currency,
+        status,
+        metadata,
+        created_at,
+        profile:profiles(email, full_name, role)
+      `)
+      .in('kind', ['deposit', 'adjustment'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    return (data || [])
+      .map((row) => {
+        const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+        if (profile?.role === 'admin') return null;
+
+        const record = {
+          id: row.id as string,
+          user_id: row.user_id as string,
+          ref: row.ref as string,
+          kind: row.kind as string,
+          payment_method: row.payment_method as string,
+          amount: Number(row.amount || 0),
+          currency: row.currency as string,
+          status: row.status as AdminWalletTransaction['status'],
+          metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+          created_at: row.created_at as string,
+          user_email: (profile?.email as string) ?? 'Unknown',
+          user_name: (profile?.full_name as string) ?? 'Unknown',
+        } satisfies AdminWalletDepositRecord;
+
+        return isKoraWalletDeposit(record) ? record : null;
+      })
+      .filter((row): row is AdminWalletDepositRecord => row !== null);
+  },
+
+  async creditUserWallet(input: {
+    userId: string;
+    amountUsd: number;
+    reason: string;
+    externalRef?: string;
+  }) {
+    const { data, error } = await supabase.rpc('admin_credit_wallet', {
+      p_user_id: input.userId,
+      p_amount_usd: input.amountUsd,
+      p_reason: input.reason,
+      p_external_ref: input.externalRef ?? null,
+    });
+
+    if (error) {
+      if (error.message.includes('admin_credit_wallet') && error.message.includes('Could not find')) {
+        throw new Error('Run migration 051_admin_wallet_credit.sql in Supabase SQL Editor first.');
+      }
+      throw new Error(error.message);
+    }
+
+    return data as string;
   },
 
   async updateUser(id: string, updates: Partial<Profile>) {

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { BroadcastRecipientSelection } from '@/components/admin/BroadcastRecipientPicker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { History, Mail } from 'lucide-react';
 import { toast } from 'sonner';
@@ -72,6 +73,10 @@ export default function AdminSenderPage() {
   const [htmlSendError, setHtmlSendError] = useState('');
   const [htmlSendResult, setHtmlSendResult] = useState({ sentCount: 0, failedCount: 0 });
   const [htmlHistoryPreview, setHtmlHistoryPreview] = useState<EmailCampaignRecord | null>(null);
+  const [broadcastRecipientCount, setBroadcastRecipientCount] = useState(0);
+  const [htmlRecipientCount, setHtmlRecipientCount] = useState(0);
+  const broadcastSendSelectionRef = useRef<BroadcastRecipientSelection | null>(null);
+  const htmlSendSelectionRef = useRef<BroadcastRecipientSelection | null>(null);
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -103,20 +108,16 @@ export default function AdminSenderPage() {
     htmlExternalEmails.length === 0;
   const sendCount = selectedRecipientIds.length + selectedExternalEmails.length;
   const htmlSendCount = htmlRecipientIds.length + htmlExternalEmails.length;
+  const effectiveBroadcastRecipientCount = Math.max(sendCount, broadcastRecipientCount);
+  const effectiveHtmlRecipientCount = Math.max(htmlSendCount, htmlRecipientCount);
   const deliverability = useBroadcastDeliverability(subject, customMessage, selectedProductIds.length);
-  const htmlDeliverability = useHtmlCampaignDeliverability(htmlSubject, htmlBody, htmlSendCount);
+  const htmlDeliverability = useHtmlCampaignDeliverability(
+    htmlSubject,
+    htmlBody,
+    effectiveHtmlRecipientCount,
+  );
 
   const contactList = contacts ?? [];
-
-  const broadcastRecipientPayload = useMemo(
-    () => buildMarketingRecipientPayload(contactList, selectedRecipientIds, selectedExternalEmails, sendToAll),
-    [contactList, selectedExternalEmails, selectedRecipientIds, sendToAll],
-  );
-
-  const htmlRecipientPayload = useMemo(
-    () => buildMarketingRecipientPayload(contactList, htmlRecipientIds, htmlExternalEmails, htmlSendToAll),
-    [contactList, htmlExternalEmails, htmlRecipientIds, htmlSendToAll],
-  );
 
   const sendBroadcast = useMutation({
     mutationFn: (payload: BroadcastEmailPayload) => broadcastEmailService.send(payload),
@@ -128,11 +129,11 @@ export default function AdminSenderPage() {
 
   const canSend =
     selectedProductIds.length > 0 &&
-    sendCount > 0 &&
+    effectiveBroadcastRecipientCount > 0 &&
     deliverability.canSend;
 
   const canSendHtml =
-    htmlSendCount > 0 &&
+    effectiveHtmlRecipientCount > 0 &&
     htmlDeliverability.canSend;
 
   const historyPreviewProducts = useMemo(
@@ -171,11 +172,18 @@ export default function AdminSenderPage() {
   const handleConfirmSend = async () => {
     setSendPhase('sending');
     try {
+      const selection = broadcastSendSelectionRef.current;
+      const recipientPayload = buildMarketingRecipientPayload(
+        contactList,
+        selection?.userIds ?? selectedRecipientIds,
+        selection?.externalEmails ?? selectedExternalEmails,
+        sendToAll,
+      );
       const result = await sendBroadcast.mutateAsync({
         product_ids: selectedProductIds,
         subject: deliverability.sanitizedSubject || DEFAULT_SUBJECT,
         custom_message: deliverability.sanitizedMessage || undefined,
-        ...broadcastRecipientPayload,
+        ...recipientPayload,
       });
       void queryClient.invalidateQueries({ queryKey: ['email-broadcasts'] });
       clearBroadcastDraft();
@@ -198,11 +206,18 @@ export default function AdminSenderPage() {
   const handleConfirmHtmlSend = async () => {
     setHtmlSendPhase('sending');
     try {
+      const selection = htmlSendSelectionRef.current;
+      const recipientPayload = buildMarketingRecipientPayload(
+        contactList,
+        selection?.userIds ?? htmlRecipientIds,
+        selection?.externalEmails ?? htmlExternalEmails,
+        htmlSendToAll,
+      );
       const result = await sendHtmlCampaign.mutateAsync({
         subject: htmlDeliverability.sanitizedSubject || htmlSubject.trim(),
         html_body: htmlDeliverability.sanitizedHtml || htmlBody,
         template_name: htmlTemplateName,
-        ...htmlRecipientPayload,
+        ...recipientPayload,
       });
       void queryClient.invalidateQueries({ queryKey: ['email-campaigns'] });
       clearHtmlCampaignDraft();
@@ -277,6 +292,10 @@ export default function AdminSenderPage() {
           onSelectedRecipientIdsChange={(ids) => updateBroadcast({ selectedRecipientIds: ids })}
           selectedExternalEmails={selectedExternalEmails}
           onSelectedExternalEmailsChange={(emails) => updateBroadcast({ selectedExternalEmails: emails })}
+          onRecipientCountChange={setBroadcastRecipientCount}
+          onPrepareSend={(selection) => {
+            broadcastSendSelectionRef.current = selection;
+          }}
           onSend={openSendFlow}
           sending={sendPhase === 'sending'}
           canSend={canSend}
@@ -295,6 +314,10 @@ export default function AdminSenderPage() {
           onSelectedRecipientIdsChange={(ids) => updateHtmlCampaign({ selectedRecipientIds: ids })}
           selectedExternalEmails={htmlExternalEmails}
           onSelectedExternalEmailsChange={(emails) => updateHtmlCampaign({ selectedExternalEmails: emails })}
+          onRecipientCountChange={setHtmlRecipientCount}
+          onPrepareSend={(selection) => {
+            htmlSendSelectionRef.current = selection;
+          }}
           onSend={openHtmlSendFlow}
           sending={htmlSendPhase === 'sending'}
           canSend={canSendHtml}
@@ -425,7 +448,7 @@ export default function AdminSenderPage() {
       <BroadcastSendFlowModal
         open={sendFlowOpen}
         phase={sendPhase}
-        sendCount={sendCount}
+        sendCount={Math.max(sendCount, effectiveBroadcastRecipientCount)}
         productCount={selectedProductIds.length}
         sentCount={sendResult.sentCount}
         failedCount={sendResult.failedCount}
@@ -437,7 +460,7 @@ export default function AdminSenderPage() {
       <BroadcastSendFlowModal
         open={htmlSendFlowOpen}
         phase={htmlSendPhase}
-        sendCount={htmlSendCount}
+        sendCount={Math.max(htmlSendCount, effectiveHtmlRecipientCount)}
         sentCount={htmlSendResult.sentCount}
         failedCount={htmlSendResult.failedCount}
         errorMessage={htmlSendError}

@@ -1,4 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type KeyboardEvent,
+} from 'react';
+import { flushSync } from 'react-dom';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
@@ -11,12 +22,22 @@ export interface BroadcastContact {
   fullName: string;
 }
 
+export interface BroadcastRecipientSelection {
+  userIds: string[];
+  externalEmails: string[];
+}
+
+export interface BroadcastRecipientPickerHandle {
+  commitPendingInput: () => BroadcastRecipientSelection;
+}
+
 interface BroadcastRecipientPickerProps {
   contacts: BroadcastContact[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   selectedExternalEmails?: string[];
   onExternalEmailsChange?: (emails: string[]) => void;
+  onRecipientCountChange?: (count: number) => void;
   loading?: boolean;
   variant?: 'default' | 'composer';
   showCcToggle?: boolean;
@@ -69,16 +90,23 @@ function findContactByToken(
   return null;
 }
 
-export function BroadcastRecipientPicker({
-  contacts,
-  selectedIds,
-  onChange,
-  selectedExternalEmails = [],
-  onExternalEmailsChange,
-  loading = false,
-  variant = 'default',
-  showCcToggle = false,
-}: BroadcastRecipientPickerProps) {
+export const BroadcastRecipientPicker = forwardRef<
+  BroadcastRecipientPickerHandle,
+  BroadcastRecipientPickerProps
+>(function BroadcastRecipientPicker(
+  {
+    contacts,
+    selectedIds,
+    onChange,
+    selectedExternalEmails = [],
+    onExternalEmailsChange,
+    onRecipientCountChange,
+    loading = false,
+    variant = 'default',
+    showCcToggle = false,
+  },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -147,58 +175,114 @@ export function BroadcastRecipientPicker({
     return true;
   };
 
-  const addFromQuery = (rawQuery: string, options?: { silent?: boolean }) => {
-    const tokens = splitRecipientTokens(rawQuery);
-    if (!tokens.length) return false;
+  const applyRecipientTokens = useCallback(
+    (
+      rawQuery: string,
+      baseIds: string[],
+      baseExternalEmails: string[],
+      options?: { silent?: boolean },
+    ): { selection: BroadcastRecipientSelection; added: number } => {
+      const tokens = splitRecipientTokens(rawQuery);
+      const nextIds = [...baseIds];
+      const nextExternalEmails = [...baseExternalEmails];
+      let added = 0;
 
-    const nextIds = [...selectedIds];
-    const nextExternalEmails = [...selectedExternalEmails];
-    let added = 0;
+      for (const token of tokens) {
+        const contact = findContactByToken(
+          token,
+          contacts,
+          nextIds,
+          filteredContacts,
+          tokens.length === 1,
+        );
 
-    for (const token of tokens) {
-      const contact = findContactByToken(
-        token,
-        contacts,
-        nextIds,
-        filteredContacts,
-        tokens.length === 1,
-      );
-
-      if (contact) {
-        if (!nextIds.includes(contact.id)) {
-          nextIds.push(contact.id);
-          added += 1;
-        }
-        continue;
-      }
-
-      const normalized = normalizeEmail(token);
-      if (EMAIL_PATTERN.test(normalized)) {
-        if (nextExternalEmails.includes(normalized)) continue;
-        if (nextIds.some((id) => {
-          const match = contacts.find((entry) => entry.id === id);
-          return match && normalizeEmail(match.email) === normalized;
-        })) {
+        if (contact) {
+          if (!nextIds.includes(contact.id)) {
+            nextIds.push(contact.id);
+            added += 1;
+          }
           continue;
         }
-        if (onExternalEmailsChange) {
-          nextExternalEmails.push(normalized);
-          added += 1;
-        } else if (!options?.silent) {
-          toast.error(`No eligible contact found for ${normalized}`);
+
+        const normalized = normalizeEmail(token);
+        if (EMAIL_PATTERN.test(normalized)) {
+          if (nextExternalEmails.includes(normalized)) continue;
+          if (
+            nextIds.some((id) => {
+              const match = contacts.find((entry) => entry.id === id);
+              return match && normalizeEmail(match.email) === normalized;
+            })
+          ) {
+            continue;
+          }
+          if (onExternalEmailsChange) {
+            nextExternalEmails.push(normalized);
+            added += 1;
+          } else if (!options?.silent) {
+            toast.error(`No eligible contact found for ${normalized}`);
+          }
+          continue;
         }
-        continue;
+
+        if (!options?.silent) {
+          toast.error(`No matching contact for "${token.trim()}". Press Enter when one result is shown.`);
+        }
       }
 
-      if (!options?.silent) {
-        toast.error(`No matching contact for "${token.trim()}". Press Enter when one result is shown.`);
-      }
+      return {
+        selection: { userIds: nextIds, externalEmails: nextExternalEmails },
+        added,
+      };
+    },
+    [contacts, filteredContacts, onExternalEmailsChange],
+  );
+
+  const commitPendingInput = useCallback((): BroadcastRecipientSelection => {
+    if (!query.trim()) {
+      return { userIds: selectedIds, externalEmails: selectedExternalEmails };
     }
 
+    const { selection, added } = applyRecipientTokens(query, selectedIds, selectedExternalEmails, {
+      silent: true,
+    });
+
     if (added > 0) {
-      if (nextIds.length !== selectedIds.length) onChange(nextIds);
-      if (onExternalEmailsChange && nextExternalEmails.length !== selectedExternalEmails.length) {
-        onExternalEmailsChange(nextExternalEmails);
+      flushSync(() => {
+        onChange(selection.userIds);
+        onExternalEmailsChange?.(selection.externalEmails);
+      });
+      setQuery('');
+      inputRef.current?.focus();
+      return selection;
+    }
+
+    return { userIds: selectedIds, externalEmails: selectedExternalEmails };
+  }, [
+    applyRecipientTokens,
+    onChange,
+    onExternalEmailsChange,
+    query,
+    selectedExternalEmails,
+    selectedIds,
+  ]);
+
+  useImperativeHandle(ref, () => ({ commitPendingInput }), [commitPendingInput]);
+
+  const addFromQuery = (rawQuery: string, options?: { silent?: boolean }) => {
+    const { selection, added } = applyRecipientTokens(
+      rawQuery,
+      selectedIds,
+      selectedExternalEmails,
+      options,
+    );
+
+    if (added > 0) {
+      if (selection.userIds.length !== selectedIds.length) onChange(selection.userIds);
+      if (
+        onExternalEmailsChange &&
+        selection.externalEmails.length !== selectedExternalEmails.length
+      ) {
+        onExternalEmailsChange(selection.externalEmails);
       }
       setQuery('');
       inputRef.current?.focus();
@@ -278,6 +362,32 @@ export function BroadcastRecipientPicker({
   }, [contacts, pendingContact, query, selectedExternalEmails, selectedIds]);
 
   const totalSelectedCount = selectedIds.length + selectedExternalEmails.length;
+
+  useEffect(() => {
+    if (!onRecipientCountChange) return;
+
+    let count = totalSelectedCount;
+    const normalized = normalizeEmail(query);
+    if (
+      EMAIL_PATTERN.test(normalized) &&
+      !selectedExternalEmails.includes(normalized) &&
+      !selectedContacts.some((contact) => normalizeEmail(contact.email) === normalized) &&
+      !findContactByToken(query, contacts, selectedIds, filteredContacts)
+    ) {
+      count += 1;
+    }
+
+    onRecipientCountChange(count);
+  }, [
+    contacts,
+    filteredContacts,
+    onRecipientCountChange,
+    query,
+    selectedContacts,
+    selectedExternalEmails,
+    selectedIds,
+    totalSelectedCount,
+  ]);
 
   const listContacts = useMemo(() => {
     if (!pendingContact) return filteredContacts;
@@ -364,6 +474,11 @@ export function BroadcastRecipientPicker({
                 setOpen(true);
               }}
               onFocus={() => setOpen(true)}
+              onBlur={() => {
+                if (query.trim()) {
+                  commitPendingInput();
+                }
+              }}
               onKeyDown={handleInputKeyDown}
               onPaste={handleInputPaste}
               placeholder={
@@ -520,4 +635,4 @@ export function BroadcastRecipientPicker({
       </p>
     </div>
   );
-}
+});

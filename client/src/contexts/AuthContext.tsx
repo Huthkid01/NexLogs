@@ -32,42 +32,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const fetchProfile = (userId: string) => {
-      void authService.getProfile(userId).then((p) => {
+    const loadProfile = async (userId: string) => {
+      try {
+        const p = await authService.getProfile(userId);
         if (mounted) setProfile(p);
-      });
+      } catch {
+        if (mounted) setProfile(null);
+      }
     };
 
-    const applySession = (sess: Session | null) => {
+    const applySession = async (sess: Session | null, finishLoading = false) => {
       setSession(sess);
       setUser(sess?.user ?? null);
+
       if (sess?.user) {
-        fetchProfile(sess.user.id);
+        await loadProfile(sess.user.id);
       } else if (mounted) {
         setProfile(null);
       }
-      if (mounted) setLoading(false);
+
+      if (finishLoading && mounted) {
+        setLoading(false);
+      }
     };
 
-    authService.getSession().then((s) => {
+    void authService.getSession().then((s) => {
       if (!mounted) return;
-      applySession(s);
+      void applySession(s, true);
     });
 
     const { data: { subscription } } = authService.onAuthStateChange((event, s) => {
       if (event === 'INITIAL_SESSION') return;
 
       const sess = s as Session | null;
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (event === 'SIGNED_IN') {
-          resetDisplayCurrencyForLogin();
-        }
-        setSession(sess);
-        setUser(sess?.user ?? null);
-        if (sess?.user) fetchProfile(sess.user.id);
-        if (mounted) setLoading(false);
-        return;
-      }
 
       if (event === 'SIGNED_OUT') {
         setSession(null);
@@ -77,14 +74,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        fetchProfile(sess.user.id);
-      } else if (mounted) {
-        setProfile(null);
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(sess);
+        setUser(sess?.user ?? null);
+        return;
       }
-      if (mounted) setLoading(false);
+
+      if (event === 'SIGNED_IN') {
+        resetDisplayCurrencyForLogin();
+        void applySession(sess, true);
+        return;
+      }
+
+      void applySession(sess, true);
     });
 
     return () => {

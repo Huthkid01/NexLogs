@@ -12,6 +12,25 @@ export interface Profile {
   is_suspended: boolean;
   created_at: string;
   updated_at: string;
+  wallet_balance?: number;
+}
+
+export interface AdminWalletTransaction {
+  id: string;
+  ref: string;
+  kind: string;
+  payment_method: string;
+  amount: number;
+  currency: string;
+  status: Transaction['status'];
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AdminWalletDepositRecord extends AdminWalletTransaction {
+  user_id: string;
+  user_email: string;
+  user_name: string;
 }
 
 export interface Category {

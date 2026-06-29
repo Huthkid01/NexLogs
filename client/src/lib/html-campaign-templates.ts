@@ -360,6 +360,48 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
 </html>`,
   },
   {
+    id: 'wallet-manual-credit-notice',
+    name: 'Wallet credit notice',
+    category: 'account',
+    description:
+      'Notify a user their wallet was credited ($4.83) after a delayed deposit. Includes fix notice for add-funds.',
+    defaultSubject: `Your ${APP_NAME} wallet has been updated — $4.83 added`,
+    html: buildMarketingEmailHtml({
+      title: 'Wallet updated',
+      preheader: `$4.83 has been added to your ${APP_NAME} wallet. The add-funds issue is fixed.`,
+      heroTitle: 'Your wallet has been updated',
+      compactLogo: true,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Your wallet balance on <strong>${APP_NAME}</strong> has been updated. We are sorry your payment
+                did not show in your account right away — that was our mistake, not yours.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 6px;font-size:13px;color:#166534;">Amount added</p>
+                    <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">$4.83 USD</p>
+                    <p style="margin:0 0 6px;font-size:13px;color:#166534;">Status</p>
+                    <p style="margin:0;font-size:16px;font-weight:700;color:#15803d;">Funds added to your wallet</p>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We have also fixed the issue that caused your payment not to appear. You can now add funds
+                through your account without running into the same problem.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                You can sign in and use your balance to purchase products on the marketplace whenever you are ready.
+              </p>
+              <p style="margin:0;font-size:14px;line-height:1.7;color:#6b7280;">
+                If anything still looks wrong in your account, reply to this email and we will help.
+              </p>`,
+      ctaLabel: 'Browse marketplace',
+      ctaUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
     id: 'website-navigation-guide',
     name: 'Website navigation guide',
     category: 'account',

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
   Eye,
@@ -18,7 +18,12 @@ import { BroadcastInlineProductSelector } from '@/components/admin/BroadcastInli
 import { BroadcastEmailPreview } from '@/components/admin/BroadcastEmailPreview';
 import { BroadcastPreviewModal } from '@/components/admin/BroadcastPreviewModal';
 import { EmailComposerModal } from '@/components/admin/EmailComposerModal';
-import { BroadcastRecipientPicker, type BroadcastContact } from '@/components/admin/BroadcastRecipientPicker';
+import {
+  BroadcastRecipientPicker,
+  type BroadcastContact,
+  type BroadcastRecipientPickerHandle,
+  type BroadcastRecipientSelection,
+} from '@/components/admin/BroadcastRecipientPicker';
 import { useBroadcastDeliverability } from '@/components/admin/BroadcastEmailPreview';
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -49,6 +54,8 @@ export interface BroadcastComposerProps {
   selectedExternalEmails: string[];
   onSelectedExternalEmailsChange: (emails: string[]) => void;
   onSend: () => void;
+  onPrepareSend?: (selection: BroadcastRecipientSelection) => void;
+  onRecipientCountChange?: (count: number) => void;
   sending?: boolean;
   canSend: boolean;
 }
@@ -69,6 +76,8 @@ export function BroadcastComposer({
   selectedExternalEmails,
   onSelectedExternalEmailsChange,
   onSend,
+  onPrepareSend,
+  onRecipientCountChange,
   sending = false,
   canSend,
 }: BroadcastComposerProps) {
@@ -80,6 +89,7 @@ export function BroadcastComposer({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const recipientPickerRef = useRef<BroadcastRecipientPickerHandle>(null);
 
   const activeProducts = useMemo(
     () => products.filter((product) => product.is_active),
@@ -153,8 +163,14 @@ export function BroadcastComposer({
   };
 
   const handleSendClick = () => {
-    if (!sendCount) {
-      toast.error('Add at least one recipient in the To field.');
+    const committed = recipientPickerRef.current?.commitPendingInput() ?? {
+      userIds: selectedRecipientIds,
+      externalEmails: selectedExternalEmails,
+    };
+    const count = committed.userIds.length + committed.externalEmails.length;
+
+    if (!count) {
+      toast.error('Add at least one recipient in the To field. Type an email and press Enter.');
       return;
     }
     if (!selectedProductIds.length) {
@@ -165,6 +181,7 @@ export function BroadcastComposer({
       toast.error('Fix the failed inbox checks before sending.');
       return;
     }
+    onPrepareSend?.(committed);
     onSend();
   };
 
@@ -240,11 +257,13 @@ export function BroadcastComposer({
         </div>
 
         <BroadcastRecipientPicker
+          ref={recipientPickerRef}
           contacts={contacts}
           selectedIds={selectedRecipientIds}
           onChange={onSelectedRecipientIdsChange}
           selectedExternalEmails={selectedExternalEmails}
           onExternalEmailsChange={onSelectedExternalEmailsChange}
+          onRecipientCountChange={onRecipientCountChange}
           loading={contactsLoading}
           variant="composer"
           showCcToggle

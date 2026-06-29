@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
   Code2,
@@ -10,7 +10,12 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { BroadcastRecipientPicker, type BroadcastContact } from '@/components/admin/BroadcastRecipientPicker';
+import {
+  BroadcastRecipientPicker,
+  type BroadcastContact,
+  type BroadcastRecipientPickerHandle,
+  type BroadcastRecipientSelection,
+} from '@/components/admin/BroadcastRecipientPicker';
 import {
   HtmlCampaignEmailPreview,
   useHtmlCampaignDeliverability,
@@ -45,6 +50,8 @@ export interface HtmlCampaignComposerProps {
   selectedExternalEmails: string[];
   onSelectedExternalEmailsChange: (emails: string[]) => void;
   onSend: () => void;
+  onPrepareSend?: (selection: BroadcastRecipientSelection) => void;
+  onRecipientCountChange?: (count: number) => void;
   sending?: boolean;
   canSend: boolean;
 }
@@ -63,6 +70,8 @@ export function HtmlCampaignComposer({
   selectedExternalEmails,
   onSelectedExternalEmailsChange,
   onSend,
+  onPrepareSend,
+  onRecipientCountChange,
   sending = false,
   canSend,
 }: HtmlCampaignComposerProps) {
@@ -74,6 +83,7 @@ export function HtmlCampaignComposer({
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const recipientPickerRef = useRef<BroadcastRecipientPickerHandle>(null);
 
   const sendCount = selectedRecipientIds.length + selectedExternalEmails.length;
   const deliverability = useHtmlCampaignDeliverability(subject, htmlBody, sendCount);
@@ -118,8 +128,14 @@ export function HtmlCampaignComposer({
   };
 
   const handleSendClick = () => {
-    if (!sendCount) {
-      toast.error('Add at least one recipient in the To field.');
+    const committed = recipientPickerRef.current?.commitPendingInput() ?? {
+      userIds: selectedRecipientIds,
+      externalEmails: selectedExternalEmails,
+    };
+    const count = committed.userIds.length + committed.externalEmails.length;
+
+    if (!count) {
+      toast.error('Add at least one recipient in the To field. Type an email and press Enter.');
       return;
     }
     if (!htmlBody.trim()) {
@@ -134,6 +150,7 @@ export function HtmlCampaignComposer({
       toast.error('Fix the failed inbox checks before sending.');
       return;
     }
+    onPrepareSend?.(committed);
     onSend();
   };
 
@@ -202,11 +219,13 @@ export function HtmlCampaignComposer({
         </div>
 
         <BroadcastRecipientPicker
+          ref={recipientPickerRef}
           contacts={contacts}
           selectedIds={selectedRecipientIds}
           onChange={onSelectedRecipientIdsChange}
           selectedExternalEmails={selectedExternalEmails}
           onExternalEmailsChange={onSelectedExternalEmailsChange}
+          onRecipientCountChange={onRecipientCountChange}
           loading={contactsLoading}
           variant="composer"
         />

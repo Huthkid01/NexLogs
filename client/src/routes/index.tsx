@@ -38,6 +38,7 @@ import AdminSlidesPage from '@/pages/admin/AdminSlidesPage';
 import AdminExchangeRatesPage from '@/pages/admin/AdminExchangeRatesPage';
 import AdminRdpPage from '@/pages/admin/AdminRdpPage';
 import AdminSenderPage from '@/pages/admin/AdminSenderPage';
+import AdminTransactionsPage from '@/pages/admin/AdminTransactionsPage';
 import UnsubscribePage from '@/pages/UnsubscribePage';
 
 const router = createBrowserRouter([
@@ -82,6 +83,7 @@ const router = createBrowserRouter([
       { path: 'users', element: <AdminUsersPage /> },
       { path: 'products', element: <AdminProductsPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },
+      { path: 'transactions', element: <AdminTransactionsPage /> },
       { path: 'categories', element: <AdminCategoriesPage /> },
       { path: 'coupons', element: <AdminCouponsPage /> },
       { path: 'tickets', element: <AdminTicketsPage /> },

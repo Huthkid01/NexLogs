@@ -5,6 +5,8 @@ import { ArrowUpDown, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { profileService } from '@/services/profile.service';
 import { isKoraConfigured, isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
@@ -12,7 +14,12 @@ import {
   convertUsdToCurrency,
   DISPLAY_RATE_CURRENCIES,
 } from '@/lib/wallet-exchange-rates';
-import { completeKoraRedirect, startKoraDeposit } from '@/services/payment.service';
+import {
+  completeKoraRedirect,
+  resumePendingKoraDeposit,
+  startKoraDeposit,
+  waitForWalletBalanceIncrease,
+} from '@/services/payment.service';
 
 const CURRENCIES = [
   { code: 'NGN', label: 'NGN' },
@@ -48,8 +55,34 @@ export default function AddFundsPage() {
   const [showRates, setShowRates] = useState(false);
   const [baseUsdAmount, setBaseUsdAmount] = useState('1');
   const [submitting, setSubmitting] = useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [verifyingRedirect, setVerifyingRedirect] = useState(false);
   const redirectHandled = useRef(false);
+  const pendingHandled = useRef(false);
+  const { data: walletStats } = useWalletBalance(user?.id);
+
+  useEffect(() => {
+    if (!user?.id || pendingHandled.current || verifyingRedirect) return;
+
+    pendingHandled.current = true;
+    void (async () => {
+      try {
+        const recovered = await resumePendingKoraDeposit();
+        if (!recovered) return;
+
+        setVerifyingRedirect(true);
+        const stats = await profileService.getStats(user.id);
+        await waitForWalletBalanceIncrease(user.id, stats.balance);
+        await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
+        await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+        toast.success('Payment verified. Funds added to your wallet.');
+      } catch {
+        // No pending deposit or verification still in progress elsewhere.
+      } finally {
+        setVerifyingRedirect(false);
+      }
+    })();
+  }, [user?.id, queryClient, verifyingRedirect]);
 
   useEffect(() => {
     if (!user?.id || redirectHandled.current || verifyingRedirect) return;
@@ -62,8 +95,9 @@ export default function AddFundsPage() {
         const completed = await completeKoraRedirect(searchParams);
         if (!completed) return;
 
-        await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
-        await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
+        await waitForWalletBalanceIncrease(user.id, walletStats?.balance ?? 0);
+        await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
+        await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
         toast.success('Payment successful. Funds added to your wallet.');
         setSearchParams({}, { replace: true });
       } catch (err: unknown) {
@@ -135,6 +169,7 @@ export default function AddFundsPage() {
     }
 
     setSubmitting(true);
+    setVerifyingPayment(false);
     try {
       if (!hasSupabaseConfig()) {
         toast.error('Wallet deposits require Supabase. Add your Supabase keys and redeploy.');
@@ -151,6 +186,8 @@ export default function AddFundsPage() {
         return;
       }
 
+      const balanceBefore = walletStats?.balance ?? 0;
+      setVerifyingPayment(true);
       await startKoraDeposit({
         userId: user.id,
         email: user.email,
@@ -162,8 +199,9 @@ export default function AddFundsPage() {
         exchangeRates,
       });
 
-      await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
-      await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
+      await waitForWalletBalanceIncrease(user.id, balanceBefore);
+      await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
+      await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
       toast.success('Payment successful. Funds added to your wallet.');
       setAmount('');
       setPaymentMethod('');
@@ -173,6 +211,7 @@ export default function AddFundsPage() {
         toast.error(message);
       }
     } finally {
+      setVerifyingPayment(false);
       setSubmitting(false);
     }
   };
@@ -274,10 +313,14 @@ export default function AddFundsPage() {
 
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Choose amount and payment method</p>
 
-              {verifyingRedirect && (
+              {(verifyingRedirect || verifyingPayment) && (
                 <div className="flex items-center gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
                   <Info className="h-4 w-4 text-[#f26522] shrink-0" />
-                  <p className="text-sm text-gray-800">Verifying your payment with Kora…</p>
+                  <p className="text-sm text-gray-800">
+                    {verifyingRedirect
+                      ? 'Verifying your payment with Kora…'
+                      : 'Payment received. Verifying and adding funds to your wallet…'}
+                  </p>
                 </div>
               )}
 
@@ -351,10 +394,14 @@ export default function AddFundsPage() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || verifyingPayment}
                   className="w-full max-w-md btn-orange py-2.5 text-sm disabled:opacity-60"
                 >
-                  {submitting ? 'Processing...' : 'Proceed to Payment'}
+                  {verifyingPayment
+                    ? 'Verifying payment…'
+                    : submitting
+                      ? 'Opening payment…'
+                      : 'Proceed to Payment'}
                 </button>
               </form>
             </>

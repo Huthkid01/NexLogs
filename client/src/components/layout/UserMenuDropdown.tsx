@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Moon, Sun, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
-import { profileService } from '@/services/profile.service';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { cn } from '@/lib/utils';
 
 export function UserMenuDropdown() {
@@ -15,12 +14,7 @@ export function UserMenuDropdown() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  const { data: stats } = useQuery({
-    queryKey: ['wallet-balance', user?.id],
-    queryFn: () => profileService.getStats(user!.id),
-    enabled: !!user?.id,
-    refetchOnWindowFocus: true,
-  });
+  const { data: stats } = useWalletBalance(user?.id);
   const { formatDisplayAmount } = useFormatDisplayPrice();
   const balance = stats?.balance ?? 0;
   const profileHref = profile?.role === 'admin' ? '/admin' : '/profile';

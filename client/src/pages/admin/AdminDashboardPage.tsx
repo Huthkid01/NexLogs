@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowRight, DollarSign, FolderKanban, LifeBuoy, Mail, Package, RefreshCw, Settings, ShoppingBag, Trash2, Users } from 'lucide-react';
+import { ArrowRight, DollarSign, FolderKanban, LifeBuoy, Mail, Package, RefreshCw, Settings, ShoppingBag, Trash2, Users, Wallet } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,7 @@ export default function AdminDashboardPage() {
   const quickLinks = [
     { title: 'Manage Products', description: 'Add inventory, edit pricing, and control visibility.', href: '/admin/products', icon: Package },
     { title: 'Manage Categories', description: 'Create category groups and organize the marketplace.', href: '/admin/categories', icon: FolderKanban },
+    { title: 'Wallet Transactions', description: 'Kora add-funds payments and recovered deposits when balance did not update.', href: '/admin/transactions', icon: Wallet },
     { title: 'Email Sender', description: 'Notify all users when new products are added to the marketplace.', href: '/admin/sender', icon: Mail },
     { title: 'Support Tickets', description: 'Review user-reported website errors and issue reports.', href: '/admin/tickets', icon: LifeBuoy },
     { title: 'Site Content', description: 'Update public website copy and supporting sections.', href: '/admin/content', icon: Settings },
