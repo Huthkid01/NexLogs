@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { isRdpProduct } from '@/lib/rdp-utils';
+import { buildProductMarketplacePath } from '@/lib/product-deep-link';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import type { Product } from '@/types';
@@ -27,7 +27,7 @@ export function SubscriptionCard({ product }: SubscriptionCardProps) {
 
       <p className="mt-4 text-sm font-semibold text-[#1b5e20]">{formatProductPrice(product.price)}</p>
       <Link
-        to={isRdpProduct(product) ? '/purchase-rdp' : '/marketplace'}
+        to={buildProductMarketplacePath(product.slug)}
         className="btn-orange mt-3 w-full py-2 text-center text-sm"
       >
         Purchase
