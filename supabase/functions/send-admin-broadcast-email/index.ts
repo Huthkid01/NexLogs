@@ -10,6 +10,11 @@ import {
   resolveMarketingRecipients,
 } from '../_shared/marketing-recipients.ts';
 import {
+  applyEmailTracking,
+  buildMarketingTrackUrl,
+  markMarketingSendResult,
+} from '../_shared/marketing-email-tracking.ts';
+import {
   buildDeliverabilityHeaders,
   sanitizeBroadcastMessage,
   sanitizeBroadcastSubject,
@@ -32,6 +37,8 @@ interface BroadcastRequest {
   recipient_user_ids?: string[];
   recipient_emails?: string[];
   send_to_all?: boolean;
+  skip_history?: boolean;
+  tracking_token?: string;
 }
 
 async function sendViaSmtp(
@@ -183,6 +190,8 @@ Deno.serve(async (req) => {
       ? body.product_ids.map((id) => String(id).trim()).filter(Boolean)
       : [];
     const sendToAll = Boolean(body.send_to_all);
+    const skipHistory = Boolean(body.skip_history);
+    const trackingToken = body.tracking_token?.trim() ?? '';
     const requestedRecipientIds = Array.isArray(body.recipient_user_ids)
       ? body.recipient_user_ids.map((id) => String(id).trim()).filter(Boolean)
       : [];
@@ -280,19 +289,29 @@ Deno.serve(async (req) => {
         isAccountHolder: !recipient.isExternal,
       });
       const deliverabilityHeaders = buildDeliverabilityHeaders(appUrl, oneClickUnsubscribeUrl);
+      let html = emailContent.html;
+      if (trackingToken) {
+        html = applyEmailTracking(html, buildMarketingTrackUrl(supabaseUrl), trackingToken);
+      }
 
       try {
         await sendMail({
           to: emailAddress,
           subject: emailContent.subject,
-          html: emailContent.html,
+          html,
           text: emailContent.text,
           headers: deliverabilityHeaders,
         });
+        if (trackingToken) {
+          await markMarketingSendResult(adminClient, trackingToken, { ok: true });
+        }
         sent += 1;
       } catch (error) {
-        failed += 1;
         const message = error instanceof Error ? error.message : 'Send failed';
+        if (trackingToken) {
+          await markMarketingSendResult(adminClient, trackingToken, { ok: false, error: message });
+        }
+        failed += 1;
         failures.push(`${emailAddress}: ${message}`);
         console.error('[send-admin-broadcast-email] failed for', emailAddress, message);
       }
@@ -304,6 +323,7 @@ Deno.serve(async (req) => {
 
     const productIdList = products.map((product) => product.id);
 
+    if (!skipHistory) {
     try {
       await adminClient.from('email_broadcasts').insert({
         sent_by: userId,
@@ -338,6 +358,7 @@ Deno.serve(async (req) => {
       });
     } catch (logError) {
       console.error('[send-admin-broadcast-email] failed to save activity log', logError);
+    }
     }
 
     return jsonResponse({

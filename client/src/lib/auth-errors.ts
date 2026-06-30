@@ -1,5 +1,16 @@
 export function normalizeAuthErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Authentication failed';
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+
+  return 'Authentication failed';
 }
 
 export function isExpectedUserAuthError(message: string) {
@@ -74,6 +85,10 @@ export function getAdminLoginMessage(message: string) {
 
   if (normalized.includes('admin_access_not_granted')) {
     return 'Your account does not have admin access.';
+  }
+
+  if (normalized.includes('email not confirmed')) {
+    return 'Please confirm your email address before signing in.';
   }
 
   return 'We could not sign you in to the admin dashboard.';

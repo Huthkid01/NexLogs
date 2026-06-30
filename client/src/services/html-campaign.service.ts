@@ -8,6 +8,8 @@ export interface HtmlCampaignPayload {
   recipient_user_ids?: string[];
   recipient_emails?: string[];
   send_to_all?: boolean;
+  skip_history?: boolean;
+  tracking_token?: string;
 }
 
 export interface HtmlCampaignResult {
@@ -72,6 +74,81 @@ export const htmlCampaignService = {
     }
 
     return data as HtmlCampaignResult;
+  },
+
+  async createCampaignDraft(input: {
+    subject: string;
+    html_body: string;
+    template_name?: string | null;
+    recipient_count: number;
+    recipient_user_ids?: string[];
+    recipient_emails?: string[];
+  }): Promise<string> {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.user?.id) {
+      throw new Error('Your session expired. Log in again and retry.');
+    }
+
+    const { data, error } = await supabase
+      .from('email_campaigns')
+      .insert({
+        sent_by: sessionData.session.user.id,
+        subject: input.subject,
+        html_body: input.html_body,
+        template_name: input.template_name ?? null,
+        recipient_count: input.recipient_count,
+        sent_count: 0,
+        failed_count: 0,
+        recipient_user_ids: input.recipient_user_ids ?? [],
+        recipient_emails: input.recipient_emails ?? [],
+      } as never)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return (data as { id: string }).id;
+  },
+
+  async finalizeCampaign(campaignId: string, input: { sent_count: number; failed_count: number }): Promise<void> {
+    const { error } = await supabase
+      .from('email_campaigns')
+      .update({
+        sent_count: input.sent_count,
+        failed_count: input.failed_count,
+      } as never)
+      .eq('id', campaignId);
+
+    if (error) throw error;
+  },
+
+  async recordCampaign(input: {
+    subject: string;
+    html_body: string;
+    template_name?: string | null;
+    recipient_count: number;
+    sent_count: number;
+    failed_count: number;
+    recipient_user_ids?: string[];
+    recipient_emails?: string[];
+  }): Promise<void> {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.user?.id) {
+      throw new Error('Your session expired. Log in again and retry.');
+    }
+
+    const { error } = await supabase.from('email_campaigns').insert({
+      sent_by: sessionData.session.user.id,
+      subject: input.subject,
+      html_body: input.html_body,
+      template_name: input.template_name ?? null,
+      recipient_count: input.recipient_count,
+      sent_count: input.sent_count,
+      failed_count: input.failed_count,
+      recipient_user_ids: input.recipient_user_ids ?? [],
+      recipient_emails: input.recipient_emails ?? [],
+    } as never);
+
+    if (error) throw error;
   },
 
   async getRecentCampaigns(limit = 8): Promise<EmailCampaignRecord[]> {

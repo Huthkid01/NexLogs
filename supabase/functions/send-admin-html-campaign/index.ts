@@ -12,6 +12,11 @@ import {
 } from '../_shared/marketing-recipients.ts';
 import { prependEmailLogoIfMissing } from '../_shared/email-branding.ts';
 import {
+  applyEmailTracking,
+  buildMarketingTrackUrl,
+  markMarketingSendResult,
+} from '../_shared/marketing-email-tracking.ts';
+import {
   buildDeliverabilityHeaders,
   htmlToPlainText,
   personalizeHtml,
@@ -34,6 +39,8 @@ interface HtmlCampaignRequest {
   recipient_user_ids?: string[];
   recipient_emails?: string[];
   send_to_all?: boolean;
+  skip_history?: boolean;
+  tracking_token?: string;
 }
 
 async function sendViaSmtp(
@@ -161,6 +168,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json() as HtmlCampaignRequest;
     const sendToAll = Boolean(body.send_to_all);
+    const skipHistory = Boolean(body.skip_history);
+    const trackingToken = body.tracking_token?.trim() ?? '';
     const requestedRecipientIds = Array.isArray(body.recipient_user_ids)
       ? body.recipient_user_ids.map((id) => String(id).trim()).filter(Boolean)
       : [];
@@ -214,9 +223,12 @@ Deno.serve(async (req) => {
         ? buildOneClickUnsubscribeUrl(supabaseUrl, token)
         : publicUnsubscribeUrl;
       const personalizedHtml = personalizeHtml(htmlTemplate, fullName);
-      const html = appendUnsubscribeToHtml(personalizedHtml, publicUnsubscribeUrl, appName, {
+      let html = appendUnsubscribeToHtml(personalizedHtml, publicUnsubscribeUrl, appName, {
         isAccountHolder: !recipient.isExternal,
       });
+      if (trackingToken) {
+        html = applyEmailTracking(html, buildMarketingTrackUrl(supabaseUrl), trackingToken);
+      }
       const text = appendUnsubscribeToText(personalizeHtml(plainBase, fullName), publicUnsubscribeUrl);
       const deliverabilityHeaders = buildDeliverabilityHeaders(appUrl, oneClickUnsubscribeUrl);
 
@@ -228,10 +240,16 @@ Deno.serve(async (req) => {
           text,
           headers: deliverabilityHeaders,
         });
+        if (trackingToken) {
+          await markMarketingSendResult(adminClient, trackingToken, { ok: true });
+        }
         sent += 1;
       } catch (error) {
-        failed += 1;
         const message = error instanceof Error ? error.message : 'Send failed';
+        if (trackingToken) {
+          await markMarketingSendResult(adminClient, trackingToken, { ok: false, error: message });
+        }
+        failed += 1;
         failures.push(`${emailAddress}: ${message}`);
         console.error('[send-admin-html-campaign] failed for', emailAddress, message);
       }
@@ -241,6 +259,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (!skipHistory) {
     try {
       await adminClient.from('email_campaigns').insert({
         sent_by: userId,
@@ -273,6 +292,7 @@ Deno.serve(async (req) => {
       });
     } catch (logError) {
       console.error('[send-admin-html-campaign] failed to save activity log', logError);
+    }
     }
 
     return jsonResponse({

@@ -9,6 +9,8 @@ export interface BroadcastEmailPayload {
   recipient_user_ids?: string[];
   recipient_emails?: string[];
   send_to_all?: boolean;
+  skip_history?: boolean;
+  tracking_token?: string;
 }
 
 export interface BroadcastEmailResult {
@@ -84,6 +86,81 @@ export const broadcastEmailService = {
     }
 
     return data as BroadcastEmailResult;
+  },
+
+  async createBroadcastDraft(input: {
+    subject: string;
+    product_ids: string[];
+    custom_message?: string | null;
+    recipient_count: number;
+    recipient_user_ids?: string[];
+    recipient_emails?: string[];
+  }): Promise<string> {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.user?.id) {
+      throw new Error('Your session expired. Log in again and retry.');
+    }
+
+    const { data, error } = await supabase
+      .from('email_broadcasts')
+      .insert({
+        sent_by: sessionData.session.user.id,
+        subject: input.subject,
+        product_ids: input.product_ids,
+        custom_message: input.custom_message ?? null,
+        recipient_count: input.recipient_count,
+        sent_count: 0,
+        failed_count: 0,
+        recipient_user_ids: input.recipient_user_ids ?? [],
+        recipient_emails: input.recipient_emails ?? [],
+      } as never)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return (data as { id: string }).id;
+  },
+
+  async finalizeBroadcast(broadcastId: string, input: { sent_count: number; failed_count: number }): Promise<void> {
+    const { error } = await supabase
+      .from('email_broadcasts')
+      .update({
+        sent_count: input.sent_count,
+        failed_count: input.failed_count,
+      } as never)
+      .eq('id', broadcastId);
+
+    if (error) throw error;
+  },
+
+  async recordBroadcast(input: {
+    subject: string;
+    product_ids: string[];
+    custom_message?: string | null;
+    recipient_count: number;
+    sent_count: number;
+    failed_count: number;
+    recipient_user_ids?: string[];
+    recipient_emails?: string[];
+  }): Promise<void> {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.user?.id) {
+      throw new Error('Your session expired. Log in again and retry.');
+    }
+
+    const { error } = await supabase.from('email_broadcasts').insert({
+      sent_by: sessionData.session.user.id,
+      subject: input.subject,
+      product_ids: input.product_ids,
+      custom_message: input.custom_message ?? null,
+      recipient_count: input.recipient_count,
+      sent_count: input.sent_count,
+      failed_count: input.failed_count,
+      recipient_user_ids: input.recipient_user_ids ?? [],
+      recipient_emails: input.recipient_emails ?? [],
+    } as never);
+
+    if (error) throw error;
   },
 
   async getRecentBroadcasts(limit = 10): Promise<EmailBroadcastRecord[]> {

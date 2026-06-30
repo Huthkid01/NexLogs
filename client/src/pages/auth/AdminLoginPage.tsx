@@ -36,8 +36,6 @@ export default function AdminLoginPage() {
   const location = useLocation();
   const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
-  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD as string | undefined;
   const { register, handleSubmit, formState: { errors } } = useForm<AdminLoginForm>({
     resolver: zodResolver(adminLoginSchema),
   });
@@ -50,15 +48,10 @@ export default function AdminLoginPage() {
   const onSubmit = async (data: AdminLoginForm) => {
     setLoading(true);
     try {
-      if (!adminEmail?.trim() || !adminPassword?.trim()) {
-        throw new Error('ADMIN_LOGIN_NOT_READY');
-      }
+      const email = data.email.trim();
+      const password = data.password;
 
-      if (data.email.trim().toLowerCase() !== adminEmail.trim().toLowerCase() || data.password !== adminPassword) {
-        throw new Error('INVALID_ADMIN_CREDENTIALS');
-      }
-
-      const result = await authService.signIn(adminEmail, adminPassword);
+      const result = await authService.signIn(email, password);
       const userId = result.user?.id ?? result.session?.user?.id;
 
       if (!userId) {

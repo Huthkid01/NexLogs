@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION wallet_tx_amount_ngn(
 )
 RETURNS NUMERIC
 LANGUAGE plpgsql
-IMMUTABLE
+IMMUTABLE`
 AS $$
 DECLARE
   v_original_amount NUMERIC;

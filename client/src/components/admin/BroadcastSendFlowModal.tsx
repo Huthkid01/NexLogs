@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { Check, Mail, X } from 'lucide-react';
+import { Check, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
+import type { MarketingSendProgressItem } from '@/lib/marketing-send-recipients';
 import {
   adminIconButtonClass,
   adminMutedTextClass,
@@ -22,6 +23,8 @@ interface BroadcastSendFlowModalProps {
   errorMessage?: string;
   confirmTitle?: string;
   confirmMessage?: string;
+  sendProgress?: MarketingSendProgressItem[];
+  currentSendEmail?: string | null;
   onConfirmSend: () => void;
   onClose: () => void;
 }
@@ -36,6 +39,8 @@ export function BroadcastSendFlowModal({
   errorMessage,
   confirmTitle = 'Send product announcement?',
   confirmMessage,
+  sendProgress = [],
+  currentSendEmail = null,
   onConfirmSend,
   onClose,
 }: BroadcastSendFlowModalProps) {
@@ -51,8 +56,16 @@ export function BroadcastSendFlowModal({
 
   if (!open) return null;
 
-  const canDismiss = phase === 'confirm' || phase === 'success' || phase === 'error';
   const backdropClose = phase === 'confirm' || phase === 'success';
+
+  const totalRecipients = Math.max(sendCount, sendProgress.length, 1);
+  const finishedCount = sendProgress.filter((item) => item.status === 'sent' || item.status === 'failed').length;
+  const isActivelySending = sendProgress.some((item) => item.status === 'sending');
+  const progressValue = isActivelySending
+    ? Math.min(99, ((finishedCount + 0.45) / totalRecipients) * 100)
+    : Math.min(100, (finishedCount / totalRecipients) * 100);
+  const progressPercent = Math.round(progressValue);
+  const activeItem = sendProgress.find((item) => item.status === 'sending');
 
   return (
     <div className={adminModalOverlayClass(isDark, 'z-[85]')}>
@@ -62,7 +75,7 @@ export function BroadcastSendFlowModal({
 
       <div
         className={cn(
-          'relative z-10 w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl',
+          'relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl',
           isDark ? 'border-[#1f2e46] bg-[#081324] text-slate-100' : 'border-slate-200 bg-white text-slate-900',
         )}
       >
@@ -96,22 +109,84 @@ export function BroadcastSendFlowModal({
         )}
 
         {phase === 'sending' && (
-          <div className="px-6 py-8 text-center">
+          <div className="px-6 py-6">
+            <div className="text-center">
+              <p className="text-4xl font-bold tabular-nums text-[#f26522]">{progressPercent}%</p>
+              <p className="mt-2 text-lg font-semibold">Sending emails…</p>
+              <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>
+                {finishedCount} of {totalRecipients} complete
+                {activeItem || currentSendEmail
+                  ? ` • Sending to ${activeItem?.email ?? currentSendEmail}`
+                  : ''}
+              </p>
+            </div>
+
             <div
-              className={cn(
-                'mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border',
-                isDark ? 'border-[#22324a] bg-[#0b1628]' : 'border-slate-200 bg-slate-50',
-              )}
+              className="mt-5"
+              role="progressbar"
+              aria-valuenow={progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Email send progress"
             >
-              <Mail className="h-7 w-7 animate-pulse text-[#f26522]" />
+              <div className="mb-2 flex items-center justify-between text-xs font-medium">
+                <span className={adminMutedTextClass(isDark)}>Progress</span>
+                <span className="tabular-nums text-[#f26522]">{progressPercent}%</span>
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-[#18263b]">
+                <div
+                  className="h-full rounded-full bg-[#f26522] transition-all duration-300"
+                  style={{ width: `${Math.max(progressPercent, progressPercent > 0 ? 4 : 2)}%` }}
+                />
+              </div>
             </div>
-            <p className="text-lg font-semibold">Sending emails…</p>
-            <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>
-              Delivering to {sendCount} recipient{sendCount === 1 ? '' : 's'}. Please wait.
-            </p>
-            <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#18263b]">
-              <div className="broadcast-send-progress h-full w-1/3 rounded-full bg-[#f26522]" />
-            </div>
+
+            {sendProgress.length > 0 && (
+              <ul className="mt-5 max-h-56 space-y-2 overflow-y-auto pr-1">
+                {sendProgress.map((item) => (
+                  <li
+                    key={item.email}
+                    className={cn(
+                      'flex items-start gap-3 rounded-lg border px-3 py-2 text-sm',
+                      item.status === 'sending'
+                        ? isDark
+                          ? 'border-[#f26522]/40 bg-[#0f1c30]'
+                          : 'border-orange-200 bg-orange-50'
+                        : isDark
+                          ? 'border-[#22324a] bg-[#0b1628]'
+                          : 'border-slate-200 bg-slate-50',
+                    )}
+                  >
+                    <span className="mt-0.5 shrink-0">
+                      {item.status === 'sent' && (
+                        <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                      )}
+                      {item.status === 'failed' && (
+                        <X className="h-4 w-4 text-red-500" aria-hidden="true" />
+                      )}
+                      {item.status === 'sending' && (
+                        <Loader2 className="h-4 w-4 animate-spin text-[#f26522]" aria-hidden="true" />
+                      )}
+                      {item.status === 'pending' && (
+                        <span className="block h-4 w-4 rounded-full border border-slate-300 dark:border-slate-600" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{item.email}</p>
+                      {item.displayName && item.displayName !== item.email.split('@')[0] && (
+                        <p className={cn('truncate text-xs', adminMutedTextClass(isDark))}>{item.displayName}</p>
+                      )}
+                      {item.status === 'failed' && item.error && (
+                        <p className="mt-1 text-xs text-red-500">{item.error}</p>
+                      )}
+                      {item.status === 'sending' && (
+                        <p className={cn('mt-1 text-xs', adminMutedTextClass(isDark))}>Sending now…</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
@@ -151,9 +226,11 @@ export function BroadcastSendFlowModal({
           </>
         )}
 
-        {!canDismiss && phase === 'sending' && (
+        {phase === 'sending' && (
           <p className="sr-only" role="status" aria-live="polite">
-            Sending emails
+            {activeItem
+              ? `Sending email to ${activeItem.email}. ${progressPercent}% complete.`
+              : `Sending emails. ${progressPercent}% complete. ${finishedCount} of ${totalRecipients}.`}
           </p>
         )}
       </div>

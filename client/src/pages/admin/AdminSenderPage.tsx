@@ -13,16 +13,23 @@ import {
 } from '@/components/admin/BroadcastSendFlowModal';
 import { HtmlCampaignComposer } from '@/components/admin/HtmlCampaignComposer';
 import { HtmlCampaignPreviewModal } from '@/components/admin/HtmlCampaignPreviewModal';
+import { EmailMarketingOverview } from '@/components/admin/EmailMarketingOverview';
 import { useBroadcastDeliverability } from '@/components/admin/BroadcastEmailPreview';
 import { useHtmlCampaignDeliverability } from '@/components/admin/HtmlCampaignEmailPreview';
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
-import { broadcastEmailService, htmlCampaignService } from '@/services';
+import { broadcastEmailService, htmlCampaignService, marketingTrackingService } from '@/services';
 import type { BroadcastEmailPayload, EmailBroadcastRecord } from '@/services/broadcast-email.service';
 import type { EmailCampaignRecord, HtmlCampaignPayload } from '@/services/html-campaign.service';
 import { productService } from '@/services';
 import { clearBroadcastDraft } from '@/lib/broadcast-draft';
 import { clearHtmlCampaignDraft } from '@/lib/html-campaign-draft';
 import { buildMarketingRecipientPayload } from '@/lib/marketing-recipient-payload';
+import {
+  resolveMarketingSendRecipients,
+  type MarketingSendProgressItem,
+} from '@/lib/marketing-send-recipients';
+import { runSequentialEmailSend } from '@/lib/marketing-sequential-send';
+import type { MarketingSendRecipient } from '@/lib/marketing-send-recipients';
 import { APP_NAME } from '@/constants';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types';
@@ -66,12 +73,16 @@ export default function AdminSenderPage() {
   const [sendPhase, setSendPhase] = useState<BroadcastSendPhase>('confirm');
   const [sendError, setSendError] = useState('');
   const [sendResult, setSendResult] = useState({ sentCount: 0, failedCount: 0 });
+  const [sendProgress, setSendProgress] = useState<MarketingSendProgressItem[]>([]);
+  const [currentSendEmail, setCurrentSendEmail] = useState<string | null>(null);
   const [historyPreview, setHistoryPreview] = useState<EmailBroadcastRecord | null>(null);
 
   const [htmlSendFlowOpen, setHtmlSendFlowOpen] = useState(false);
   const [htmlSendPhase, setHtmlSendPhase] = useState<BroadcastSendPhase>('confirm');
   const [htmlSendError, setHtmlSendError] = useState('');
   const [htmlSendResult, setHtmlSendResult] = useState({ sentCount: 0, failedCount: 0 });
+  const [htmlSendProgress, setHtmlSendProgress] = useState<MarketingSendProgressItem[]>([]);
+  const [htmlCurrentSendEmail, setHtmlCurrentSendEmail] = useState<string | null>(null);
   const [htmlHistoryPreview, setHtmlHistoryPreview] = useState<EmailCampaignRecord | null>(null);
   const [broadcastRecipientCount, setBroadcastRecipientCount] = useState(0);
   const [htmlRecipientCount, setHtmlRecipientCount] = useState(0);
@@ -144,6 +155,8 @@ export default function AdminSenderPage() {
   const openSendFlow = () => {
     setSendError('');
     setSendResult({ sentCount: 0, failedCount: 0 });
+    setSendProgress([]);
+    setCurrentSendEmail(null);
     setSendPhase('confirm');
     setSendFlowOpen(true);
   };
@@ -158,6 +171,8 @@ export default function AdminSenderPage() {
   const openHtmlSendFlow = () => {
     setHtmlSendError('');
     setHtmlSendResult({ sentCount: 0, failedCount: 0 });
+    setHtmlSendProgress([]);
+    setHtmlCurrentSendEmail(null);
     setHtmlSendPhase('confirm');
     setHtmlSendFlowOpen(true);
   };
@@ -169,37 +184,109 @@ export default function AdminSenderPage() {
     setHtmlSendError('');
   };
 
+  const buildSingleRecipientPayload = (recipient: MarketingSendRecipient) => {
+    if (recipient.userId) {
+      return {
+        recipient_user_ids: [recipient.userId],
+        recipient_emails: undefined,
+        send_to_all: false as const,
+      };
+    }
+
+    return {
+      recipient_user_ids: undefined,
+      recipient_emails: [recipient.email],
+      send_to_all: false as const,
+    };
+  };
+
   const handleConfirmSend = async () => {
     setSendPhase('sending');
     try {
       const selection = broadcastSendSelectionRef.current;
+      const userIds = selection?.userIds ?? selectedRecipientIds;
+      const externalEmails = selection?.externalEmails ?? selectedExternalEmails;
       const recipientPayload = buildMarketingRecipientPayload(
         contactList,
-        selection?.userIds ?? selectedRecipientIds,
-        selection?.externalEmails ?? selectedExternalEmails,
+        userIds,
+        externalEmails,
         sendToAll,
       );
-      const result = await sendBroadcast.mutateAsync({
+      const recipients = resolveMarketingSendRecipients(
+        contactList,
+        userIds,
+        externalEmails,
+        sendToAll,
+      );
+
+      if (!recipients.length) {
+        throw new Error('Add at least one recipient in the To field.');
+      }
+
+      setSendProgress(recipients.map((recipient) => ({ ...recipient, status: 'pending' })));
+
+      const subject = deliverability.sanitizedSubject || DEFAULT_SUBJECT;
+      const customMessage = deliverability.sanitizedMessage || undefined;
+
+      const batchId = await broadcastEmailService.createBroadcastDraft({
+        subject,
         product_ids: selectedProductIds,
-        subject: deliverability.sanitizedSubject || DEFAULT_SUBJECT,
-        custom_message: deliverability.sanitizedMessage || undefined,
-        ...recipientPayload,
+        custom_message: customMessage ?? null,
+        recipient_count: recipients.length,
+        recipient_user_ids: recipientPayload.recipient_user_ids,
+        recipient_emails: recipientPayload.recipient_emails,
       });
+
+      const result = await runSequentialEmailSend({
+        recipients,
+        buildPayload: (recipient) => ({
+          product_ids: selectedProductIds,
+          subject,
+          custom_message: customMessage,
+          skip_history: true,
+          ...buildSingleRecipientPayload(recipient),
+        }),
+        send: async (recipient, payload) => {
+          const sendRecord = await marketingTrackingService.createSend({
+            source_type: 'broadcast',
+            source_id: batchId,
+            recipient_email: recipient.email,
+            recipient_user_id: recipient.userId,
+          });
+          await sendBroadcast.mutateAsync({
+            ...payload,
+            tracking_token: sendRecord.tracking_token,
+          });
+        },
+        onProgress: (items, currentEmail) => {
+          setSendProgress(items);
+          setCurrentSendEmail(currentEmail);
+        },
+      });
+
+      await broadcastEmailService.finalizeBroadcast(batchId, {
+        sent_count: result.sentCount,
+        failed_count: result.failedCount,
+      });
+
       void queryClient.invalidateQueries({ queryKey: ['email-broadcasts'] });
+      void queryClient.invalidateQueries({ queryKey: ['email-marketing-overview'] });
       clearBroadcastDraft();
       setSendResult({
-        sentCount: result.sent_count ?? result.recipient_count ?? 0,
-        failedCount: result.failed_count ?? 0,
+        sentCount: result.sentCount,
+        failedCount: result.failedCount,
       });
       setSendPhase('success');
-      if (result.failed_count && result.failed_count > 0) {
-        toast.warning(`Sent ${result.sent_count ?? 0} emails. ${result.failed_count} failed.`);
+      if (result.failedCount > 0) {
+        toast.warning(`Sent ${result.sentCount} emails. ${result.failedCount} failed.`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to send announcement';
       setSendError(message);
       setSendPhase('error');
       toast.error(message);
+    } finally {
+      setCurrentSendEmail(null);
     }
   };
 
@@ -207,33 +294,89 @@ export default function AdminSenderPage() {
     setHtmlSendPhase('sending');
     try {
       const selection = htmlSendSelectionRef.current;
+      const userIds = selection?.userIds ?? htmlRecipientIds;
+      const externalEmails = selection?.externalEmails ?? htmlExternalEmails;
       const recipientPayload = buildMarketingRecipientPayload(
         contactList,
-        selection?.userIds ?? htmlRecipientIds,
-        selection?.externalEmails ?? htmlExternalEmails,
+        userIds,
+        externalEmails,
         htmlSendToAll,
       );
-      const result = await sendHtmlCampaign.mutateAsync({
-        subject: htmlDeliverability.sanitizedSubject || htmlSubject.trim(),
-        html_body: htmlDeliverability.sanitizedHtml || htmlBody,
+      const recipients = resolveMarketingSendRecipients(
+        contactList,
+        userIds,
+        externalEmails,
+        htmlSendToAll,
+      );
+
+      if (!recipients.length) {
+        throw new Error('Add at least one recipient in the To field.');
+      }
+
+      setHtmlSendProgress(recipients.map((recipient) => ({ ...recipient, status: 'pending' })));
+
+      const subject = htmlDeliverability.sanitizedSubject || htmlSubject.trim();
+      const sanitizedHtmlBody = htmlDeliverability.sanitizedHtml || htmlBody;
+
+      const batchId = await htmlCampaignService.createCampaignDraft({
+        subject,
+        html_body: sanitizedHtmlBody,
         template_name: htmlTemplateName,
-        ...recipientPayload,
+        recipient_count: recipients.length,
+        recipient_user_ids: recipientPayload.recipient_user_ids,
+        recipient_emails: recipientPayload.recipient_emails,
       });
+
+      const result = await runSequentialEmailSend({
+        recipients,
+        buildPayload: (recipient) => ({
+          subject,
+          html_body: sanitizedHtmlBody,
+          template_name: htmlTemplateName,
+          skip_history: true,
+          ...buildSingleRecipientPayload(recipient),
+        }),
+        send: async (recipient, payload) => {
+          const sendRecord = await marketingTrackingService.createSend({
+            source_type: 'campaign',
+            source_id: batchId,
+            recipient_email: recipient.email,
+            recipient_user_id: recipient.userId,
+          });
+          await sendHtmlCampaign.mutateAsync({
+            ...payload,
+            tracking_token: sendRecord.tracking_token,
+          });
+        },
+        onProgress: (items, currentEmail) => {
+          setHtmlSendProgress(items);
+          setHtmlCurrentSendEmail(currentEmail);
+        },
+      });
+
+      await htmlCampaignService.finalizeCampaign(batchId, {
+        sent_count: result.sentCount,
+        failed_count: result.failedCount,
+      });
+
       void queryClient.invalidateQueries({ queryKey: ['email-campaigns'] });
+      void queryClient.invalidateQueries({ queryKey: ['email-marketing-overview'] });
       clearHtmlCampaignDraft();
       setHtmlSendResult({
-        sentCount: result.sent_count ?? result.recipient_count ?? 0,
-        failedCount: result.failed_count ?? 0,
+        sentCount: result.sentCount,
+        failedCount: result.failedCount,
       });
       setHtmlSendPhase('success');
-      if (result.failed_count && result.failed_count > 0) {
-        toast.warning(`Sent ${result.sent_count ?? 0} emails. ${result.failed_count} failed.`);
+      if (result.failedCount > 0) {
+        toast.warning(`Sent ${result.sentCount} emails. ${result.failedCount} failed.`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to send HTML campaign';
       setHtmlSendError(message);
       setHtmlSendPhase('error');
       toast.error(message);
+    } finally {
+      setHtmlCurrentSendEmail(null);
     }
   };
 
@@ -323,6 +466,8 @@ export default function AdminSenderPage() {
           canSend={canSendHtml}
         />
       </div>
+
+      <EmailMarketingOverview />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -448,11 +593,13 @@ export default function AdminSenderPage() {
       <BroadcastSendFlowModal
         open={sendFlowOpen}
         phase={sendPhase}
-        sendCount={Math.max(sendCount, effectiveBroadcastRecipientCount)}
+        sendCount={Math.max(sendCount, effectiveBroadcastRecipientCount, sendProgress.length)}
         productCount={selectedProductIds.length}
         sentCount={sendResult.sentCount}
         failedCount={sendResult.failedCount}
         errorMessage={sendError}
+        sendProgress={sendProgress}
+        currentSendEmail={currentSendEmail}
         onConfirmSend={() => void handleConfirmSend()}
         onClose={closeSendFlow}
       />
@@ -460,10 +607,12 @@ export default function AdminSenderPage() {
       <BroadcastSendFlowModal
         open={htmlSendFlowOpen}
         phase={htmlSendPhase}
-        sendCount={Math.max(htmlSendCount, effectiveHtmlRecipientCount)}
+        sendCount={Math.max(htmlSendCount, effectiveHtmlRecipientCount, htmlSendProgress.length)}
         sentCount={htmlSendResult.sentCount}
         failedCount={htmlSendResult.failedCount}
         errorMessage={htmlSendError}
+        sendProgress={htmlSendProgress}
+        currentSendEmail={htmlCurrentSendEmail}
         confirmTitle="Send HTML campaign?"
         onConfirmSend={() => void handleConfirmHtmlSend()}
         onClose={closeHtmlSendFlow}
