@@ -50,6 +50,7 @@ export interface Product {
   title: string;
   slug: string;
   description: string;
+  login_instructions?: string | null;
   product_details?: string | null;
   preview_url?: string | null;
   platform: PlatformType;

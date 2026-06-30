@@ -54,6 +54,7 @@ interface ProductFormState {
   followers: string;
   following: string;
   description: string;
+  login_instructions: string;
   product_details: string;
   preview_url: string;
   featured: boolean;
@@ -83,6 +84,7 @@ function createEmptyForm(categoryId = ''): ProductFormState {
     followers: '',
     following: '',
     description: '',
+    login_instructions: '',
     product_details: '',
     preview_url: '',
     featured: false,
@@ -105,6 +107,7 @@ function createFormFromProduct(product: Product): ProductFormState {
     followers: product.followers != null ? String(product.followers) : '',
     following: product.following != null ? String(product.following) : '',
     description: product.description,
+    login_instructions: product.login_instructions ?? '',
     product_details: normalizeProductDetailsStorage(product.product_details),
     preview_url: product.preview_url ?? '',
     featured: product.featured,
@@ -131,6 +134,7 @@ function buildProductPayload(form: ProductFormState, categorySlug?: string | nul
     followers: form.followers ? Number(form.followers) : null,
     following: form.following ? Number(form.following) : null,
     description: form.description.trim(),
+    login_instructions: form.login_instructions.trim() || null,
     product_details: normalizeProductDetailsStorage(form.product_details),
     preview_url: form.preview_url.trim() || null,
     featured: form.featured,
@@ -558,8 +562,20 @@ export default function AdminProductsPage() {
                         value={form.description}
                         onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
                         className="admin-textarea"
-                        placeholder="Describe the account quality, history, audience, and important details."
+                        placeholder="Short summary shown in the marketplace list (e.g. account type, follower range)."
                       />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Login instructions</label>
+                      <Textarea
+                        value={form.login_instructions}
+                        onChange={(event) => setForm((current) => ({ ...current, login_instructions: event.target.value }))}
+                        className="admin-textarea min-h-[140px]"
+                        placeholder={'Step-by-step guide buyers see before purchase.\n\nExample:\n1. Open twitter.com/login\n2. Enter the email and password from your order\n3. Complete any verification prompt'}
+                      />
+                      <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
+                        Shown when a customer clicks the product row. Use the short description above to tease this (e.g. &quot;Instructions on how to login are in details&quot;).
+                      </p>
                     </div>
                     <div className="md:col-span-2">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Preview profile link</label>
