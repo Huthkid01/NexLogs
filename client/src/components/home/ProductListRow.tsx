@@ -53,18 +53,11 @@ export function ProductListRow({ product }: ProductListRowProps) {
             <button
               type="button"
               onClick={openPurchaseModal}
-              className="hidden shrink-0 self-end pb-0.5 text-sm font-medium text-[#f26522] hover:underline sm:block"
+              className="shrink-0 self-end pb-0.5 text-sm font-medium text-[#f26522] hover:underline"
             >
               View Products
             </button>
           </div>
-          <button
-            type="button"
-            onClick={openPurchaseModal}
-            className="mt-3 text-sm font-medium text-[#f26522] hover:underline sm:hidden"
-          >
-            View Products
-          </button>
         </div>
         <div className="h-0.5 w-full bg-gray-300 dark:bg-dm-border" aria-hidden="true" />
       </div>
