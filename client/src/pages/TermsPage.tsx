@@ -38,7 +38,7 @@ export default function TermsPage() {
                     <>
                       {' '}
                       Please also review our{' '}
-                      <Link to="/privacy" className="text-[#f26522] hover:text-[#d94e0f] font-medium">
+                      <Link to="/refund" className="text-[#f26522] hover:text-[#d94e0f] font-medium">
                         {content.terms.refundLinkLabel}
                       </Link>
                       .

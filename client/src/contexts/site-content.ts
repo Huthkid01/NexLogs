@@ -71,6 +71,16 @@ export interface SiteContent {
     supportLinkLabel: string;
     updateNote: string;
   };
+  privacy: {
+    title: string;
+    lastUpdatedLabel: string;
+    contactEmail: string;
+    sections: Array<{
+      title: string;
+      body: string;
+      bullets?: string[];
+    }>;
+  };
   footer: {
     brandDescription: string;
     legalTitle: string;
@@ -256,6 +266,85 @@ export const defaultSiteContent: SiteContent = {
     supportLinkLabel: 'Support Page',
     updateNote: 'This refund policy may be updated from time to time without prior notice. Please review this page periodically for the latest version.',
   },
+  privacy: {
+    title: 'Privacy Policy',
+    lastUpdatedLabel: 'Last updated:',
+    contactEmail: 'support@nexlogs.store',
+    sections: [
+      {
+        title: '1. Introduction',
+        body: `${APP_NAME} ("we", "us", or "our") operates the website at nexlogs.store and related services. This Privacy Policy explains what information we collect, how we use it, how we store it, and your choices. By using our platform, you agree to the practices described here.`,
+      },
+      {
+        title: '2. Information We Collect',
+        body: 'We collect information you provide directly and information generated when you use our services.',
+        bullets: [
+          'Account information: name, email address, and password (for email sign-up).',
+          'Profile information: display name and avatar, if provided.',
+          'Transaction information: wallet top-ups, purchases, order history, and support tickets.',
+          'Technical information: device type, browser, IP address, and usage logs used for security and troubleshooting.',
+        ],
+      },
+      {
+        title: '3. Google Sign-In and Google User Data',
+        body: `${APP_NAME} offers optional "Sign in with Google" authentication. When you choose Google Sign-In, our application accesses limited Google user data only to create and secure your account. We comply with the Google API Services User Data Policy, including the Limited Use requirements.`,
+      },
+      {
+        title: '3a. Google Data Accessed',
+        body: 'Through Google Sign-In (OpenID Connect scopes: openid, email, and profile), we may access the following Google user data:',
+        bullets: [
+          'Your Google account email address.',
+          'Your name (if available in your Google profile).',
+          'Your profile picture URL (if available in your Google profile).',
+          'A unique Google account identifier used to authenticate your account.',
+        ],
+      },
+      {
+        title: '3b. How We Use Google User Data',
+        body: 'We use Google user data only for the following purposes:',
+        bullets: [
+          'Authenticate you and create or sign in to your Nexlogs account.',
+          'Associate your account with orders, wallet balance, and purchase history.',
+          'Display your name or profile image within your account, where applicable.',
+          'Protect the platform from fraud, abuse, and unauthorized access.',
+        ],
+      },
+      {
+        title: '3c. Google Data Storage, Retention, and Sharing',
+        body: 'Google user data received during sign-in is stored securely in our authentication and profile systems (hosted by Supabase). We retain this information while your account remains active or as needed to provide our services and meet legal obligations.',
+        bullets: [
+          'We do not sell Google user data.',
+          'We do not use Google user data for advertising or marketing profiling.',
+          'We do not use Google user data to train artificial intelligence or machine learning models.',
+          'We do not share Google user data with third parties except infrastructure providers that host our application and only as needed to operate the service (for example, secure database and authentication hosting).',
+        ],
+      },
+      {
+        title: '3d. Your Choices for Google Data',
+        body: 'You can stop using Google Sign-In by signing in with email and password instead, or by revoking Nexlogs access in your Google Account security settings at https://myaccount.google.com/permissions. To request account deletion or data removal, contact us at support@nexlogs.store.',
+      },
+      {
+        title: '4. How We Use Your Information',
+        body: 'We use collected information to operate the marketplace, process payments and wallet transactions, deliver digital products, provide customer support, send service-related communications, improve platform security, and comply with legal requirements.',
+      },
+      {
+        title: '5. Data Security',
+        body: 'We use industry-standard safeguards including encrypted connections (HTTPS), access controls, and secure hosting. No method of transmission or storage is completely secure, but we work to protect your information.',
+      },
+      {
+        title: '6. Your Rights',
+        body: 'Depending on your location, you may have rights to access, correct, or delete personal data we hold about you. Contact us to submit a request and we will respond within a reasonable time.',
+      },
+      {
+        title: '7. Changes to This Policy',
+        body: 'We may update this Privacy Policy from time to time. The revised version will be posted on this page with an updated date. Continued use of the platform after changes are posted means you accept the updated policy.',
+      },
+      {
+        title: '8. Contact Us',
+        body: 'If you have questions about this Privacy Policy or how we handle Google user data, contact us at',
+      },
+    ],
+  },
   footer: {
     brandDescription: 'Secure digital marketplace with fast support and seamless transactions.',
     legalTitle: 'LEGAL',
@@ -387,6 +476,14 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
       ...defaultSiteContent.refund,
       ...content?.refund,
       rules: content?.refund?.rules ?? defaultSiteContent.refund.rules,
+    },
+    privacy: {
+      ...defaultSiteContent.privacy,
+      ...content?.privacy,
+      sections: content?.privacy?.sections?.map((section, index) => ({
+        ...defaultSiteContent.privacy.sections[index],
+        ...section,
+      })) ?? defaultSiteContent.privacy.sections,
     },
     footer: {
       ...defaultSiteContent.footer,

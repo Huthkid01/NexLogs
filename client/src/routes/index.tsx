@@ -8,6 +8,7 @@ import AboutPage from '@/pages/AboutPage';
 import FaqPage from '@/pages/FaqPage';
 import SupportPage from '@/pages/SupportPage';
 import PrivacyPage from '@/pages/PrivacyPage';
+import RefundPage from '@/pages/RefundPage';
 import TermsPage from '@/pages/TermsPage';
 import SuspendedPage from '@/pages/SuspendedPage';
 
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
       { path: 'faq', element: <FaqPage /> },
       { path: 'support', element: <SupportPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
+      { path: 'refund', element: <RefundPage /> },
       { path: 'terms', element: <TermsPage /> },
       { path: 'suspended', element: <SuspendedPage /> },
       { path: 'login', element: <GuestRoute><LoginPage /></GuestRoute> },

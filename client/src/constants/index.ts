@@ -52,6 +52,7 @@ export const FOOTER_LINKS = {
   ],
   legal: [
     { href: '/privacy', label: 'Privacy Policy' },
+    { href: '/refund', label: 'Refund Policy' },
     { href: '/terms', label: 'Terms of Service' },
   ],
 };

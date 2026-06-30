@@ -30,7 +30,7 @@ export default function SupportPage() {
       <div className="w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <div className="max-w-3xl mx-auto text-center space-y-8">
           <Link
-            to="/privacy"
+            to="/refund"
             className="inline-flex items-center justify-center px-5 py-2 rounded-full bg-[#f26522] text-white text-sm font-semibold hover:bg-[#d94e0f] transition-colors"
           >
             {content.support.refundPolicyButtonLabel}
