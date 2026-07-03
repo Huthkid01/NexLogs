@@ -235,6 +235,56 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'marketing-buy-numbers-sms',
+    name: 'Buy Numbers — SMS verification',
+    category: 'marketing',
+    description: 'Announce SMS verification for WhatsApp, Facebook, and other platforms.',
+    defaultSubject: `SMS verification is live on ${APP_NAME} — buy a number in minutes`,
+    html: buildMarketingEmailHtml({
+      title: 'SMS verification is live',
+      preheader: `Reserve a phone number on ${APP_NAME} and receive SMS codes for WhatsApp, Facebook, and more.`,
+      heroTitle: 'Buy numbers. Get your code.',
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                You can now <strong>buy a temporary phone number</strong> on ${APP_NAME} and receive SMS verification codes directly in your account — no extra apps required.
+              </p>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">
+                Use it for account verification on popular platforms when you need a fresh number in a specific country.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#fff7f2;border:1px solid #fed7aa;border-radius:12px;">
+                <tr>
+                  <td style="padding:22px 24px;">
+                    <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#c44d10;">Works with services like</p>
+                    <p style="margin:0;font-size:15px;line-height:1.9;color:#374151;">
+                      WhatsApp &bull; Facebook &bull; Instagram &bull; Google &bull; Telegram<br/>
+                      TikTok &bull; Twitter &bull; Snapchat &bull; Discord &bull; Microsoft &bull; Apple<br/>
+                      Naver &bull; Tinder &bull; eBay &bull; Viber &bull; and many more
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+                <tr>
+                  <td style="padding:20px 22px;">
+                    <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#111827;">How it works</p>
+                    <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.9;color:#374151;">
+                      <li>Sign in and open <strong>Buy Numbers</strong> from the menu</li>
+                      <li>Choose your <strong>country</strong> and <strong>service</strong> (e.g. WhatsApp)</li>
+                      <li>Confirm and pay from your <strong>wallet balance</strong></li>
+                      <li>Tap <strong>Get SMS Code</strong> — your verification code appears on screen</li>
+                    </ol>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:16px 0 0;font-size:14px;line-height:1.7;color:#6b7280;">
+                Need wallet funds first? Use <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a> in your account menu. Numbers are for legitimate verification only.
+              </p>`,
+      ctaLabel: 'Buy a number now',
+      ctaUrl: `${appUrl}/buy-numbers`,
+    }),
+  },
+  {
     id: 'marketing-reengagement',
     name: 'We miss you',
     category: 'marketing',
@@ -546,7 +596,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                       • <strong>Marketplace</strong> — browse all products<br/>
                       • <strong>Purchase RDP</strong> — RDP orders<br/>
                       • <strong>My Purchases</strong> — your order history<br/>
-                      • <strong>Buy Numbers</strong> — number products<br/>
+                      • <strong>Buy Numbers</strong> — SMS verification (WhatsApp, Facebook, and more)<br/>
                       • <strong>Need help?</strong> — support page
                     </p>
                   </td>
