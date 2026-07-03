@@ -41,6 +41,7 @@ interface SmsNumberOrderRow {
   service_name: string | null;
   service_id: string;
   status: string;
+  verification_code: string | null;
   charged_ngn: number;
   cost_usd: number;
   expires_at: string | null;
@@ -136,14 +137,17 @@ function buildSmsOrderTelegramMessage(
     ? `<b>Expires:</b> ${escapeHtml(new Date(order.expires_at).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }))}`
     : null;
 
+  const code = order.verification_code?.trim() || '';
+
   return [
-    '📱 <b>New SMS number purchase</b>',
+    '📱 <b>SMS code received</b>',
     '',
     `<b>Buyer:</b> ${escapeHtml(buyer.full_name)}`,
     `<b>Email:</b> ${escapeHtml(buyer.email)}`,
     `<b>Number:</b> <code>${escapeHtml(order.phone_number)}</code>`,
     `<b>Country:</b> ${escapeHtml(country)}`,
     `<b>Service:</b> ${escapeHtml(service)}`,
+    code ? `<b>Code:</b> <code>${escapeHtml(code)}</code>` : null,
     `<b>Charged:</b> ${formatNgn(order.charged_ngn)}`,
     `<b>Cost (USD):</b> $${Number(order.cost_usd).toFixed(2)}`,
     `<b>Status:</b> ${escapeHtml(order.status)}`,
@@ -325,6 +329,7 @@ Deno.serve(async (req) => {
           service_name,
           service_id,
           status,
+          verification_code,
           charged_ngn,
           cost_usd,
           expires_at,

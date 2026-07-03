@@ -1,5 +1,5 @@
 -- Run this once in Supabase → SQL Editor after deploying the telegram-order-alert edge function.
--- Alerts fire for marketplace/RDP orders, SMS number purchases, and wallet deposits.
+-- Alerts fire for marketplace/RDP orders, SMS codes received, and wallet deposits.
 -- Replace YOUR_PROJECT_REF and choose a random webhook secret.
 
 INSERT INTO app_config (key, value) VALUES
