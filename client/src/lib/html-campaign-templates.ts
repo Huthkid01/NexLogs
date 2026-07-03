@@ -92,6 +92,57 @@ function buildMarketingEmailHtml(options: {
 </html>`;
 }
 
+function buildInboxFriendlyEmailHtml(options: {
+  title: string;
+  preheader: string;
+  bodyHtml: string;
+  linkUrl?: string;
+  linkLabel?: string;
+}) {
+  const textLink =
+    options.linkUrl && options.linkLabel
+      ? `<p style="margin:20px 0 0;font-size:15px;line-height:1.7;"><a href="${options.linkUrl}" style="color:#f26522;text-decoration:underline;">${options.linkLabel}</a></p>`
+      : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${options.title}</title>
+</head>
+<body style="margin:0;padding:24px 16px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${options.preheader}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:560px;">
+          ${emailLogoHeaderCompact}
+          <tr>
+            <td style="padding:8px 32px 32px;">
+              ${options.bodyHtml}
+              ${textLink}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 8px;border-top:1px solid #e5e7eb;">
+              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+                Questions? Reply to this email or contact
+                <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
+              </p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+                © ${new Date().getFullYear()} ${APP_NAME}. <a href="${appUrl}" style="color:#f26522;text-decoration:none;">${siteHost}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
   {
     id: 'marketing-intro',
@@ -238,7 +289,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     id: 'marketing-buy-numbers-sms',
     name: 'Buy Numbers — SMS verification',
     category: 'marketing',
-    description: 'Announce SMS verification for WhatsApp, Facebook, and other platforms.',
+    description: 'Marketing layout with hero banner. Often lands in Gmail Promotions — use the inbox-friendly template for Primary.',
     defaultSubject: `SMS verification is live on ${APP_NAME} — buy a number in minutes`,
     html: buildMarketingEmailHtml({
       title: 'SMS verification is live',
@@ -282,6 +333,34 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               </p>`,
       ctaLabel: 'Buy a number now',
       ctaUrl: `${appUrl}/buy-numbers`,
+    }),
+  },
+  {
+    id: 'account-buy-numbers-announcement',
+    name: 'Buy Numbers launch (inbox-friendly)',
+    category: 'account',
+    description: 'Plain account-style notice — best choice for Primary inbox (not Promotions).',
+    defaultSubject: `You can now use Buy Numbers on ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'Buy Numbers on Nexlogs',
+      preheader: `A quick note about SMS verification on ${APP_NAME} — WhatsApp, Facebook, and other services.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We added <strong>Buy Numbers</strong> to your ${APP_NAME} account. You can reserve a phone number and receive SMS verification codes on the website when you need to verify an account.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                It works with WhatsApp, Facebook, Instagram, Google, Telegram, TikTok, and many other services. Choose a country, pick the service, pay from your wallet, then open <strong>Get SMS Code</strong> when the message arrives.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                If your wallet balance is low, add funds first from your account menu. Numbers are for legitimate verification only.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open Buy Numbers',
+      linkUrl: `${appUrl}/buy-numbers`,
     }),
   },
   {

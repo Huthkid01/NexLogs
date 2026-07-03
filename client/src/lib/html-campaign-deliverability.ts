@@ -140,6 +140,33 @@ export function runHtmlCampaignDeliverabilityChecks(options: {
     });
   }
 
+  const hasPromoHero = /background:#f26522;padding:\s*(24|28)px/i.test(htmlBody);
+  const ctaButtonCount = htmlBody.match(/display:inline-block;padding:14px/g)?.length ?? 0;
+  if (hasPromoHero || ctaButtonCount > 1) {
+    checks.push({
+      id: 'gmail-promotions',
+      level: 'warn',
+      title: 'May land in Gmail Promotions',
+      detail:
+        'Orange hero banners and multiple buttons look like marketing mail. Use “Buy Numbers launch (inbox-friendly)” for a plain account-style email that is more likely to reach Primary.',
+    });
+  } else if (ctaButtonCount === 1) {
+    checks.push({
+      id: 'gmail-promotions',
+      level: 'warn',
+      title: 'Bulk sends may still use Promotions in Gmail',
+      detail:
+        'That is normal for list emails. Plain text-style templates and a conversational subject improve Primary placement.',
+    });
+  } else {
+    checks.push({
+      id: 'gmail-promotions',
+      level: 'pass',
+      title: 'Layout looks like a personal account email',
+      detail: 'Simple formatting without promo banners helps Primary inbox placement in Gmail.',
+    });
+  }
+
   if (!htmlBody) {
     checks.push({
       id: 'html-empty',
