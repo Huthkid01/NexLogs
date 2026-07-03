@@ -21,9 +21,9 @@ test.describe('Buy Numbers', () => {
 
     const countrySearch = page.getByPlaceholder('Search countries...');
     await countrySearch.click();
-    await countrySearch.fill('Korea');
+    await countrySearch.fill('South Korea');
 
-    const countryOption = page.getByRole('button', { name: /Korea/i }).first();
+    const countryOption = page.getByRole('button', { name: /South Korea/i }).first();
     await expect(countryOption).toBeVisible({ timeout: 30_000 });
     await countryOption.click();
 
