@@ -81,7 +81,7 @@ export default function AdminExchangeRatesPage() {
         <div>
           <h1 className={`text-2xl font-bold ${adminStrongTextClass(isDark)}`}>Exchange Rates</h1>
           <p className={`mt-1 text-sm ${adminMutedTextClass(isDark)}`}>
-            Set how local currencies convert to USD when customers add funds or check rates.
+            Set how local currencies convert to USD for wallet deposits. The NGN rate here is also used for SMS number pricing.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

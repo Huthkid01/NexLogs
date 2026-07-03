@@ -39,6 +39,7 @@ import AdminSlidesPage from '@/pages/admin/AdminSlidesPage';
 import AdminRdpPage from '@/pages/admin/AdminRdpPage';
 import AdminSenderPage from '@/pages/admin/AdminSenderPage';
 import AdminTransactionsPage from '@/pages/admin/AdminTransactionsPage';
+import AdminSmsPricingPage from '@/pages/admin/AdminSmsPricingPage';
 import UnsubscribePage from '@/pages/UnsubscribePage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import { RouterErrorPage } from '@/routes/RouterErrorPage';
@@ -75,6 +76,7 @@ const router = createBrowserRouter([
       { path: 'add-funds', element: <ProtectedRoute><AddFundsPage /></ProtectedRoute> },
       { path: 'purchase-rdp', element: <ProtectedRoute><PurchaseRdpPage /></ProtectedRoute> },
       { path: 'buy-numbers', element: <ProtectedRoute><BuyNumbersPage /></ProtectedRoute> },
+      { path: 'buy-numbers/:providerId', element: <ProtectedRoute><BuyNumbersPage /></ProtectedRoute> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
@@ -96,6 +98,7 @@ const router = createBrowserRouter([
       { path: 'activity', element: <AdminActivityLogsPage /> },
       { path: 'slides', element: <AdminSlidesPage /> },
       { path: 'rdp', element: <AdminRdpPage /> },
+      { path: 'sms-pricing', element: <AdminSmsPricingPage /> },
       { path: 'sender', element: <AdminSenderPage /> },
       { path: 'content', element: <Navigate to="/admin/content/homepage" replace /> },
       { path: 'content/contact', element: <Navigate to="/admin/content/support" replace /> },

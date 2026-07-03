@@ -166,6 +166,12 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
+          <p className="mt-4 text-center text-sm text-gray-500">
+            <Link to="/forgot-password" className="text-[#f26522] hover:text-[#d94e0f] hover:underline">
+              Forgot password?
+            </Link>
+          </p>
+
           <div className="mt-8 text-center text-xs text-gray-500 space-y-2">
             <p>Authorized personnel only. All access is monitored and logged.</p>
             <p>

@@ -84,11 +84,15 @@ export function getAdminLoginMessage(message: string) {
   }
 
   if (normalized.includes('admin_access_not_granted')) {
-    return 'Your account does not have admin access.';
+    return 'Signed in, but this account is not an admin. In Supabase SQL, run: UPDATE profiles SET role = \'admin\' WHERE email = \'your@email.com\';';
   }
 
   if (normalized.includes('email not confirmed')) {
-    return 'Please confirm your email address before signing in.';
+    return 'Email not confirmed in Supabase. Ask support to confirm admin@nexlogs.com or use Forgot password.';
+  }
+
+  if (normalized.includes('admin_account_verification_failed')) {
+    return 'Sign-in succeeded but no user session was returned. Try again or contact support.';
   }
 
   return 'We could not sign you in to the admin dashboard.';

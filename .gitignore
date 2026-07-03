@@ -7,6 +7,10 @@ build/
 client/.env
 client/.env.local
 client/.env.vercel
+client/.env.e2e
+client/playwright-report/
+client/test-results/
+client/blob-report/
 server/.env
 *.log
 .DS_Store
@@ -16,5 +20,6 @@ coverage/
 client/dist/
 .supabase-home/
 supabase/.temp/
+supabase/.env.local
 supabase/setup/*_ready.sql
 supabase/setup/*.local.sql

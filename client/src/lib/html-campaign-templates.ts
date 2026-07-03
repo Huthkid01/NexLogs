@@ -23,7 +23,7 @@ export const HTML_CAMPAIGN_TEMPLATE_CATEGORIES: {
 
 const appUrl = APP_URL.replace(/\/$/, '');
 const siteHost = appUrl.replace(/^https?:\/\//, '');
-const telegramSupportUrl = 'https://t.me/nexlogs_support';
+const telegramSupportUrl = 'https://t.me/nexlogs';
 const emailLogoHeader = buildEmailLogoHeader(appUrl, APP_NAME);
 const emailLogoHeaderCompact = buildEmailLogoHeader(appUrl, APP_NAME, {
   padding: '24px 32px 8px',
@@ -470,7 +470,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                     <ul style="margin:0 0 4px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
                       <li>
                         <strong>Telegram:</strong>
-                        <a href="${telegramSupportUrl}" style="color:#f26522;text-decoration:none;">@nexlogs_support</a>
+                        <a href="${telegramSupportUrl}" style="color:#f26522;text-decoration:none;">@nexlogs</a>
                       </li>
                       <li>
                         <strong>Support page:</strong>
