@@ -32,6 +32,35 @@ interface OrderRow {
   order_items: OrderItemRow[];
 }
 
+interface SmsNumberOrderRow {
+  id: string;
+  user_id: string;
+  phone_number: string;
+  country_name: string | null;
+  country_id: string;
+  service_name: string | null;
+  service_id: string;
+  status: string;
+  charged_ngn: number;
+  cost_usd: number;
+  expires_at: string | null;
+  smspool_order_id: string;
+  created_at: string;
+}
+
+interface WalletTransactionRow {
+  id: string;
+  user_id: string;
+  ref: string;
+  kind: string;
+  payment_method: string;
+  amount: number;
+  currency: string;
+  status: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')
@@ -96,6 +125,67 @@ function buildTelegramMessage(
   ].join('\n');
 }
 
+function buildSmsOrderTelegramMessage(
+  order: SmsNumberOrderRow,
+  buyer: { full_name: string; email: string },
+  adminSmsUrl: string,
+) {
+  const country = order.country_name?.trim() || order.country_id;
+  const service = order.service_name?.trim() || order.service_id;
+  const expiresLine = order.expires_at
+    ? `<b>Expires:</b> ${escapeHtml(new Date(order.expires_at).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }))}`
+    : null;
+
+  return [
+    '📱 <b>New SMS number purchase</b>',
+    '',
+    `<b>Buyer:</b> ${escapeHtml(buyer.full_name)}`,
+    `<b>Email:</b> ${escapeHtml(buyer.email)}`,
+    `<b>Number:</b> <code>${escapeHtml(order.phone_number)}</code>`,
+    `<b>Country:</b> ${escapeHtml(country)}`,
+    `<b>Service:</b> ${escapeHtml(service)}`,
+    `<b>Charged:</b> ${formatNgn(order.charged_ngn)}`,
+    `<b>Cost (USD):</b> $${Number(order.cost_usd).toFixed(2)}`,
+    `<b>Status:</b> ${escapeHtml(order.status)}`,
+    `<b>Order ID:</b> <code>${escapeHtml(order.id)}</code>`,
+    `<b>SMS Pool ID:</b> <code>${escapeHtml(order.smspool_order_id)}</code>`,
+    expiresLine,
+    '',
+    `<a href="${adminSmsUrl}">Open Admin SMS</a>`,
+  ].filter(Boolean).join('\n');
+}
+
+function buildWalletDepositTelegramMessage(
+  tx: WalletTransactionRow,
+  buyer: { full_name: string; email: string },
+  adminTransactionsUrl: string,
+) {
+  const metadata = tx.metadata && typeof tx.metadata === 'object' ? tx.metadata : {};
+  const originalAmount = Number(metadata.original_amount);
+  const originalCurrency = typeof metadata.original_currency === 'string'
+    ? metadata.original_currency.trim()
+    : '';
+  const txRef = typeof metadata.tx_ref === 'string' ? metadata.tx_ref.trim() : '';
+  const paidLine = originalAmount > 0 && originalCurrency
+    ? `<b>Paid:</b> ${escapeHtml(originalCurrency)} ${originalAmount.toLocaleString('en-NG')}`
+    : null;
+
+  return [
+    '💰 <b>New wallet deposit</b>',
+    '',
+    `<b>User:</b> ${escapeHtml(buyer.full_name)}`,
+    `<b>Email:</b> ${escapeHtml(buyer.email)}`,
+    `<b>Wallet credit:</b> ${formatNgn(tx.amount)}`,
+    paidLine,
+    `<b>Payment method:</b> ${escapeHtml(tx.payment_method)}`,
+    `<b>Reference:</b> <code>${escapeHtml(tx.ref)}</code>`,
+    txRef ? `<b>Provider ref:</b> <code>${escapeHtml(txRef)}</code>` : null,
+    `<b>Transaction ID:</b> <code>${escapeHtml(tx.id)}</code>`,
+    '',
+    `<a href="${adminTransactionsUrl}">Open Admin Transactions</a>`,
+  ].filter(Boolean).join('\n');
+}
+
 async function sendTelegramMessage(text: string) {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const chatId = Deno.env.get('TELEGRAM_ADMIN_CHAT_ID');
@@ -153,10 +243,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    const body = await req.json() as { order_id?: string };
+    const body = await req.json() as {
+      order_id?: string;
+      sms_order_id?: string;
+      wallet_transaction_id?: string;
+    };
     const orderId = body.order_id?.trim();
-    if (!orderId) {
-      throw new Error('Missing order_id');
+    const smsOrderId = body.sms_order_id?.trim();
+    const walletTransactionId = body.wallet_transaction_id?.trim();
+    const idCount = [orderId, smsOrderId, walletTransactionId].filter(Boolean).length;
+    if (idCount !== 1) {
+      throw new Error('Provide exactly one of order_id, sms_order_id, or wallet_transaction_id');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -169,43 +266,131 @@ Deno.serve(async (req) => {
 
     const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || '').replace(/\/$/, '');
     const adminOrdersUrl = appUrl ? `${appUrl}/admin/orders` : '/admin/orders';
+    const adminSmsUrl = appUrl ? `${appUrl}/admin/sms-pricing` : '/admin/sms-pricing';
+    const adminTransactionsUrl = appUrl ? `${appUrl}/admin/transactions` : '/admin/transactions';
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select(`
-        id,
-        user_id,
-        total_amount,
-        status,
-        payment_status,
-        created_at,
-        order_items(
-          quantity,
-          price,
-          delivered_details,
-          product:products(title, slug, niche, platform)
-        )
-      `)
-      .eq('id', orderId)
-      .single();
 
-    if (orderError || !order) {
-      throw orderError ?? new Error('Order not found');
+    if (walletTransactionId) {
+      const { data: walletTx, error: walletTxError } = await supabase
+        .from('wallet_transactions')
+        .select(`
+          id,
+          user_id,
+          ref,
+          kind,
+          payment_method,
+          amount,
+          currency,
+          status,
+          metadata,
+          created_at
+        `)
+        .eq('id', walletTransactionId)
+        .single();
+
+      if (walletTxError || !walletTx) {
+        throw walletTxError ?? new Error('Wallet transaction not found');
+      }
+
+      if (walletTx.kind !== 'deposit' || walletTx.status !== 'completed') {
+        throw new Error('Transaction is not a completed deposit');
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', walletTx.user_id)
+        .single();
+
+      if (profileError || !profile) {
+        throw profileError ?? new Error('User profile not found');
+      }
+
+      const message = buildWalletDepositTelegramMessage(
+        walletTx as WalletTransactionRow,
+        profile,
+        adminTransactionsUrl,
+      );
+      await sendTelegramMessage(message);
+    } else if (smsOrderId) {
+      const { data: smsOrder, error: smsOrderError } = await supabase
+        .from('sms_number_orders')
+        .select(`
+          id,
+          user_id,
+          phone_number,
+          country_name,
+          country_id,
+          service_name,
+          service_id,
+          status,
+          charged_ngn,
+          cost_usd,
+          expires_at,
+          smspool_order_id,
+          created_at
+        `)
+        .eq('id', smsOrderId)
+        .single();
+
+      if (smsOrderError || !smsOrder) {
+        throw smsOrderError ?? new Error('SMS order not found');
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', smsOrder.user_id)
+        .single();
+
+      if (profileError || !profile) {
+        throw profileError ?? new Error('Buyer profile not found');
+      }
+
+      const message = buildSmsOrderTelegramMessage(
+        smsOrder as SmsNumberOrderRow,
+        profile,
+        adminSmsUrl,
+      );
+      await sendTelegramMessage(message);
+    } else {
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          user_id,
+          total_amount,
+          status,
+          payment_status,
+          created_at,
+          order_items(
+            quantity,
+            price,
+            delivered_details,
+            product:products(title, slug, niche, platform)
+          )
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (orderError || !order) {
+        throw orderError ?? new Error('Order not found');
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', order.user_id)
+        .single();
+
+      if (profileError || !profile) {
+        throw profileError ?? new Error('Buyer profile not found');
+      }
+
+      const message = buildTelegramMessage(order as OrderRow, profile, adminOrdersUrl);
+      await sendTelegramMessage(message);
     }
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('full_name, email')
-      .eq('id', order.user_id)
-      .single();
-
-    if (profileError || !profile) {
-      throw profileError ?? new Error('Buyer profile not found');
-    }
-
-    const message = buildTelegramMessage(order as OrderRow, profile, adminOrdersUrl);
-    await sendTelegramMessage(message);
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
