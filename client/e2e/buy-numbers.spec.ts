@@ -21,23 +21,23 @@ test.describe('Buy Numbers', () => {
 
     const countrySearch = page.getByPlaceholder('Search countries...');
     await countrySearch.click();
-    await countrySearch.fill('South Korea');
+    await countrySearch.fill('United States');
 
-    const countryOption = page.getByRole('button', { name: /South Korea/i }).first();
+    const countryOption = page.getByRole('button', { name: /United States/i }).first();
     await expect(countryOption).toBeVisible({ timeout: 30_000 });
     await countryOption.click();
 
     await expect(page.getByText('Services')).toBeVisible();
 
     const serviceSearch = page.getByPlaceholder('Search services...');
-    await serviceSearch.fill('Naver');
+    await serviceSearch.fill('Google');
 
-    const naverButton = page.getByRole('button', { name: 'Naver', exact: true });
-    await expect(naverButton).toBeVisible({ timeout: 30_000 });
+    const serviceButton = page.getByRole('button', { name: 'Google', exact: true });
+    await expect(serviceButton).toBeVisible({ timeout: 30_000 });
 
-    await naverButton.hover();
-    await expect(naverButton).toHaveCSS('background-color', ORANGE_RGB);
-    await expect(naverButton).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await serviceButton.hover();
+    await expect(serviceButton).toHaveCSS('background-color', ORANGE_RGB);
+    await expect(serviceButton).toHaveCSS('color', 'rgb(255, 255, 255)');
   });
 
   test('history section is visible for signed-in users', async ({ authedPage: page }) => {
