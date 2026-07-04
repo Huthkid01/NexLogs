@@ -1,5 +1,11 @@
+[functions.kora-init]
+verify_jwt = true
+
 [functions.kora-verify]
 verify_jwt = true
+
+[functions.kora-webhook]
+verify_jwt = false
 
 [functions.flutterwave-verify]
 verify_jwt = true

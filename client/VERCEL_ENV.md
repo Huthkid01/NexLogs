@@ -27,7 +27,6 @@ Use **`client/.env.vercel`** — copy/paste or import into Vercel.
 | `VITE_SUPABASE_ANON_KEY` | Supabase → Project Settings → API (anon public) |
 | `VITE_APP_URL` | `https://www.nexlogs.store` |
 | `VITE_APP_NAME` | `Nexlogs` |
-| `VITE_KORA_PUBLIC_KEY` | Kora dashboard (live public key) |
 | `VITE_GOOGLE_CLIENT_ID` | Google Cloud → OAuth Web client ID |
 
 Admin login does **not** use Vercel env vars. Set the password in **Supabase → Authentication → Users** and ensure `profiles.role = 'admin'`.

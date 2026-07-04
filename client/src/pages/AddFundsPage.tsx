@@ -5,12 +5,10 @@ import { Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
-import { isKoraConfigured, isKoraTestMode } from '@/lib/kora-config';
+import { isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
   completeKoraRedirect,
-  getPendingDeposit,
-  resumePendingDeposit,
   startKoraDeposit,
   finalizeDepositSuccess,
 } from '@/services/payment.service';
@@ -24,38 +22,9 @@ export default function AddFundsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [paymentNotice, setPaymentNotice] = useState<'checking' | 'verifying' | null>(null);
   const [verifyingRedirect, setVerifyingRedirect] = useState(false);
   const redirectHandled = useRef(false);
-  const pendingHandled = useRef(false);
   const { data: walletStats } = useWalletBalance(user?.id);
-
-  useEffect(() => {
-    if (!user?.id || pendingHandled.current || verifyingRedirect) return;
-    if (searchParams.get('reference')) return;
-    const pending = getPendingDeposit();
-    if (!pending?.reference) return;
-
-    pendingHandled.current = true;
-    const balanceBefore = walletStats?.balance ?? 0;
-    void (async () => {
-      queueMicrotask(() => setVerifyingRedirect(true));
-      try {
-        const recovered = await resumePendingDeposit();
-        if (!recovered) return;
-
-        await finalizeDepositSuccess(user.id, balanceBefore, async () => {
-          await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
-          await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
-        });
-        toast.success('Payment verified. Funds added to your wallet.');
-      } catch {
-        // No pending deposit or verification still in progress elsewhere.
-      } finally {
-        setVerifyingRedirect(false);
-      }
-    })();
-  }, [user?.id, queryClient, searchParams, verifyingRedirect, walletStats?.balance]);
 
   useEffect(() => {
     if (!user?.id || redirectHandled.current || verifyingRedirect) return;
@@ -65,7 +34,7 @@ export default function AddFundsPage() {
     void (async () => {
       queueMicrotask(() => setVerifyingRedirect(true));
       try {
-        const completed = await completeKoraRedirect(searchParams);
+        const completed = await completeKoraRedirect(searchParams, user.id);
         if (!completed) return;
 
         await finalizeDepositSuccess(user.id, walletStats?.balance ?? 0, async () => {
@@ -103,13 +72,7 @@ export default function AddFundsPage() {
       toast.error('Please enter a valid amount');
       return;
     }
-    if (!isKoraConfigured()) {
-      toast.error('Kora is not configured. Add VITE_KORA_PUBLIC_KEY to your environment.');
-      return;
-    }
-
     setSubmitting(true);
-    setPaymentNotice(null);
     try {
       if (!hasSupabaseConfig()) {
         toast.error('Wallet deposits require Supabase. Add your Supabase keys and redeploy.');
@@ -121,7 +84,6 @@ export default function AddFundsPage() {
         return;
       }
 
-      const balanceBefore = walletStats?.balance ?? 0;
       const depositParams = {
         userId: user.id,
         email: user.email,
@@ -130,33 +92,16 @@ export default function AddFundsPage() {
         currency: 'NGN' as const,
         walletAmount: value,
         paymentMethod: 'kora_card',
-        onPaymentModalOpened: () => setSubmitting(false),
-        onPaymentConfirmed: () => setPaymentNotice('verifying'),
-        onPaymentChecking: () => setPaymentNotice('checking'),
       };
 
-      const result = await startKoraDeposit(depositParams);
-
-      if (result.status === 'pending') {
-        toast.info(
-          'Payment is still being confirmed. Stay on this page or refresh — your wallet will update automatically.',
-        );
-        return;
-      }
-
-      await finalizeDepositSuccess(user.id, balanceBefore, async () => {
-        await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
-        await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
-      });
-      toast.success('Payment successful. Funds added to your wallet.');
-      setAmount('');
+      await startKoraDeposit(depositParams);
+      return;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Payment failed';
       if (message !== 'Payment cancelled') {
         toast.error(message);
       }
     } finally {
-      setPaymentNotice(null);
       setSubmitting(false);
     }
   };
@@ -170,15 +115,11 @@ export default function AddFundsPage() {
             Enter amount in Naira — pay with Kora (card or bank transfer)
           </p>
 
-          {(verifyingRedirect || paymentNotice) && (
+          {verifyingRedirect && (
             <div className="flex items-center gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
               <Info className="h-4 w-4 text-[#f26522] shrink-0" />
               <p className="text-sm text-gray-800">
-                {verifyingRedirect
-                  ? 'Verifying your payment…'
-                  : paymentNotice === 'verifying'
-                    ? 'Payment received. Verifying and adding funds to your wallet…'
-                    : 'Checking payment status…'}
+                Verifying your payment...
               </p>
             </div>
           )}
@@ -221,16 +162,14 @@ export default function AddFundsPage() {
 
             <button
               type="submit"
-              disabled={submitting || !!paymentNotice}
+              disabled={submitting || verifyingRedirect}
               className="w-full max-w-md btn-orange py-2.5 text-sm disabled:opacity-60"
             >
-              {paymentNotice === 'verifying'
-                ? 'Verifying payment…'
-                : paymentNotice === 'checking'
-                  ? 'Checking payment…'
-                  : submitting
-                    ? 'Opening payment…'
-                    : 'Proceed to Payment'}
+              {verifyingRedirect
+                ? 'Verifying payment...'
+                : submitting
+                  ? 'Redirecting to Kora...'
+                  : 'Proceed to Payment'}
             </button>
           </form>
         </div>

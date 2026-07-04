@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const FLUTTERWAVE_DEPOSITS_DISABLED = true;
+
 interface VerifyRequestBody {
   transaction_id?: number;
   tx_ref: string;
@@ -184,6 +186,18 @@ async function creditWalletDeposit(
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  if (FLUTTERWAVE_DEPOSITS_DISABLED) {
+    return new Response(
+      JSON.stringify({
+        error: 'Flutterwave deposits are temporarily unavailable. Use Kora to add funds.',
+      }),
+      {
+        status: 410,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   try {

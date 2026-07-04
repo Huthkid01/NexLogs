@@ -1,22 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  extractBearerToken,
+  isSuccessfulCharge,
+  KORA_API_BASE,
+  koraErrorMessage,
+  resolveChargedAmount,
+  resolveCreditAmount,
+  resolveMerchantReference,
+  type KoraChargeData,
+} from '../_shared/kora-payment.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const KORA_API_BASE = 'https://api.korapay.com/merchant/api/v1';
-
-const DEFAULT_WALLET_EXCHANGE_RATES: Record<string, number> = {
-  NGN: 1500,
-  USD: 1,
-  EUR: 0.92,
-  GBP: 0.79,
-  GHS: 11.67,
-  KES: 134.56,
-  ZAR: 16.52,
-  XOF: 565.62,
-  XAF: 565.62,
 };
 
 interface VerifyRequestBody {
@@ -27,75 +23,6 @@ interface VerifyRequestBody {
   wallet_amount?: number;
   charge_amount?: number;
   charge_currency?: string;
-}
-
-interface KoraChargeData {
-  reference?: string;
-  payment_reference?: string;
-  status?: string;
-  transaction_status?: string;
-  amount?: string | number;
-  amount_paid?: string | number;
-  amount_accepted?: string | number;
-  currency?: string;
-  metadata?: Record<string, unknown>;
-}
-
-function normalizeWalletExchangeRates(rates?: Record<string, number> | null) {
-  return {
-    ...DEFAULT_WALLET_EXCHANGE_RATES,
-    ...(rates ?? {}),
-  };
-}
-
-function convertCurrencyToUsd(
-  amount: number,
-  currency: string,
-  rates: Record<string, number>,
-) {
-  const code = currency.toUpperCase();
-  const rate = rates[code];
-
-  if (!rate || rate <= 0 || Number.isNaN(amount) || amount <= 0) {
-    throw new Error(`Unsupported currency: ${currency}`);
-  }
-
-  return Math.round((amount / rate) * 1_000_000) / 1_000_000;
-}
-
-function hasPaidExpectedAmount(chargedAmount: number, expectedAmount: number) {
-  if (chargedAmount + 0.01 >= expectedAmount) return true;
-  // Kora fees can make amount_accepted slightly lower than the charge amount.
-  return chargedAmount >= expectedAmount * 0.985;
-}
-
-function extractBearerToken(authHeader: string) {
-  const match = authHeader.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim() ?? '';
-}
-
-function koraErrorMessage(status: number, payload: { message?: string }) {
-  const message = payload.message || 'Kora verification failed';
-  if (status === 401 || message.toLowerCase().includes('unauthorized')) {
-    return 'Kora secret key is invalid or missing. Set KORA_SECRET_KEY in Supabase Edge Function secrets to match your live/test mode.';
-  }
-  return message;
-}
-
-function isSuccessfulCharge(payment: KoraChargeData) {
-  const status = String(payment.status ?? '').toLowerCase();
-  const txStatus = String(payment.transaction_status ?? '').toLowerCase();
-  return (
-    status === 'success' ||
-    txStatus === 'success' ||
-    txStatus === 'overpaid'
-  );
-}
-
-function resolveMerchantReference(clientReference: string, payment: KoraChargeData) {
-  const merchantRef = String(payment.payment_reference ?? '').trim();
-  if (merchantRef) return merchantRef;
-  return clientReference.trim();
 }
 
 function readMetadataNumber(metadata: Record<string, unknown> | undefined, key: string) {
@@ -136,16 +63,7 @@ function resolveExpectedFromBodyOrMetadata(
   };
 }
 
-function resolveChargedAmount(payment: KoraChargeData) {
-  const raw = payment.amount ?? payment.amount_paid ?? payment.amount_accepted;
-  const amount = Number(raw);
-  if (!amount || amount <= 0 || Number.isNaN(amount)) {
-    throw new Error('Invalid payment amount from Kora');
-  }
-  return amount;
-}
-
-function resolveCreditAmount(
+function resolveLegacyCreditAmount(
   payment: KoraChargeData,
   expected?: {
     amount?: number;
@@ -162,8 +80,7 @@ function resolveCreditAmount(
     const chargeCurrency = (expected.chargeCurrency ?? expectedCurrency).toUpperCase();
 
     if (expectedCurrency === chargedCurrency || chargeCurrency === chargedCurrency) {
-      const paidEnough = hasPaidExpectedAmount(chargedAmount, expected.amount);
-      if (paidEnough) {
+      if (chargedAmount + 0.01 >= expected.amount || chargedAmount >= expected.amount * 0.985) {
         return {
           amount: expected.amount,
           currency: expectedCurrency,
@@ -183,7 +100,7 @@ function resolveCreditAmount(
 async function creditWalletDeposit(
   supabase: ReturnType<typeof createClient>,
   params: {
-    amountUsd: number;
+    amountNgn: number;
     verifiedAmount: number;
     verifiedCurrency: string;
     paymentMethod: string;
@@ -199,7 +116,7 @@ async function creditWalletDeposit(
   };
 
   const withExternalRef = await supabase.rpc('wallet_deposit', {
-    p_amount_usd: params.amountUsd,
+    p_amount_usd: params.amountNgn,
     p_original_amount: params.verifiedAmount,
     p_currency: params.verifiedCurrency,
     p_payment_method: params.paymentMethod,
@@ -220,7 +137,7 @@ async function creditWalletDeposit(
   }
 
   const legacy = await supabase.rpc('wallet_deposit', {
-    p_amount_usd: params.amountUsd,
+    p_amount_usd: params.amountNgn,
     p_original_amount: params.verifiedAmount,
     p_currency: params.verifiedCurrency,
     p_payment_method: params.paymentMethod,
@@ -246,9 +163,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const koraSecretKey = Deno.env.get('KORA_SECRET_KEY');
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
       throw new Error('Supabase environment is not configured');
     }
 
@@ -259,6 +177,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    const admin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     const accessToken = extractBearerToken(authHeader);
     if (!accessToken) {
@@ -308,40 +227,105 @@ Deno.serve(async (req) => {
 
     const merchantReference = resolveMerchantReference(clientReference, payment);
 
-    const { data: existingByRef } = await supabase
-      .from('wallet_transactions')
-      .select('id')
-      .eq('user_id', user.id)
-      .filter('metadata->>tx_ref', 'eq', merchantReference)
+    const { data: intent, error: intentError } = await admin
+      .from('wallet_payment_intents')
+      .select('user_id, expected_amount_ngn, payment_method, wallet_transaction_id')
+      .eq('provider', 'kora')
+      .eq('reference', merchantReference)
       .maybeSingle();
 
-    if (existingByRef) {
-      return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByRef.id }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (intentError) {
+      throw new Error(intentError.message || 'Failed to load payment intent');
     }
 
-    const credit = resolveCreditAmount(
-      payment,
-      resolveExpectedFromBodyOrMetadata(body, payment),
-    );
+    let depositId: string | null = null;
+    let creditedAmount = resolveChargedAmount(payment);
+    let creditedCurrency = String(payment.currency || 'NGN').toUpperCase();
+    let walletAmount = creditedAmount;
 
-    const depositId = await creditWalletDeposit(supabase, {
-      amountUsd: credit.walletAmount,
-      verifiedAmount: credit.amount,
-      verifiedCurrency: credit.currency,
-      paymentMethod: payment_method || 'kora',
-      reference: merchantReference,
-      payment,
-    });
+    if (intent) {
+      if (intent.user_id !== user.id) {
+        throw new Error('This payment does not belong to the current account');
+      }
+
+      if (intent.wallet_transaction_id) {
+        return new Response(
+          JSON.stringify({ ok: true, duplicate: true, deposit_id: intent.wallet_transaction_id }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        );
+      }
+
+      walletAmount = resolveCreditAmount(payment, Number(intent.expected_amount_ngn));
+      creditedAmount = resolveChargedAmount(payment);
+      creditedCurrency = String(payment.currency || 'NGN').toUpperCase();
+
+      const { data: completedId, error: completeError } = await admin.rpc(
+        'complete_wallet_payment_intent',
+        {
+          p_provider: 'kora',
+          p_reference: merchantReference,
+          p_verified_amount_ngn: walletAmount,
+          p_original_amount: creditedAmount,
+          p_original_currency: creditedCurrency,
+          p_payment_method: payment_method || payment.payment_method || intent.payment_method || 'kora',
+          p_provider_charge_reference: String(payment.reference || ''),
+          p_provider_metadata: {
+            provider: 'kora',
+            kora_reference: payment.reference ?? null,
+            charged_amount: payment.amount_paid ?? payment.amount_accepted ?? payment.amount ?? null,
+            charged_currency: payment.currency ?? 'NGN',
+            transaction_status: payment.transaction_status ?? payment.status ?? null,
+            source: 'kora_verify',
+          },
+        },
+      );
+
+      if (completeError) {
+        throw new Error(completeError.message || 'Wallet deposit failed');
+      }
+
+      depositId = (completedId as string | null) ?? null;
+    } else {
+      const { data: existingByRef } = await supabase
+        .from('wallet_transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .filter('metadata->>tx_ref', 'eq', merchantReference)
+        .maybeSingle();
+
+      if (existingByRef) {
+        return new Response(JSON.stringify({ ok: true, duplicate: true, deposit_id: existingByRef.id }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const credit = resolveLegacyCreditAmount(
+        payment,
+        resolveExpectedFromBodyOrMetadata(body, payment),
+      );
+      walletAmount = credit.walletAmount;
+      creditedAmount = credit.amount;
+      creditedCurrency = credit.currency;
+
+      depositId = await creditWalletDeposit(supabase, {
+        amountNgn: credit.walletAmount,
+        verifiedAmount: credit.amount,
+        verifiedCurrency: credit.currency,
+        paymentMethod: payment_method || 'kora',
+        reference: merchantReference,
+        payment,
+      });
+    }
 
     return new Response(
       JSON.stringify({
         ok: true,
         deposit_id: depositId,
-        amount_ngn: credit.walletAmount,
-        original_amount: credit.amount,
-        original_currency: credit.currency,
+        amount_ngn: walletAmount,
+        original_amount: creditedAmount,
+        original_currency: creditedCurrency,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
