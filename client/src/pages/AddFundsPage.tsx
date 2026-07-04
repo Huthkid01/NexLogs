@@ -5,11 +5,11 @@ import { Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
-import { profileService } from '@/services/profile.service';
 import { isKoraConfigured, isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
   completeKoraRedirect,
+  getPendingDeposit,
   resumePendingDeposit,
   startKoraDeposit,
   finalizeDepositSuccess,
@@ -32,16 +32,19 @@ export default function AddFundsPage() {
 
   useEffect(() => {
     if (!user?.id || pendingHandled.current || verifyingRedirect) return;
+    if (searchParams.get('reference')) return;
+    const pending = getPendingDeposit();
+    if (!pending?.reference) return;
 
     pendingHandled.current = true;
+    const balanceBefore = walletStats?.balance ?? 0;
     void (async () => {
+      queueMicrotask(() => setVerifyingRedirect(true));
       try {
         const recovered = await resumePendingDeposit();
         if (!recovered) return;
 
-        setVerifyingRedirect(true);
-        const stats = await profileService.getStats(user.id);
-        await finalizeDepositSuccess(user.id, stats.balance, async () => {
+        await finalizeDepositSuccess(user.id, balanceBefore, async () => {
           await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
           await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
         });
@@ -52,15 +55,15 @@ export default function AddFundsPage() {
         setVerifyingRedirect(false);
       }
     })();
-  }, [user?.id, queryClient, verifyingRedirect]);
+  }, [user?.id, queryClient, searchParams, verifyingRedirect, walletStats?.balance]);
 
   useEffect(() => {
     if (!user?.id || redirectHandled.current || verifyingRedirect) return;
     if (!searchParams.get('reference')) return;
 
     redirectHandled.current = true;
-    setVerifyingRedirect(true);
     void (async () => {
+      queueMicrotask(() => setVerifyingRedirect(true));
       try {
         const completed = await completeKoraRedirect(searchParams);
         if (!completed) return;

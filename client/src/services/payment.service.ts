@@ -517,6 +517,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
       },
       onSuccess: (data) => {
         completedReference = data?.reference?.trim() || merchantReference;
+        handlePaymentConfirmed(completedReference);
       },
       onFailed: (data) => {
         const reference = data?.reference?.trim() || merchantReference;
@@ -531,6 +532,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
       onPending: () => {
         // Let Kora keep showing its transfer/waiting UI. We verify after the
         // modal closes so users can see the provider's own success screen first.
+        params.onPaymentChecking?.();
       },
       onClose: () => {
         if (settled) return;
