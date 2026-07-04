@@ -124,14 +124,6 @@ function loadKoraScript() {
   });
 }
 
-function closeKoraModal() {
-  try {
-    window.Korapay?.close();
-  } catch {
-    // Modal may already be closed.
-  }
-}
-
 function loadFlutterwaveScript() {
   if (window.FlutterwaveCheckout) {
     return Promise.resolve();
@@ -448,6 +440,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
   return new Promise<DepositResult>((resolve, reject) => {
     let settled = false;
     let verificationPromise: Promise<unknown> | null = null;
+    let completedReference: string | null = null;
 
     const finish = (handler: () => void) => {
       if (settled) return;
@@ -468,7 +461,6 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
     };
 
     const handlePaymentConfirmed = (reference = merchantReference) => {
-      closeKoraModal();
       params.onPaymentConfirmed?.();
       void ensureVerified(reference)
         .then(() => finish(() => resolve({ status: 'completed' })))
@@ -480,10 +472,14 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
     };
 
     const handleCloseMaybePaid = () => {
-      closeKoraModal();
       void (async () => {
         await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
         if (settled) return;
+
+        if (completedReference) {
+          handlePaymentConfirmed(completedReference);
+          return;
+        }
 
         try {
           await verifyKoraDepositWithRetry(
@@ -520,8 +516,7 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
         wallet_amount_ngn: String(params.walletAmount),
       },
       onSuccess: (data) => {
-        const reference = data?.reference?.trim() || merchantReference;
-        handlePaymentConfirmed(reference);
+        completedReference = data?.reference?.trim() || merchantReference;
       },
       onFailed: (data) => {
         const reference = data?.reference?.trim() || merchantReference;
@@ -534,14 +529,8 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
           .catch(() => finish(() => resolve({ status: 'pending' })));
       },
       onPending: () => {
-        closeKoraModal();
-        params.onPaymentChecking?.();
-        void verifyKoraDepositWithRetry(merchantReference, params.paymentMethod, QUICK_VERIFY_DELAYS_MS)
-          .then(() => {
-            clearPendingDeposit();
-            finish(() => resolve({ status: 'completed' }));
-          })
-          .catch(() => finish(() => resolve({ status: 'pending' })));
+        // Let Kora keep showing its transfer/waiting UI. We verify after the
+        // modal closes so users can see the provider's own success screen first.
       },
       onClose: () => {
         if (settled) return;
