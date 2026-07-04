@@ -6,6 +6,7 @@ export const SHOP_CATEGORIES = [
   { slug: 'facebook', label: 'FACEBOOK' },
   { slug: 'x-twitter', label: 'TWITTER' },
   { slug: 'tiktok', label: 'TIKTOK' },
+  { slug: 'snapchat', label: 'SNAPCHAT' },
   { slug: 'rdp', label: 'RDP' },
 ] as const;
 
@@ -16,6 +17,7 @@ export const SHOP_CATEGORY_PLATFORMS: Partial<Record<ShopCategorySlug, PlatformT
   facebook: 'facebook',
   'x-twitter': 'x',
   tiktok: 'tiktok',
+  snapchat: 'snapchat',
 };
 
 export const SHOP_CATEGORY_ICON_PATHS: Partial<Record<ShopCategorySlug, string>> = {

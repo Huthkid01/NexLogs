@@ -10,7 +10,6 @@ import {
   parseRecipientEmails,
   resolveMarketingRecipients,
 } from '../_shared/marketing-recipients.ts';
-import { prependEmailLogoIfMissing } from '../_shared/email-branding.ts';
 import {
   applyEmailTracking,
   buildMarketingTrackUrl,
@@ -183,7 +182,7 @@ Deno.serve(async (req) => {
       '',
     );
     const appName = Deno.env.get('APP_NAME') || 'Nexlogs';
-    const htmlTemplate = prependEmailLogoIfMissing(validated.sanitizedHtml, appUrl, appName);
+    const htmlTemplate = validated.sanitizedHtml;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 

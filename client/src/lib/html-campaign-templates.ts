@@ -1,5 +1,4 @@
 import { APP_NAME, APP_URL } from '@/constants';
-import { buildEmailHeroRow, buildEmailLogoHeader } from '@/lib/email-branding';
 
 export type HtmlCampaignTemplateCategory = 'general' | 'marketing' | 'account';
 
@@ -24,32 +23,23 @@ export const HTML_CAMPAIGN_TEMPLATE_CATEGORIES: {
 const appUrl = APP_URL.replace(/\/$/, '');
 const siteHost = appUrl.replace(/^https?:\/\//, '');
 const telegramSupportUrl = 'https://t.me/nexlogs';
-const emailLogoHeader = buildEmailLogoHeader(appUrl, APP_NAME);
-const emailLogoHeaderCompact = buildEmailLogoHeader(appUrl, APP_NAME, {
-  padding: '24px 32px 8px',
-});
 
-function buildMarketingEmailHtml(options: {
+function buildTextLink(url: string, label: string) {
+  return `<p style="margin:20px 0 0;font-size:15px;line-height:1.7;">
+    <a href="${url}" style="color:#0f172a;text-decoration:underline;">${label}</a>
+  </p>`;
+}
+
+function buildPlainEmailHtml(options: {
   title: string;
   preheader: string;
   bodyHtml: string;
-  ctaLabel?: string;
-  ctaUrl?: string;
-  heroTitle?: string;
-  compactLogo?: boolean;
+  linkUrl?: string;
+  linkLabel?: string;
 }) {
-  const heroTitle = options.heroTitle ?? options.title;
-  const logo = options.compactLogo ? emailLogoHeaderCompact : emailLogoHeader;
-  const heroPadding = options.compactLogo ? '8px 32px 32px' : '32px';
-  const ctaBlock =
-    options.ctaLabel && options.ctaUrl
-      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 8px;">
-          <tr>
-            <td style="border-radius:8px;background:#f26522;">
-              <a href="${options.ctaUrl}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">${options.ctaLabel}</a>
-            </td>
-          </tr>
-        </table>`
+  const textLink =
+    options.linkUrl && options.linkLabel
+      ? buildTextLink(options.linkUrl, options.linkLabel)
       : '';
 
   return `<!DOCTYPE html>
@@ -59,28 +49,36 @@ function buildMarketingEmailHtml(options: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${options.title}</title>
 </head>
-<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111827;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${options.preheader}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.08);">
-          ${logo}
-          ${buildEmailHeroRow(heroTitle)}
+      <td align="center" style="padding:24px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;">
           <tr>
-            <td style="padding:${heroPadding};">
-              ${options.bodyHtml}
-              ${ctaBlock}
+            <td style="padding:0 0 14px;font-size:13px;line-height:1.6;color:#6b7280;">
+              <a href="${appUrl}" style="color:#111827;font-weight:700;text-decoration:none;">${APP_NAME}</a>
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
-              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                Questions? <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
+            <td style="padding:0 0 18px;">
+              <h1 style="margin:0;font-size:24px;line-height:1.35;font-weight:700;color:#111827;">${options.title}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0;font-size:16px;line-height:1.7;color:#374151;">
+              ${options.bodyHtml}
+              ${textLink}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 0 0;border-top:1px solid #e5e7eb;">
+              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6b7280;">
+                Questions? Reply to this email or contact
+                <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a>.
               </p>
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.<br/>
-                <a href="${appUrl}" style="color:#f26522;text-decoration:none;">${siteHost}</a>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">
+                © ${new Date().getFullYear()} ${APP_NAME}. <a href="${appUrl}" style="color:#111827;text-decoration:underline;">${siteHost}</a>
               </p>
             </td>
           </tr>
@@ -92,6 +90,24 @@ function buildMarketingEmailHtml(options: {
 </html>`;
 }
 
+function buildMarketingEmailHtml(options: {
+  title: string;
+  preheader: string;
+  bodyHtml: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  heroTitle?: string;
+  compactLogo?: boolean;
+}) {
+  return buildPlainEmailHtml({
+    title: options.heroTitle ?? options.title,
+    preheader: options.preheader,
+    bodyHtml: options.bodyHtml,
+    linkUrl: options.ctaUrl,
+    linkLabel: options.ctaLabel,
+  });
+}
+
 function buildInboxFriendlyEmailHtml(options: {
   title: string;
   preheader: string;
@@ -99,48 +115,7 @@ function buildInboxFriendlyEmailHtml(options: {
   linkUrl?: string;
   linkLabel?: string;
 }) {
-  const textLink =
-    options.linkUrl && options.linkLabel
-      ? `<p style="margin:20px 0 0;font-size:15px;line-height:1.7;"><a href="${options.linkUrl}" style="color:#f26522;text-decoration:underline;">${options.linkLabel}</a></p>`
-      : '';
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${options.title}</title>
-</head>
-<body style="margin:0;padding:24px 16px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${options.preheader}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;">
-          ${emailLogoHeaderCompact}
-          <tr>
-            <td style="padding:8px 32px 32px;">
-              ${options.bodyHtml}
-              ${textLink}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:16px 32px 8px;border-top:1px solid #e5e7eb;">
-              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                Questions? Reply to this email or contact
-                <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
-              </p>
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                © ${new Date().getFullYear()} ${APP_NAME}. <a href="${appUrl}" style="color:#f26522;text-decoration:none;">${siteHost}</a>
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  return buildPlainEmailHtml(options);
 }
 
 export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
@@ -186,18 +161,12 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 We refreshed our marketplace with new products and updated listings. Whether you are buying for the first time or checking back in, there is plenty to explore.
               </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
-                <tr>
-                  <td style="padding:18px 20px;">
-                    <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#111827;">This week on ${APP_NAME}</p>
-                    <p style="margin:0;font-size:14px;line-height:1.7;color:#4b5563;">
-                      • New product categories added<br/>
-                      • Updated pricing on selected items<br/>
-                      • Faster checkout from your wallet balance
-                    </p>
-                  </td>
-                </tr>
-              </table>`,
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;"><strong>This week on ${APP_NAME}</strong></p>
+              <ul style="margin:0;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>New product categories added</li>
+                <li>Updated pricing on selected items</li>
+                <li>Faster checkout from your wallet balance</li>
+              </ul>`,
       ctaLabel: 'Browse marketplace',
       ctaUrl: `${appUrl}/marketplace`,
     }),
@@ -244,15 +213,9 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 We wanted to share a product worth a closer look. Replace the placeholder below with your product name, price, and a short description before sending.
               </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border:1px solid #fed7aa;border-radius:12px;background:#fff7f2;">
-                <tr>
-                  <td style="padding:20px;">
-                    <p style="margin:0 0 6px;font-size:18px;font-weight:700;color:#111827;">[Product name]</p>
-                    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#6b7280;">[One sentence about why this product is useful]</p>
-                    <p style="margin:0;font-size:16px;font-weight:700;color:#f26522;">[Price]</p>
-                  </td>
-                </tr>
-              </table>`,
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;color:#111827;"><strong>[Product name]</strong></p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;">[One sentence about why this product is useful]</p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#374151;"><strong>[Price]</strong></p>`,
       ctaLabel: 'View product',
       ctaUrl: `${appUrl}/marketplace`,
     }),
@@ -272,15 +235,9 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 For a limited period, selected products on ${APP_NAME} are available at reduced prices. Update the details below with your actual offer before sending.
               </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#111827;border-radius:12px;">
-                <tr>
-                  <td style="padding:24px;text-align:center;">
-                    <p style="margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#fbbf24;">This week only</p>
-                    <p style="margin:0 0 8px;font-size:28px;font-weight:700;color:#ffffff;">[Your offer headline]</p>
-                    <p style="margin:0;font-size:14px;line-height:1.6;color:#d1d5db;">[Short offer details — e.g. selected marketplace items]</p>
-                  </td>
-                </tr>
-              </table>`,
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>This week only</strong></p>
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;color:#111827;"><strong>[Your offer headline]</strong></p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#374151;">[Short offer details — e.g. selected marketplace items]</p>`,
       ctaLabel: 'Shop the offer',
       ctaUrl: `${appUrl}/marketplace`,
     }),
@@ -303,31 +260,17 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">
                 Use it for account verification on popular platforms when you need a fresh number in a specific country.
               </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#fff7f2;border:1px solid #fed7aa;border-radius:12px;">
-                <tr>
-                  <td style="padding:22px 24px;">
-                    <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#c44d10;">Works with services like</p>
-                    <p style="margin:0;font-size:15px;line-height:1.9;color:#374151;">
-                      WhatsApp &bull; Facebook &bull; Instagram &bull; Google &bull; Telegram<br/>
-                      TikTok &bull; Twitter &bull; Snapchat &bull; Discord &bull; Microsoft &bull; Apple<br/>
-                      Naver &bull; Tinder &bull; eBay &bull; Viber &bull; and many more
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
-                <tr>
-                  <td style="padding:20px 22px;">
-                    <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#111827;">How it works</p>
-                    <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.9;color:#374151;">
-                      <li>Sign in and open <strong>Buy Numbers</strong> from the menu</li>
-                      <li>Choose your <strong>country</strong> and <strong>service</strong> (e.g. WhatsApp)</li>
-                      <li>Confirm and pay from your <strong>wallet balance</strong></li>
-                      <li>Tap <strong>Get SMS Code</strong> — your verification code appears on screen</li>
-                    </ol>
-                  </td>
-                </tr>
-              </table>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Works with services like</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.8;color:#374151;">
+                WhatsApp, Facebook, Instagram, Google, Telegram, TikTok, Twitter, Snapchat, Discord, Microsoft, Apple, Naver, Tinder, eBay, Viber, and many more.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>How it works</strong></p>
+              <ol style="margin:0;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Sign in and open <strong>Buy Numbers</strong> from the menu</li>
+                <li>Choose your <strong>country</strong> and <strong>service</strong> (for example WhatsApp)</li>
+                <li>Confirm and pay from your <strong>wallet balance</strong></li>
+                <li>Tap <strong>Get SMS Code</strong> when the message arrives</li>
+              </ol>
               <p style="margin:16px 0 0;font-size:14px;line-height:1.7;color:#6b7280;">
                 Need wallet funds first? Use <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a> in your account menu. Numbers are for legitimate verification only.
               </p>`,
@@ -411,83 +354,37 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     category: 'account',
     description: 'Onboarding email for new registered users.',
     defaultSubject: `Welcome to ${APP_NAME}`,
-    html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to ${APP_NAME}</title>
-</head>
-<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
-    Welcome to ${APP_NAME}. Sign in to browse the marketplace and manage your orders.
-  </div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-          ${emailLogoHeader}
-          ${buildEmailHeroRow('Welcome message')}
-          <tr>
-            <td style="padding:32px;">
+    html: buildPlainEmailHtml({
+      title: 'Welcome message',
+      preheader: `Welcome to ${APP_NAME}. Sign in to browse the marketplace and manage your orders.`,
+      bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 Thank you for creating an account on <strong>${APP_NAME}</strong>. Your profile is set up and you can sign in at any time.
               </p>
               <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#374151;">A few things you can do from your account:</p>
-              <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+              <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
                 <li>Browse products on the marketplace</li>
                 <li>Add funds to your account balance</li>
                 <li>View your order history</li>
               </ul>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background:#fff7f2;border:1px solid #fed7aa;border-radius:12px;">
-                <tr>
-                  <td style="padding:20px;">
-                    <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">How to add funds</p>
-                    <ol style="margin:0 0 20px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
-                      <li>Sign in to your account at ${siteHost}</li>
-                      <li>Open <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a> from your account menu</li>
-                      <li>Enter an amount and follow the steps to complete payment</li>
-                    </ol>
-                    <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">How to purchase a product</p>
-                    <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
-                      <li>Visit the <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">marketplace</a> and choose a product</li>
-                      <li>Open the product page and select the option you need</li>
-                      <li>Confirm your order — payment is taken from your account balance</li>
-                      <li>Find your order details under <a href="${appUrl}/purchases" style="color:#f26522;text-decoration:none;">My Purchases</a></li>
-                    </ol>
-                  </td>
-                </tr>
-              </table>
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-                <tr>
-                  <td style="border-radius:8px;background:#f26522;">
-                    <a href="${appUrl}/marketplace" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Go to marketplace</a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">
-                Questions? Reply to this email and our team will help.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
-              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                You received this because you registered at ${siteHost}.
-              </p>
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.<br/>
-                <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">${siteHost}</a>
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>How to add funds</strong></p>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Sign in to your account at ${siteHost}</li>
+                <li>Open <a href="${appUrl}/add-funds" style="color:#111827;text-decoration:underline;">Add Funds</a> from your account menu</li>
+                <li>Enter an amount and follow the steps to complete payment</li>
+              </ol>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>How to purchase a product</strong></p>
+              <ol style="margin:0;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Visit the <a href="${appUrl}/marketplace" style="color:#111827;text-decoration:underline;">marketplace</a> and choose a product</li>
+                <li>Open the product page and select the option you need</li>
+                <li>Confirm your order — payment is taken from your account balance</li>
+                <li>Find your order details under <a href="${appUrl}/purchases" style="color:#111827;text-decoration:underline;">My Purchases</a></li>
+              </ol>
+              <p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:#6b7280;">You received this because you registered at ${siteHost}.</p>`,
+      linkLabel: 'Go to marketplace',
+      linkUrl: `${appUrl}/marketplace`,
+    }),
   },
   {
     id: 'wallet-manual-credit-notice',
@@ -507,16 +404,8 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                 Your wallet balance on <strong>${APP_NAME}</strong> has been updated. We are sorry your payment
                 did not show in your account right away — that was our mistake, not yours.
               </p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
-                <tr>
-                  <td style="padding:18px 20px;">
-                    <p style="margin:0 0 6px;font-size:13px;color:#166534;">Amount added</p>
-                    <p style="margin:0 0 14px;font-size:28px;font-weight:700;color:#15803d;">₦7,000</p>
-                    <p style="margin:0 0 6px;font-size:13px;color:#166534;">Status</p>
-                    <p style="margin:0;font-size:16px;font-weight:700;color:#15803d;">Funds added to your wallet</p>
-                  </td>
-                </tr>
-              </table>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Amount added:</strong> ₦7,000</p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#111827;"><strong>Status:</strong> Funds added to your wallet</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 We have also fixed the issue that caused your payment not to appear. You can now add funds
                 through your account without running into the same problem.
@@ -538,115 +427,32 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     description:
       'Notify users that maintenance is complete. Includes add-funds, marketplace links, and Telegram support.',
     defaultSubject: `${APP_NAME} service restored — you can add funds and shop again`,
-    html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${APP_NAME} · service restored</title>
-</head>
-<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
-    ${APP_NAME} service restored. You can now add funds, purchase, and reach support on Telegram.
-  </div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-          ${emailLogoHeader}
-          ${buildEmailHeroRow('Service restored')}
-          <tr>
-            <td style="padding:32px;">
+    html: buildPlainEmailHtml({
+      title: 'Service restored',
+      preheader: `${APP_NAME} service restored. You can now add funds, purchase, and reach support on Telegram.`,
+      bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 The scheduled work on <strong>${APP_NAME}</strong> has been completed. All systems are now operational.
               </p>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;">
-                <tr>
-                  <td style="padding:20px;">
-                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1f2937;">What you can do now</p>
-                    <ul style="margin:0 0 8px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
-                      <li><strong>Add funds</strong> to your wallet in Naira (NGN)</li>
-                      <li><strong>Browse the marketplace</strong> and place orders</li>
-                      <li>Access your <strong>order history</strong> and purchase details</li>
-                    </ul>
-                    <p style="margin:0;font-size:14px;color:#374151;">
-                      Everything is back to normal. Thank you for your patience.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
-                <tr>
-                  <td style="border-radius:8px;background:#f26522;padding-right:8px;">
-                    <a href="${appUrl}/add-funds" style="display:inline-block;padding:14px 24px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Add funds</a>
-                  </td>
-                  <td style="border-radius:8px;background:#1f2937;">
-                    <a href="${appUrl}/marketplace" style="display:inline-block;padding:14px 24px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Marketplace</a>
-                  </td>
-                </tr>
-              </table>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
-                <tr>
-                  <td style="padding:20px;">
-                    <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#1f2937;">Support</p>
-                    <p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#374151;">
-                      If you experienced any issues during the maintenance window or need assistance, contact our support team:
-                    </p>
-                    <ul style="margin:0 0 4px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
-                      <li>
-                        <strong>Telegram:</strong>
-                        <a href="${telegramSupportUrl}" style="color:#f26522;text-decoration:none;">@nexlogs</a>
-                      </li>
-                      <li>
-                        <strong>Support page:</strong>
-                        <a href="${appUrl}/support" style="color:#f26522;text-decoration:none;">${siteHost}/support</a>
-                      </li>
-                      <li>
-                        <strong>Email:</strong>
-                        <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
-                      </li>
-                    </ul>
-                    <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">
-                      We usually respond within a few hours on Telegram and email.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#1f2937;">
-                Thank you for being part of ${APP_NAME}.
-              </p>
-              <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">
-                If you have any feedback, feel free to reply to this email.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
-              <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                This notification is sent to registered users of ${siteHost}.
-              </p>
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.<br/>
-                <a href="${appUrl}" style="color:#f26522;text-decoration:none;">${siteHost}</a>
-              </p>
-            </td>
-          </tr>
-        </table>
-        <p style="margin:16px auto 0;font-size:12px;color:#9ca3af;text-align:center;max-width:560px;">
-          All systems operational. If you notice anything unusual, message us on
-          <a href="${telegramSupportUrl}" style="color:#f26522;text-decoration:none;">Telegram</a>
-          or email support.
-        </p>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>What you can do now</strong></p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li><strong>Add funds</strong> to your wallet in Naira (NGN)</li>
+                <li><strong>Browse the marketplace</strong> and place orders</li>
+                <li>Access your <strong>order history</strong> and purchase details</li>
+              </ul>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">Everything is back to normal. Thank you for your patience.</p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Support</strong></p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li><strong>Telegram:</strong> <a href="${telegramSupportUrl}" style="color:#111827;text-decoration:underline;">@nexlogs</a></li>
+                <li><strong>Support page:</strong> <a href="${appUrl}/support" style="color:#111827;text-decoration:underline;">${siteHost}/support</a></li>
+                <li><strong>Email:</strong> <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a></li>
+              </ul>
+              <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#111827;">Thank you for being part of ${APP_NAME}.</p>
+              <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">This notification is sent to registered users of ${siteHost}. If you have feedback, reply to this email.</p>`,
+      linkLabel: 'Open marketplace',
+      linkUrl: `${appUrl}/marketplace`,
+    }),
   },
   {
     id: 'website-navigation-guide',
@@ -665,79 +471,36 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                 <a href="${appUrl}/login" style="color:#f26522;text-decoration:none;">${siteHost}/login</a>
                 to access everything below.
               </p>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
-                <tr>
-                  <td style="padding:18px 20px;">
-                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">1. Main menu (top left ☰)</p>
-                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
-                      Tap the menu icon to open the side panel. From there you can go to:<br/>
-                      • <strong>Marketplace</strong> — browse all products<br/>
-                      • <strong>Purchase RDP</strong> — RDP orders<br/>
-                      • <strong>My Purchases</strong> — your order history<br/>
-                      • <strong>Buy Numbers</strong> — SMS verification (WhatsApp, Facebook, and more)<br/>
-                      • <strong>Need help?</strong> — support page
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
-                <tr>
-                  <td style="padding:18px 20px;">
-                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">2. Top navigation links</p>
-                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
-                      Use the header links for quick access:<br/>
-                      • <a href="${appUrl}/" style="color:#f26522;text-decoration:none;">Home</a> — landing page<br/>
-                      • <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">Marketplace</a> — shop catalog<br/>
-                      • <a href="${appUrl}/about" style="color:#f26522;text-decoration:none;">About</a> — about ${APP_NAME}<br/>
-                      • <a href="${appUrl}/support" style="color:#f26522;text-decoration:none;">Support</a> — contact &amp; help
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
-                <tr>
-                  <td style="padding:18px 20px;">
-                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">3. Your account menu (top right)</p>
-                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
-                      Click your profile icon to see your wallet balance, open
-                      <a href="${appUrl}/profile" style="color:#f26522;text-decoration:none;">Profile</a>,
-                      go to <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a>,
-                      or sign out. Your balance is shown here before you buy.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#fff7f2;border:1px solid #fed7aa;border-radius:12px;">
-                <tr>
-                  <td style="padding:18px 20px;">
-                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#1f2937;">4. Buy a product (quick steps)</p>
-                    <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.9;color:#374151;">
-                      <li>Add money via <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a></li>
-                      <li>Open the <a href="${appUrl}/marketplace" style="color:#f26522;text-decoration:none;">Marketplace</a> and pick a product</li>
-                      <li>Confirm your order — payment comes from your wallet balance</li>
-                      <li>Check delivery under <a href="${appUrl}/purchases" style="color:#f26522;text-decoration:none;">My Purchases</a></li>
-                    </ol>
-                  </td>
-                </tr>
-              </table>
-
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
-                <tr>
-                  <td style="padding:18px 20px;">
-                    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">5. Help &amp; footer links</p>
-                    <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
-                      • <a href="${appUrl}/faq" style="color:#f26522;text-decoration:none;">FAQ</a> — common questions<br/>
-                      • <a href="${appUrl}/support" style="color:#f26522;text-decoration:none;">Support</a> — open a ticket or find Telegram<br/>
-                      • Footer links for Privacy &amp; Terms at the bottom of every page<br/>
-                      • Email us anytime at <a href="mailto:support@nexlogs.store" style="color:#f26522;text-decoration:none;">support@nexlogs.store</a>
-                    </p>
-                  </td>
-                </tr>
-              </table>`,
+              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">1. Main menu (top left ☰)</p>
+              <p style="margin:0 0 16px;font-size:14px;line-height:1.8;color:#374151;">
+                Tap the menu icon to open the side panel. From there you can go to Marketplace, Purchase RDP, My Purchases, Buy Numbers, and Need help?.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">2. Top navigation links</p>
+              <p style="margin:0 0 16px;font-size:14px;line-height:1.8;color:#374151;">
+                Use the header links for quick access to <a href="${appUrl}/" style="color:#111827;text-decoration:underline;">Home</a>,
+                <a href="${appUrl}/marketplace" style="color:#111827;text-decoration:underline;">Marketplace</a>,
+                <a href="${appUrl}/about" style="color:#111827;text-decoration:underline;">About</a>, and
+                <a href="${appUrl}/support" style="color:#111827;text-decoration:underline;">Support</a>.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">3. Your account menu (top right)</p>
+              <p style="margin:0 0 16px;font-size:14px;line-height:1.8;color:#374151;">
+                Click your profile icon to see your wallet balance, open
+                <a href="${appUrl}/profile" style="color:#111827;text-decoration:underline;">Profile</a>,
+                go to <a href="${appUrl}/add-funds" style="color:#111827;text-decoration:underline;">Add Funds</a>, or sign out.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">4. Buy a product (quick steps)</p>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:14px;line-height:1.9;color:#374151;">
+                <li>Add money via <a href="${appUrl}/add-funds" style="color:#111827;text-decoration:underline;">Add Funds</a></li>
+                <li>Open the <a href="${appUrl}/marketplace" style="color:#111827;text-decoration:underline;">Marketplace</a> and pick a product</li>
+                <li>Confirm your order — payment comes from your wallet balance</li>
+                <li>Check delivery under <a href="${appUrl}/purchases" style="color:#111827;text-decoration:underline;">My Purchases</a></li>
+              </ol>
+              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">5. Help &amp; footer links</p>
+              <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
+                Visit <a href="${appUrl}/faq" style="color:#111827;text-decoration:underline;">FAQ</a> for common questions,
+                <a href="${appUrl}/support" style="color:#111827;text-decoration:underline;">Support</a> for help, or email
+                <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a>.
+              </p>`,
       ctaLabel: 'Open marketplace',
       ctaUrl: `${appUrl}/marketplace`,
     }),
@@ -747,31 +510,13 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     name: 'Blank HTML',
     category: 'general',
     description: 'Start from scratch with logo and greeting only.',
-    html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Email</title>
-</head>
-<body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
-          ${emailLogoHeaderCompact}
-          <tr>
-            <td style="padding:8px 32px 32px;">
+    html: buildPlainEmailHtml({
+      title: 'Email',
+      preheader: `A plain email from ${APP_NAME}.`,
+      bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Write your message here.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Write your message here.</p>`,
+    }),
   },
   {
     id: 'announcement',

@@ -148,7 +148,7 @@ export function runHtmlCampaignDeliverabilityChecks(options: {
       level: 'warn',
       title: 'May land in Gmail Promotions',
       detail:
-        'Orange hero banners and multiple buttons look like marketing mail. Use “Buy Numbers launch (inbox-friendly)” for a plain account-style email that is more likely to reach Primary.',
+        'Heavy color blocks, banners, and multiple buttons look like marketing mail. Keep the layout plain and text-first for a better chance of reaching Primary.',
     });
   } else if (ctaButtonCount === 1) {
     checks.push({

@@ -1,7 +1,4 @@
 import { buildProductMarketplaceUrl } from './product-links.ts';
-import { buildEmailHeroRow, buildEmailLogoHeader } from '../_shared/email-branding.ts';
-
-const BRAND = '#f26522';
 
 function escapeHtml(value: string) {
   return value
@@ -24,17 +21,11 @@ function emailLayout(options: {
 }) {
   const { appName, appUrl, preheader, title, bodyHtml, ctaLabel, ctaUrl, unsubscribeUrl, isAccountHolder = true } =
     options;
-  const logoHeader = buildEmailLogoHeader(appUrl, appName);
-  const heroRow = buildEmailHeroRow(title);
   const ctaBlock =
     ctaLabel && ctaUrl
-      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 8px;">
-          <tr>
-            <td style="border-radius:8px;background:${BRAND};">
-              <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">${escapeHtml(ctaLabel)}</a>
-            </td>
-          </tr>
-        </table>`
+      ? `<p style="margin:20px 0 0;font-size:15px;line-height:1.7;">
+          <a href="${escapeHtml(ctaUrl)}" style="color:#111827;font-weight:700;text-decoration:underline;">${escapeHtml(ctaLabel)}</a>
+        </p>`
       : '';
 
   return `<!DOCTYPE html>
@@ -44,35 +35,43 @@ function emailLayout(options: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(title)}</title>
 </head>
-<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111827;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.08);">
-          ${logoHeader}
-          ${heroRow}
+      <td align="center" style="padding:24px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;">
           <tr>
-            <td style="padding:32px;">
+            <td style="padding:0 0 14px;font-size:13px;line-height:1.6;color:#6b7280;">
+              <a href="${escapeHtml(appUrl)}" style="color:#111827;font-weight:700;text-decoration:none;">${escapeHtml(appName)}</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 0 18px;">
+              <h1 style="margin:0;font-size:24px;line-height:1.35;font-weight:700;color:#111827;">${escapeHtml(title)}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0;">
               ${bodyHtml}
               ${ctaBlock}
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
-                Questions? <a href="mailto:support@nexlogs.store" style="color:${BRAND};text-decoration:none;">support@nexlogs.store</a><br/>
-                © ${new Date().getFullYear()} ${escapeHtml(appName)}. All rights reserved.
+            <td style="padding:24px 0 0;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">
+                Questions? <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a><br/>
+                © ${new Date().getFullYear()} ${escapeHtml(appName)}.
               </p>
               ${
                 unsubscribeUrl
-                  ? `<p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+                  ? `<p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#6b7280;">
                 ${
                   isAccountHolder
                     ? `You received this because you have an account on ${escapeHtml(appName)}.`
                     : `You received this marketing email from ${escapeHtml(appName)}.`
                 }<br/>
-                <a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe from promotional emails</a>
+                <a href="${escapeHtml(unsubscribeUrl)}" style="color:#111827;text-decoration:underline;">Unsubscribe from promotional emails</a>
               </p>`
                   : ''
               }
