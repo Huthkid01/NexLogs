@@ -382,8 +382,11 @@ function normalizeSyncRemoteStatus(
 function orderHasDeliveredCode(
   orderRow: Record<string, unknown>,
   remoteCode: string | null | undefined,
+  remoteMessage?: string | null | undefined,
 ) {
   return isValidSmsVerificationCode(orderRow.verification_code)
+    || isValidSmsVerificationCode(normalizeSmsVerificationCode(orderRow.verification_message))
+    || isValidSmsVerificationCode(normalizeSmsVerificationCode(remoteMessage))
     || isValidSmsVerificationCode(remoteCode);
 }
 
@@ -424,10 +427,11 @@ function resolveRefundWithoutCodeTarget(
   remote: {
     status: 'pending' | 'completed' | 'expired' | 'cancelled';
     code: string | null;
+    message?: string | null;
     providerRefunded?: boolean;
   },
 ): 'expired' | 'cancelled' | null {
-  if (orderHasDeliveredCode(orderRow, remote.code)) return null;
+  if (orderHasDeliveredCode(orderRow, remote.code, remote.message)) return null;
   if (computeRefundableNgn(orderRow) <= 0) return null;
   if (remote.providerRefunded) return 'cancelled';
   if (isRecentSmsOrder(orderRow)) return null;

@@ -463,13 +463,13 @@ export async function checkSmsPoolOrder(orderId: string): Promise<SmsPoolCheckRe
   const fullSms = String(payload.full_sms ?? payload.message ?? '').trim();
   const sms = String(payload.sms ?? '').trim();
   const timeLeft = Number(payload.time_left ?? payload.timeleft ?? 0);
-  const code = resolveSmsPoolCheckCode(statusCode, payload);
+  const code = resolveSmsPoolCheckCode(payload);
 
   let status: SmsPoolCheckResult['status'] = 'pending';
-  if (statusCode === 6 || statusCode === 5) {
-    status = 'cancelled';
-  } else if (statusCode === 3 && code) {
+  if (code) {
     status = 'completed';
+  } else if (statusCode === 6 || statusCode === 5) {
+    status = 'cancelled';
   } else if (statusCode === 2 || statusCode === 4) {
     status = 'expired';
   }
@@ -567,9 +567,7 @@ export async function fetchActiveSmsPoolOrders(): Promise<SmsPoolActiveOrder[]> 
       const statusCode = Number(record.status ?? 0);
       const providerRefunded = statusCode === 6;
       const mappedStatus = mapSmsPoolStatus(record.status);
-      const code = mappedStatus === 'completed' || statusCode === 3
-        ? normalizeSmsVerificationCode(sms, fullSms || sms)
-        : null;
+      const code = normalizeSmsVerificationCode(sms, fullSms || undefined);
       const status = code ? 'completed' : mappedStatus === 'completed' ? 'pending' : mappedStatus;
       const timeLeft = Number(record.time_left ?? record.timeleft ?? 0);
       const expiration = Number(record.expiration ?? record.expiry ?? 0);
@@ -615,10 +613,7 @@ export async function fetchSmsPoolOrderHistory(): Promise<SmsPoolHistoryOrder[]>
 
       const fullSms = String(record.full_sms ?? record.full_code ?? record.message ?? '').trim();
       const sms = String(record.sms ?? '').trim();
-      const mappedStatus = mapSmsPoolStatus(record.status);
-      const code = mappedStatus === 'completed' || Number(record.status ?? 0) === 3
-        ? normalizeSmsVerificationCode(sms, fullSms || sms)
-        : null;
+      const code = normalizeSmsVerificationCode(sms, fullSms || undefined);
       const timestamp = String(record.timestamp ?? record.date ?? record.created_at ?? '').trim();
       const costUsd = Number(record.cost ?? record.price ?? record.amount ?? NaN);
 
@@ -677,15 +672,10 @@ export function normalizeSmsVerificationCode(
   return null;
 }
 
-function resolveSmsPoolCheckCode(
-  statusCode: number,
-  payload: Record<string, unknown>,
-): string | null {
-  if (statusCode !== 3) return null;
-
+function resolveSmsPoolCheckCode(payload: Record<string, unknown>): string | null {
   const sms = String(payload.sms ?? '').trim();
   const fullSms = String(payload.full_sms ?? payload.message ?? '').trim();
-  return normalizeSmsVerificationCode(sms, fullSms || sms);
+  return normalizeSmsVerificationCode(sms, fullSms || undefined);
 }
 
 const DEFAULT_SMS_USD_NGN_RATE = 1500;
