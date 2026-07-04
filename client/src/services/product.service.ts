@@ -21,6 +21,7 @@ export const productService = {
       .from('products')
       .select('*, category:categories(*), product_images(*)', { count: 'exact' })
       .eq('is_active', true)
+      .gt('stock', 0)
       .not('slug', 'like', '%-rdp-%');
 
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,niche.ilike.%${search}%`);
@@ -61,6 +62,7 @@ export const productService = {
       .from('products')
       .select('*, category:categories(*), product_images(*)')
       .eq('is_active', true)
+      .gt('stock', 0)
       .eq('featured', true)
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true })
@@ -75,6 +77,7 @@ export const productService = {
       .select('*, category:categories(*), product_images(*), reviews(*, profile:profiles(full_name, avatar_url))')
       .eq('slug', slug)
       .eq('is_active', true)
+      .gt('stock', 0)
       .single();
     if (error) return null;
     return data as Product;
@@ -96,6 +99,7 @@ export const productService = {
       .select('*, category:categories(*), product_images(*)')
       .eq('category_id', categoryId)
       .eq('is_active', true)
+      .gt('stock', 0)
       .neq('id', productId)
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true })
@@ -120,6 +124,7 @@ export const productService = {
       .select('id, slug, title, price, is_active, description')
       .like('slug', '%-rdp-%')
       .eq('is_active', true)
+      .gt('stock', 0)
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true });
     if (error) throw error;
@@ -134,7 +139,8 @@ export const productService = {
   },
 
   async update(id: string, updates: Partial<Product>) {
-    const { sort_order: _ignored, ...safeUpdates } = updates;
+    const safeUpdates = { ...updates };
+    delete safeUpdates.sort_order;
     const { data, error } = await supabase.from('products').update(safeUpdates as never).eq('id', id).select().single();
     if (error) throw error;
     return data as Product;
