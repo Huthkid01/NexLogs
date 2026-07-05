@@ -1,12 +1,31 @@
 import { MessageCircle, Send } from 'lucide-react';
+import { useMemo } from 'react';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { getWhatsAppSupportUrl } from '@/lib/social-links';
+import {
+  appendWhatsAppMessage,
+  buildProductRequestMessage,
+  getWhatsAppSupportUrl,
+} from '@/lib/social-links';
 import { getTelegramSupportUrl } from '@/lib/telegram-url';
 
-export function RequestProductsEmptyState() {
+interface RequestProductsEmptyStateProps {
+  categoryLabel?: string;
+  searchQuery?: string;
+}
+
+export function RequestProductsEmptyState({
+  categoryLabel,
+  searchQuery,
+}: RequestProductsEmptyStateProps) {
   const { content } = useSiteContent();
   const telegramUrl = getTelegramSupportUrl(content);
-  const whatsappUrl = getWhatsAppSupportUrl(content);
+  const whatsappBaseUrl = getWhatsAppSupportUrl(content);
+
+  const whatsappUrl = useMemo(() => {
+    if (!whatsappBaseUrl) return null;
+    const message = buildProductRequestMessage({ categoryLabel, searchQuery });
+    return appendWhatsAppMessage(whatsappBaseUrl, message);
+  }, [categoryLabel, searchQuery, whatsappBaseUrl]);
 
   return (
     <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center dark:border-dm-border dark:bg-dm-surface">

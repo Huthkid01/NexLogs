@@ -229,7 +229,10 @@ export default function HomePage() {
                 <AppLoader iconClassName="h-9 w-9" />
               </div>
             ) : !products?.data?.length ? (
-              <RequestProductsEmptyState />
+              <RequestProductsEmptyState
+                categoryLabel={selectedCategory?.label}
+                searchQuery={search}
+              />
             ) : (
               <div>
                 {(products?.data ?? []).map((product) => (

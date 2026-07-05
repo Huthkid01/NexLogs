@@ -20,7 +20,7 @@ export function normalizeWhatsAppUrl(value?: string | null): string | null {
         const phone = url.searchParams.get('phone')?.replace(/\D/g, '');
         return phone ? `https://wa.me/${phone}` : null;
       }
-      return trimmed;
+      return null;
     } catch {
       return null;
     }
@@ -40,7 +40,7 @@ export function getWhatsAppSupportUrl(
 ): string | null {
   const candidates = [
     content.footer.socialLinks.find((link) => link.label.toLowerCase() === 'whatsapp')?.href,
-    ...content.footer.socialLinks.map((link) => link.href),
+    fallback,
   ];
 
   for (const candidate of candidates) {
@@ -48,7 +48,45 @@ export function getWhatsAppSupportUrl(
     if (resolved) return resolved;
   }
 
-  return normalizeWhatsAppUrl(fallback);
+  return null;
+}
+
+function formatCategoryProductName(label?: string) {
+  if (!label) return null;
+  if (label === 'RDP') return 'RDP';
+  if (label === 'TWITTER') return 'Twitter/X';
+  return label.charAt(0) + label.slice(1).toLowerCase();
+}
+
+export function buildProductRequestMessage({
+  categoryLabel,
+  searchQuery,
+}: {
+  categoryLabel?: string;
+  searchQuery?: string;
+}) {
+  const productName = formatCategoryProductName(categoryLabel?.trim());
+  const search = searchQuery?.trim();
+
+  if (productName && search) {
+    return `Hello, I need ${productName} (${search}) — which options do you have available?`;
+  }
+
+  if (productName) {
+    return `Hello, I need ${productName} — which options do you have available?`;
+  }
+
+  if (search) {
+    return `Hello, I'm looking for "${search}" on Nexlogs — what do you have available?`;
+  }
+
+  return 'Hello, I am browsing Nexlogs and need help finding products — what do you have available?';
+}
+
+export function appendWhatsAppMessage(baseUrl: string, message: string) {
+  const url = new URL(baseUrl);
+  url.searchParams.set('text', message);
+  return url.toString();
 }
 
 export function normalizeInstagramUrl(value?: string | null): string | null {
