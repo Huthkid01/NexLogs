@@ -304,3 +304,87 @@ textarea {
 .broadcast-send-progress {
   animation: broadcast-send-progress 1.25s ease-in-out infinite;
 }
+
+/* Sonner toast polish — icons, spacing, motion */
+[data-sonner-toaster] {
+  --width: 380px;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  z-index: 9999;
+}
+
+[data-sonner-toast].nexlogs-toast {
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.08),
+    0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.dark [data-sonner-toast].nexlogs-toast {
+  box-shadow:
+    0 12px 32px rgba(2, 6, 23, 0.45),
+    0 0 0 1px rgba(36, 48, 68, 0.5);
+}
+
+[data-sonner-toast] [data-icon] {
+  margin-top: 1px;
+  width: 18px;
+  height: 18px;
+}
+
+[data-sonner-toast].nexlogs-toast-success [data-icon] {
+  color: #10b981;
+}
+
+[data-sonner-toast].nexlogs-toast-error [data-icon] {
+  color: #ef4444;
+}
+
+[data-sonner-toast].nexlogs-toast-warning [data-icon] {
+  color: #f59e0b;
+}
+
+[data-sonner-toast].nexlogs-toast-info [data-icon],
+[data-sonner-toast].nexlogs-toast-default [data-icon],
+[data-sonner-toast].nexlogs-toast-loading [data-icon] {
+  color: #f26522;
+}
+
+[data-sonner-toast] [data-content] {
+  gap: 2px;
+}
+
+[data-sonner-toast] [data-button] {
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: #f26522;
+  color: #ffffff;
+}
+
+[data-sonner-toast] [data-button]:hover {
+  background: #d94e0f;
+}
+
+[data-sonner-toast] [data-cancel] {
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.dark [data-sonner-toast] [data-cancel] {
+  background: #1a2332;
+  color: #cbd5e1;
+}
+
+@media (max-width: 640px) {
+  [data-sonner-toaster][data-x-position='right'] {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+
+  [data-sonner-toast].nexlogs-toast {
+    max-width: none;
+  }
+}
