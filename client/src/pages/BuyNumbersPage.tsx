@@ -115,6 +115,12 @@ function formatReservedNumber(phone: string) {
   return phone.replace(/^\+/, '');
 }
 
+function getCopyablePhoneNumber(phone: string) {
+  const trimmed = phone.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('+') ? trimmed : `+${trimmed}`;
+}
+
 function formatReservedCostUsd(amount: number) {
   const value = Number(amount);
   if (!Number.isFinite(value)) return '— USD';
@@ -1401,9 +1407,18 @@ export default function BuyNumbersPage() {
                   <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">☎️ Reserved Number</h3>
 
                   <div className="mt-4 space-y-2 text-base text-gray-800 dark:text-gray-200">
-                    <p className="whitespace-nowrap">
-                      <span className="mr-2">📞</span>
-                      <strong>Number:</strong> {formatReservedNumber(activeOrder.phone_number)}
+                    <p className="inline-flex flex-wrap items-center gap-2">
+                      <span className="mr-0">📞</span>
+                      <strong>Number:</strong>
+                      <span className="font-medium">{formatReservedNumber(activeOrder.phone_number)}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyText(getCopyablePhoneNumber(activeOrder.phone_number), 'Number')}
+                        aria-label="Copy number"
+                        className="rounded p-0.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dm-input"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
                     </p>
                     <p className="whitespace-nowrap">
                       <span className="mr-2">💰</span>
