@@ -1,22 +1,25 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   calculateSmsChargeNgn,
   calculateSmsProfitNgn,
-  cancelSmsPoolOrder,
-  checkSmsPoolOrder,
-  fetchActiveSmsPoolOrders,
-  fetchSmsPoolBalance,
-  fetchSmsPoolCountries,
-  fetchSmsPoolOrderHistory,
-  fetchSmsPoolPrice,
-  fetchSmsPoolServices,
-  fetchSuggestedCountries,
-  fetchValidPools,
-  loadSmsPricingConfig,
-  purchaseSmsPoolNumber,
-  resendSmsPoolOrder,
-  resolveCountryServicePools,
   isValidSmsVerificationCode,
+  loadSmsPricingConfig,
+  normalizeSmsVerificationCode,
 } from '../_shared/smspool-client.ts';
+import {
+  banFiveSimOrder,
+  cancelFiveSimOrder,
+  checkFiveSimOrder,
+  ensureFiveSimMaxPrice,
+  fetchFiveSimBalance,
+  fetchFiveSimCountries,
+  fetchFiveSimOrderHistory,
+  fetchFiveSimServicePrices,
+  fetchFiveSimServices,
+  finalizeFiveSimOrderIfCompleted,
+  purchaseFiveSimNumber,
+  resolveCountryServicePools,
+} from '../_shared/fivesim-client.ts';
 import {
   cancelSmsNumberOrderAtomic,
   corsHeaders,
@@ -24,30 +27,28 @@ import {
   getServiceRoleClient,
   jsonResponse,
   mapOrderRow,
-  refundWallet,
   requireAdmin,
   syncSmsOrderFromRemote,
 } from '../_shared/sms-number-handler.ts';
 
-const SMS_PROVIDER = 'smspool';
+const SMS_PROVIDER = 'fivesim';
 
-type SmsPoolAction =
+type FiveSimAction =
   | 'catalog'
-  | 'price'
   | 'order'
   | 'check'
   | 'cancel'
+  | 'ban'
   | 'resend'
   | 'sync_active'
   | 'history'
-  | 'service_countries'
   | 'country_service_pools'
   | 'admin_overview'
   | 'admin_service_prices'
   | 'admin_provider_history';
 
 interface RequestBody {
-  action?: SmsPoolAction;
+  action?: FiveSimAction;
   country?: string;
   service?: string;
   pool?: string;
@@ -55,7 +56,7 @@ interface RequestBody {
 }
 
 function mapPoolPricingRows(
-  rows: Awaited<ReturnType<typeof fetchValidPools>>,
+  rows: Awaited<ReturnType<typeof resolveCountryServicePools>>,
   pricing: Awaited<ReturnType<typeof loadSmsPricingConfig>>,
 ) {
   return rows.map((row) => ({
@@ -65,21 +66,6 @@ function mapPoolPricingRows(
     charged_ngn: calculateSmsChargeNgn(row.costUsd, pricing),
     profit_ngn: calculateSmsProfitNgn(row.costUsd, pricing),
     stock: row.stock,
-  }));
-}
-
-function mapPricingRows(
-  rows: Awaited<ReturnType<typeof fetchSuggestedCountries>>,
-  pricing: Awaited<ReturnType<typeof loadSmsPricingConfig>>,
-) {
-  return rows.map((row) => ({
-    country_id: row.countryId,
-    country_name: row.countryName,
-    country_code: row.countryCode ?? null,
-    pool: row.pool ?? null,
-    cost_usd: row.costUsd,
-    charged_ngn: calculateSmsChargeNgn(row.costUsd, pricing),
-    profit_ngn: calculateSmsProfitNgn(row.costUsd, pricing),
   }));
 }
 
@@ -105,8 +91,8 @@ Deno.serve(async (req) => {
 
     if (action === 'catalog') {
       const [countries, services] = await Promise.all([
-        fetchSmsPoolCountries(),
-        fetchSmsPoolServices(),
+        fetchFiveSimCountries(),
+        fetchFiveSimServices(),
       ]);
 
       return jsonResponse({
@@ -117,28 +103,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (action === 'service_countries') {
-      const { supabase, user } = await getAuthenticatedUser(req);
-      void supabase;
-      void user;
-
-      if (!body.service?.trim()) {
-        return jsonResponse({ ok: false, error: 'Service is required.' }, 400);
-      }
-
-      const rows = await fetchSuggestedCountries(body.service.trim());
-      const serviceName = (await fetchSmsPoolServices())
-        .find((service) => service.id === body.service?.trim())?.name ?? null;
-
-      return jsonResponse({
-        ok: true,
-        service_id: body.service.trim(),
-        service_name: serviceName,
-        pricing,
-        rows: mapPricingRows(rows, pricing),
-      });
-    }
-
     if (action === 'country_service_pools') {
       if (!body.country?.trim() || !body.service?.trim()) {
         return jsonResponse({ ok: false, error: 'Country and service are required.' }, 400);
@@ -146,12 +110,9 @@ Deno.serve(async (req) => {
 
       const country = body.country.trim();
       const service = body.service.trim();
-      const countries = await fetchSmsPoolCountries().catch(() => []);
-      const pools = await resolveCountryServicePools(country, service, countries);
-
-      const serviceName = (await fetchSmsPoolServices())
-        .find((row) => row.id === service)?.name ?? null;
-      const countryName = countries.find((row) => row.id === country)?.name ?? null;
+      const countries = await fetchFiveSimCountries().catch(() => []);
+      const services = await fetchFiveSimServices().catch(() => []);
+      const pools = await resolveCountryServicePools(country, service);
 
       if (!pools.length) {
         return jsonResponse({
@@ -163,46 +124,67 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         country_id: country,
-        country_name: countryName,
+        country_name: countries.find((row) => row.id === country)?.name ?? null,
         service_id: service,
-        service_name: serviceName,
+        service_name: services.find((row) => row.id === service)?.name ?? null,
         pricing,
         rows: mapPoolPricingRows(pools, pricing),
       });
     }
 
-    if (action === 'admin_overview' || action === 'admin_service_prices') {
+    if (action === 'admin_overview') {
       const { supabase, user } = await getAuthenticatedUser(req);
       await requireAdmin(supabase, user.id);
 
-      if (action === 'admin_overview') {
-        const [balanceUsd, services] = await Promise.all([
-          fetchSmsPoolBalance(),
-          fetchSmsPoolServices(),
-        ]);
+      const services = await fetchFiveSimServices();
+      let balanceUsd = 0;
+      let balanceError: string | null = null;
 
-        return jsonResponse({
-          ok: true,
-          balance_usd: balanceUsd,
-          pricing,
-          services,
-        });
+      try {
+        balanceUsd = await fetchFiveSimBalance();
+      } catch (error) {
+        balanceError = error instanceof Error ? error.message : 'Could not load 5sim balance.';
       }
+
+      return jsonResponse({
+        ok: true,
+        balance_usd: balanceUsd,
+        balance_error: balanceError,
+        pricing,
+        services,
+      });
+    }
+
+    if (action === 'admin_service_prices') {
+      const { supabase, user } = await getAuthenticatedUser(req);
+      await requireAdmin(supabase, user.id);
 
       if (!body.service?.trim()) {
         return jsonResponse({ ok: false, error: 'Service is required.' }, 400);
       }
 
-      const rows = await fetchSuggestedCountries(body.service.trim());
-      const serviceName = (await fetchSmsPoolServices())
-        .find((service) => service.id === body.service?.trim())?.name ?? null;
+      const service = body.service.trim();
+      const services = await fetchFiveSimServices().catch(() => []);
+      const serviceName = services.find((row) => row.id === service)?.name ?? null;
+      const priceRows = await fetchFiveSimServicePrices(service);
+
+      const rows = priceRows.map((row) => ({
+        country_id: row.countryId,
+        country_name: row.countryName,
+        country_code: row.countryCode ?? null,
+        pool: row.operator,
+        cost_usd: row.costUsd,
+        charged_ngn: calculateSmsChargeNgn(row.costUsd, pricing),
+        profit_ngn: calculateSmsProfitNgn(row.costUsd, pricing),
+        stock: row.stock,
+      }));
 
       return jsonResponse({
         ok: true,
-        service_id: body.service.trim(),
+        service_id: service,
         service_name: serviceName,
         pricing,
-        rows: mapPricingRows(rows, pricing),
+        rows,
       });
     }
 
@@ -210,33 +192,24 @@ Deno.serve(async (req) => {
       const { supabase, user } = await getAuthenticatedUser(req);
       await requireAdmin(supabase, user.id);
 
-      const rows = await fetchSmsPoolOrderHistory();
+      const rows = await fetchFiveSimOrderHistory();
 
       return jsonResponse({
         ok: true,
-        rows,
+        rows: rows.map((row) => ({
+          orderId: row.orderId,
+          phoneNumber: row.phoneNumber,
+          service: row.service,
+          countryCode: row.countryCode,
+          status: row.status,
+          code: row.code,
+          costUsd: row.costUsd,
+          createdAt: row.createdAt,
+        })),
       });
     }
 
     const { supabase, user } = await getAuthenticatedUser(req);
-
-    if (action === 'price') {
-      if (!body.country?.trim() || !body.service?.trim()) {
-        return jsonResponse({ ok: false, error: 'Country and service are required.' }, 400);
-      }
-
-      const quote = await fetchSmsPoolPrice(body.country.trim(), body.service.trim());
-      const chargedNgn = calculateSmsChargeNgn(quote.costUsd, pricing);
-      const profitNgn = calculateSmsProfitNgn(quote.costUsd, pricing);
-
-      return jsonResponse({
-        ok: true,
-        cost_usd: quote.costUsd,
-        charged_ngn: chargedNgn,
-        profit_ngn: profitNgn,
-        pricing,
-      });
-    }
 
     if (action === 'history') {
       const { data, error } = await supabase
@@ -264,17 +237,29 @@ Deno.serve(async (req) => {
 
       const country = body.country.trim();
       const service = body.service.trim();
-      const pool = body.pool?.trim() || undefined;
-      const quote = await fetchSmsPoolPrice(country, service, pool);
-      const chargedNgn = calculateSmsChargeNgn(quote.costUsd, pricing);
+      const operator = body.pool?.trim() || 'any';
+      const pools = await resolveCountryServicePools(country, service);
+      const selectedPool = pools.find((row) => row.pool === operator) ?? pools[0];
+
+      if (!selectedPool) {
+        return jsonResponse({
+          ok: false,
+          error: 'No numbers are available for this service and country right now. Try another option.',
+        }, 404);
+      }
+
+      const chargedNgn = calculateSmsChargeNgn(selectedPool.costUsd, pricing);
+
+      await ensureFiveSimMaxPrice(service, selectedPool.costUsd);
 
       const { data: walletTxId, error: debitError } = await supabase.rpc('wallet_debit_for_sms', {
         p_amount_ngn: chargedNgn,
         p_metadata: {
+          provider: SMS_PROVIDER,
           country_id: country,
           service_id: service,
-          pool,
-          quoted_cost_usd: quote.costUsd,
+          operator,
+          quoted_cost_usd: selectedPool.costUsd,
           markup_percent: pricing.markupPercent,
           usd_ngn_rate: pricing.usdNgnRate,
         },
@@ -290,14 +275,13 @@ Deno.serve(async (req) => {
       let purchase;
 
       try {
-        purchase = await purchaseSmsPoolNumber(country, service, quote.costUsd * 1.2, pool);
+        purchase = await purchaseFiveSimNumber(country, service, operator);
       } catch (purchaseError) {
-        await refundWallet(
-          supabase,
-          chargedNgn,
-          'SMS Pool purchase failed',
-          { country_id: country, service_id: service },
-        );
+        await supabase.rpc('wallet_refund_sms', {
+          p_amount_ngn: chargedNgn,
+          p_reason: '5sim purchase failed',
+          p_metadata: { provider: SMS_PROVIDER, country_id: country, service_id: service },
+        });
 
         const message = purchaseError instanceof Error
           ? purchaseError.message
@@ -305,10 +289,11 @@ Deno.serve(async (req) => {
         return jsonResponse({ ok: false, error: message }, 400);
       }
 
-      const countries = await fetchSmsPoolCountries().catch(() => []);
-      const services = await fetchSmsPoolServices().catch(() => []);
+      const countries = await fetchFiveSimCountries().catch(() => []);
+      const services = await fetchFiveSimServices().catch(() => []);
       const countryName = countries.find((row) => row.id === country)?.name ?? null;
       const serviceName = services.find((row) => row.id === service)?.name ?? null;
+      const costUsd = purchase.costUsd > 0 ? purchase.costUsd : selectedPool.costUsd;
 
       const { data: orderRow, error: insertError } = await admin
         .from('sms_number_orders')
@@ -322,13 +307,14 @@ Deno.serve(async (req) => {
           service_id: service,
           service_name: serviceName,
           status: 'active',
-          cost_usd: purchase.costUsd || quote.costUsd,
+          cost_usd: costUsd,
           charged_ngn: chargedNgn,
           expires_at: purchase.expiresAt,
           wallet_transaction_id: walletTxId,
           metadata: {
             provider: SMS_PROVIDER,
-            smspool: purchase.raw,
+            operator,
+            fivesim: purchase.raw,
             pricing,
             original_charged_ngn: chargedNgn,
           },
@@ -337,13 +323,12 @@ Deno.serve(async (req) => {
         .single();
 
       if (insertError || !orderRow) {
-        await cancelSmsPoolOrder(purchase.orderId).catch(() => undefined);
-        await refundWallet(
-          supabase,
-          chargedNgn,
-          'Could not save SMS order',
-          { smspool_order_id: purchase.orderId },
-        );
+        await cancelFiveSimOrder(purchase.orderId).catch(() => undefined);
+        await supabase.rpc('wallet_refund_sms', {
+          p_amount_ngn: chargedNgn,
+          p_reason: 'Could not save SMS order',
+          p_metadata: { provider: SMS_PROVIDER, fivesim_order_id: purchase.orderId },
+        });
         throw new Error(insertError?.message || 'Could not save SMS order.');
       }
 
@@ -379,38 +364,15 @@ Deno.serve(async (req) => {
         if (row.status !== 'expired') return false;
         return true;
       });
+
       if (!activeRows.length) {
         return jsonResponse({ ok: true, orders: [] });
       }
 
-      const remoteActive = await fetchActiveSmsPoolOrders();
-      const remoteByOrderId = new Map(
-        remoteActive.map((row) => [row.orderId, row]),
-      );
-
       const updatedOrders: Record<string, unknown>[] = [];
 
       for (const orderRow of activeRows) {
-        const remote = remoteByOrderId.get(String(orderRow.smspool_order_id));
-        if (remote) {
-          const { order } = await syncSmsOrderFromRemote(
-            supabase,
-            admin,
-            orderRow as Record<string, unknown>,
-            {
-              status: remote.status,
-              code: remote.code,
-              message: remote.message,
-              timeLeftSeconds: remote.timeLeftSeconds,
-              expiresAt: remote.expiresAt,
-              providerRefunded: remote.providerRefunded,
-            },
-          );
-          updatedOrders.push(order);
-          continue;
-        }
-
-        const check = await checkSmsPoolOrder(String(orderRow.smspool_order_id));
+        const check = await checkFiveSimOrder(String(orderRow.smspool_order_id));
         const { order } = await syncSmsOrderFromRemote(
           supabase,
           admin,
@@ -422,9 +384,13 @@ Deno.serve(async (req) => {
             timeLeftSeconds: check.timeLeftSeconds,
             expiresAt: check.timeLeftSeconds
               ? new Date(Date.now() + check.timeLeftSeconds * 1000).toISOString()
-              : null,
+              : orderRow.expires_at,
             providerRefunded: check.providerRefunded,
           },
+        );
+        await finalizeFiveSimOrderIfCompleted(
+          String(orderRow.smspool_order_id),
+          check.code,
         );
         updatedOrders.push(order);
       }
@@ -484,19 +450,13 @@ Deno.serve(async (req) => {
 
       let resendWalletTxId: string | null = null;
 
-      try {
-        await resendSmsPoolOrder(String(orderRow.smspool_order_id));
-      } catch (resendError) {
-        const message = resendError instanceof Error ? resendError.message : 'Could not resend SMS.';
-        return jsonResponse({ ok: false, error: message }, 400);
-      }
-
       if (hasValidCode) {
         const { data: walletTxId, error: debitError } = await supabase.rpc('wallet_debit_for_sms', {
           p_amount_ngn: resendChargeNgn,
           p_metadata: {
+            provider: SMS_PROVIDER,
             order_id: orderRow.id,
-            smspool_order_id: orderRow.smspool_order_id,
+            fivesim_order_id: orderRow.smspool_order_id,
             resend: true,
           },
         });
@@ -512,7 +472,6 @@ Deno.serve(async (req) => {
       }
 
       const resendCount = Number(existingMetadata.resend_count ?? 0) + 1;
-
       const metadata = {
         ...existingMetadata,
         last_resend_at: new Date().toISOString(),
@@ -543,14 +502,14 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         message: hasValidCode
-          ? 'New SMS requested. Your wallet was charged again. Waiting for the new code...'
-          : 'SMS resend requested. Request a new code on the service, then wait here.',
+          ? 'Waiting for a new code on the same number. Your wallet was charged again.'
+          : 'Request a new code on the service, then wait here for the SMS.',
         order: mapOrderRow((updated ?? orderRow) as Record<string, unknown>),
         charged_ngn: hasValidCode ? resendChargeNgn : 0,
       });
     }
 
-    if (action === 'check' || action === 'cancel') {
+    if (action === 'check' || action === 'cancel' || action === 'ban') {
       if (!body.order_id?.trim()) {
         return jsonResponse({ ok: false, error: 'Order ID is required.' }, 400);
       }
@@ -567,14 +526,16 @@ Deno.serve(async (req) => {
         return jsonResponse({ ok: false, error: 'Order not found.' }, 404);
       }
 
-      if (action === 'cancel') {
+      if (action === 'cancel' || action === 'ban') {
+        const providerAction = action === 'ban' ? banFiveSimOrder : cancelFiveSimOrder;
+
         try {
           const { refundTxId, order } = await cancelSmsNumberOrderAtomic(
             admin,
             supabase,
             user.id,
             orderRow as Record<string, unknown>,
-            cancelSmsPoolOrder,
+            providerAction,
           );
 
           return jsonResponse({
@@ -585,25 +546,18 @@ Deno.serve(async (req) => {
         } catch (cancelError) {
           const message = cancelError instanceof Error ? cancelError.message : 'Could not cancel order.';
           if (message.includes('ORDER_NOT_CANCELLABLE')) {
-            return jsonResponse({ ok: false, error: 'This order can no longer be cancelled.' }, 400);
-          }
-          if (message.includes('wallet_sms_refund_order_unique') || message.includes('duplicate key')) {
-            const { data: updated } = await admin
-              .from('sms_number_orders')
-              .select('*')
-              .eq('id', orderRow.id)
-              .single();
-
             return jsonResponse({
-              ok: true,
-              order: mapOrderRow((updated ?? { ...orderRow, status: 'cancelled' }) as Record<string, unknown>),
-            });
+              ok: false,
+              error: action === 'ban'
+                ? 'This order can no longer be reported as used.'
+                : 'This order can no longer be cancelled.',
+            }, 400);
           }
           throw cancelError;
         }
       }
 
-      const check = await checkSmsPoolOrder(orderRow.smspool_order_id);
+      const check = await checkFiveSimOrder(String(orderRow.smspool_order_id));
       const { order, refunded } = await syncSmsOrderFromRemote(
         supabase,
         admin,
@@ -615,10 +569,12 @@ Deno.serve(async (req) => {
           timeLeftSeconds: check.timeLeftSeconds,
           expiresAt: check.timeLeftSeconds
             ? new Date(Date.now() + check.timeLeftSeconds * 1000).toISOString()
-            : null,
+            : orderRow.expires_at,
           providerRefunded: check.providerRefunded,
         },
       );
+
+      await finalizeFiveSimOrderIfCompleted(String(orderRow.smspool_order_id), check.code);
 
       return jsonResponse({
         ok: true,
@@ -630,7 +586,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ ok: false, error: 'Unsupported action.' }, 400);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'SMS Pool request failed';
+    const message = error instanceof Error ? error.message : '5sim request failed';
     return jsonResponse({ ok: false, error: message }, 400);
   }
 });

@@ -27,6 +27,7 @@ import { getPurchaseErrorMessage, isInsufficientFundsError } from '@/lib/purchas
 import {
   smsNumberService,
   type SmsNumberOrder,
+  type SmsNumberProvider,
   type SmsPoolCountry,
   type SmsPoolPriceOptionRow,
   type SmsPoolService,
@@ -57,10 +58,14 @@ const ACTIVE_SYNC_INTERVAL_MS = 5_000;
 
 const SMS_NUMBER_PROVIDERS = [
   { id: 'service-1', label: 'Service 1', enabled: true },
-  { id: 'service-2', label: 'Service 2', enabled: false },
+  { id: 'service-2', label: 'Service 2', enabled: true },
 ] as const;
 
 type SmsProviderId = (typeof SMS_NUMBER_PROVIDERS)[number]['id'];
+
+function resolveSmsProvider(providerId?: SmsProviderId): SmsNumberProvider {
+  return providerId === 'service-2' ? 'fivesim' : 'smspool';
+}
 
 function matchServiceName(serviceName: string, token: string) {
   return serviceName.toLowerCase().includes(token);
@@ -75,6 +80,12 @@ function sortServices(services: SmsPoolService[]) {
     if (aRank !== bRank) return aRank - bRank;
     return a.name.localeCompare(b.name);
   });
+}
+
+function formatCountryCodeLabel(code?: string) {
+  if (!code) return null;
+  if (code === '[object Object]' || code.includes('[object')) return null;
+  return code;
 }
 
 function formatServiceLabel(name: string) {
@@ -253,8 +264,8 @@ function mergeReservedOrders(
 
 const RESERVED_ORDERS_STORAGE_PREFIX = 'sms-reserved-orders';
 
-function reservedOrdersStorageKey(userId: string) {
-  return `${RESERVED_ORDERS_STORAGE_PREFIX}:${userId}`;
+function reservedOrdersStorageKey(userId: string, providerId: SmsProviderId) {
+  return `${RESERVED_ORDERS_STORAGE_PREFIX}:${providerId}:${userId}`;
 }
 
 function isPersistableReservedOrder(order: SmsNumberOrder) {
@@ -263,9 +274,9 @@ function isPersistableReservedOrder(order: SmsNumberOrder) {
     || (order.status === 'completed' && isValidSmsVerificationCode(order.verification_code));
 }
 
-function loadReservedOrdersFromStorage(userId: string): SmsNumberOrder[] {
+function loadReservedOrdersFromStorage(userId: string, providerId: SmsProviderId): SmsNumberOrder[] {
   try {
-    const raw = sessionStorage.getItem(reservedOrdersStorageKey(userId));
+    const raw = sessionStorage.getItem(reservedOrdersStorageKey(userId, providerId));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as SmsNumberOrder[];
     return Array.isArray(parsed) ? parsed.filter(isPersistableReservedOrder) : [];
@@ -274,13 +285,13 @@ function loadReservedOrdersFromStorage(userId: string): SmsNumberOrder[] {
   }
 }
 
-function saveReservedOrdersToStorage(userId: string, orders: SmsNumberOrder[]) {
+function saveReservedOrdersToStorage(userId: string, providerId: SmsProviderId, orders: SmsNumberOrder[]) {
   const persistable = orders.filter(isPersistableReservedOrder);
   if (persistable.length === 0) {
-    sessionStorage.removeItem(reservedOrdersStorageKey(userId));
+    sessionStorage.removeItem(reservedOrdersStorageKey(userId, providerId));
     return;
   }
-  sessionStorage.setItem(reservedOrdersStorageKey(userId), JSON.stringify(persistable));
+  sessionStorage.setItem(reservedOrdersStorageKey(userId, providerId), JSON.stringify(persistable));
 }
 
 function pinReservedOrder(pinnedIds: Set<string>, order: SmsNumberOrder) {
@@ -298,17 +309,17 @@ interface SmsOrderSummaryContext {
 const WAITING_FOR_CODE_STORAGE_PREFIX = 'sms-waiting-code';
 const ORDER_SUMMARY_CONTEXT_STORAGE_PREFIX = 'sms-order-summary-context';
 
-function waitingForCodeStorageKey(userId: string) {
-  return `${WAITING_FOR_CODE_STORAGE_PREFIX}:${userId}`;
+function waitingForCodeStorageKey(userId: string, providerId: SmsProviderId) {
+  return `${WAITING_FOR_CODE_STORAGE_PREFIX}:${providerId}:${userId}`;
 }
 
-function orderSummaryContextStorageKey(userId: string) {
-  return `${ORDER_SUMMARY_CONTEXT_STORAGE_PREFIX}:${userId}`;
+function orderSummaryContextStorageKey(userId: string, providerId: SmsProviderId) {
+  return `${ORDER_SUMMARY_CONTEXT_STORAGE_PREFIX}:${providerId}:${userId}`;
 }
 
-function loadWaitingForCodeFromStorage(userId: string) {
+function loadWaitingForCodeFromStorage(userId: string, providerId: SmsProviderId) {
   try {
-    const raw = sessionStorage.getItem(waitingForCodeStorageKey(userId));
+    const raw = sessionStorage.getItem(waitingForCodeStorageKey(userId, providerId));
     if (!raw) return new Set<string>();
     const parsed = JSON.parse(raw) as string[];
     return new Set(Array.isArray(parsed) ? parsed : []);
@@ -317,17 +328,17 @@ function loadWaitingForCodeFromStorage(userId: string) {
   }
 }
 
-function saveWaitingForCodeToStorage(userId: string, orderIds: Set<string>) {
+function saveWaitingForCodeToStorage(userId: string, providerId: SmsProviderId, orderIds: Set<string>) {
   if (orderIds.size === 0) {
-    sessionStorage.removeItem(waitingForCodeStorageKey(userId));
+    sessionStorage.removeItem(waitingForCodeStorageKey(userId, providerId));
     return;
   }
-  sessionStorage.setItem(waitingForCodeStorageKey(userId), JSON.stringify([...orderIds]));
+  sessionStorage.setItem(waitingForCodeStorageKey(userId, providerId), JSON.stringify([...orderIds]));
 }
 
-function loadOrderSummaryContextFromStorage(userId: string): SmsOrderSummaryContext | null {
+function loadOrderSummaryContextFromStorage(userId: string, providerId: SmsProviderId): SmsOrderSummaryContext | null {
   try {
-    const raw = sessionStorage.getItem(orderSummaryContextStorageKey(userId));
+    const raw = sessionStorage.getItem(orderSummaryContextStorageKey(userId, providerId));
     if (!raw) return null;
     return JSON.parse(raw) as SmsOrderSummaryContext;
   } catch {
@@ -335,12 +346,16 @@ function loadOrderSummaryContextFromStorage(userId: string): SmsOrderSummaryCont
   }
 }
 
-function saveOrderSummaryContextToStorage(userId: string, context: SmsOrderSummaryContext | null) {
+function saveOrderSummaryContextToStorage(
+  userId: string,
+  providerId: SmsProviderId,
+  context: SmsOrderSummaryContext | null,
+) {
   if (!context) {
-    sessionStorage.removeItem(orderSummaryContextStorageKey(userId));
+    sessionStorage.removeItem(orderSummaryContextStorageKey(userId, providerId));
     return;
   }
-  sessionStorage.setItem(orderSummaryContextStorageKey(userId), JSON.stringify(context));
+  sessionStorage.setItem(orderSummaryContextStorageKey(userId, providerId), JSON.stringify(context));
 }
 
 function restoreOrderSummarySelection(
@@ -375,8 +390,9 @@ export default function BuyNumbersPage() {
   const { data: walletStats, isLoading: walletLoading } = useWalletBalance(user?.id);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
-  const isService1 = providerId === 'service-1';
   const activeProvider = SMS_NUMBER_PROVIDERS.find((provider) => provider.id === providerId);
+  const isBuyFlow = providerId === 'service-1' || providerId === 'service-2';
+  const smsProvider = resolveSmsProvider(providerId);
 
   const [selectedCountry, setSelectedCountry] = useState<SmsPoolCountry | null>(null);
   const [countrySearch, setCountrySearch] = useState('');
@@ -388,6 +404,7 @@ export default function BuyNumbersPage() {
   const [selectedPriceOption, setSelectedPriceOption] = useState<SmsPoolPriceOptionRow | null>(null);
   const [orderingPool, setOrderingPool] = useState<string | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [banningOrderId, setBanningOrderId] = useState<string | null>(null);
   const [fetchingCodeOrderId, setFetchingCodeOrderId] = useState<string | null>(null);
   const [resendingOrderId, setResendingOrderId] = useState<string | null>(null);
   const [waitingForCodeOrderIds, setWaitingForCodeOrderIds] = useState<Set<string>>(new Set());
@@ -402,16 +419,16 @@ export default function BuyNumbersPage() {
   const reservedSectionRef = useRef<HTMLDivElement>(null);
 
   const { data: catalog, isLoading: catalogLoading, error: catalogError, refetch: refetchCatalog } = useQuery({
-    queryKey: ['smspool-catalog'],
-    queryFn: () => smsNumberService.getCatalog(),
-    enabled: isService1,
+    queryKey: ['sms-catalog', smsProvider],
+    queryFn: () => smsNumberService.getCatalog(smsProvider),
+    enabled: isBuyFlow,
     staleTime: 5 * 60_000,
   });
 
   const { data: history, isLoading: historyLoading, error: historyError, refetch: refetchHistory } = useQuery({
-    queryKey: ['sms-number-history', user?.id],
-    queryFn: () => smsNumberService.getHistory(),
-    enabled: Boolean(user?.id && isService1),
+    queryKey: ['sms-number-history', user?.id, smsProvider],
+    queryFn: () => smsNumberService.getHistory(smsProvider),
+    enabled: Boolean(user?.id && isBuyFlow),
   });
 
   const {
@@ -421,20 +438,24 @@ export default function BuyNumbersPage() {
     error: pricesErrorMessage,
     refetch: refetchPrices,
   } = useQuery({
-    queryKey: ['sms-country-service-pools', selectedCountry?.id, selectedService?.id],
-    queryFn: () => smsNumberService.getCountryServicePools(selectedCountry!.id, selectedService!.id),
-    enabled: Boolean(selectedCountry?.id && selectedService?.id),
+    queryKey: ['sms-country-service-pools', smsProvider, selectedCountry?.id, selectedService?.id],
+    queryFn: () => smsNumberService.getCountryServicePools(
+      selectedCountry!.id,
+      selectedService!.id,
+      smsProvider,
+    ),
+    enabled: Boolean(isBuyFlow && selectedCountry?.id && selectedService?.id),
     staleTime: 30_000,
   });
 
   useEffect(() => {
     if (!providerId) return;
 
-    if (providerId !== 'service-1') {
+    if (!isBuyFlow) {
       toast.message('This service is not available yet.');
       navigate('/buy-numbers', { replace: true });
     }
-  }, [navigate, providerId]);
+  }, [isBuyFlow, navigate, providerId]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -491,11 +512,27 @@ export default function BuyNumbersPage() {
 
   // Hydrate reserved orders + codes from sessionStorage immediately on refresh.
   useEffect(() => {
-    if (!user?.id) return;
+    setSelectedCountry(null);
+    setCountrySearch('');
+    setSelectedService(null);
+    setSelectedPriceOption(null);
+    setServiceSearch('');
+    setServicePage(1);
+    setActiveOrders([]);
+    setWaitingForCodeOrderIds(new Set());
+    setOrderSummaryContext(null);
+    dismissedOrderIdsRef.current.clear();
+    pinnedOrderIdsRef.current.clear();
+    notifiedExpiryOrderIdsRef.current.clear();
+    notifiedCompletedOrderIdsRef.current.clear();
+  }, [providerId]);
 
-    const stored = loadReservedOrdersFromStorage(user.id);
-    const storedWaiting = loadWaitingForCodeFromStorage(user.id);
-    const storedSummaryContext = loadOrderSummaryContextFromStorage(user.id);
+  useEffect(() => {
+    if (!user?.id || !providerId || !isBuyFlow) return;
+
+    const stored = loadReservedOrdersFromStorage(user.id, providerId);
+    const storedWaiting = loadWaitingForCodeFromStorage(user.id, providerId);
+    const storedSummaryContext = loadOrderSummaryContextFromStorage(user.id, providerId);
 
     if (storedWaiting.size > 0) {
       for (const order of stored) {
@@ -528,15 +565,15 @@ export default function BuyNumbersPage() {
       dismissedOrderIdsRef.current,
       pinnedOrderIdsRef.current,
     ));
-  }, [user?.id]);
+  }, [isBuyFlow, providerId, user?.id]);
 
   // Keep sessionStorage in sync with useState so refresh always restores the card + code.
   useEffect(() => {
-    if (!user?.id) return;
-    saveReservedOrdersToStorage(user.id, activeOrders);
-    saveWaitingForCodeToStorage(user.id, waitingForCodeOrderIds);
-    saveOrderSummaryContextToStorage(user.id, orderSummaryContext);
-  }, [activeOrders, orderSummaryContext, user?.id, waitingForCodeOrderIds]);
+    if (!user?.id || !providerId || !isBuyFlow) return;
+    saveReservedOrdersToStorage(user.id, providerId, activeOrders);
+    saveWaitingForCodeToStorage(user.id, providerId, waitingForCodeOrderIds);
+    saveOrderSummaryContextToStorage(user.id, providerId, orderSummaryContext);
+  }, [activeOrders, isBuyFlow, orderSummaryContext, providerId, user?.id, waitingForCodeOrderIds]);
 
   useEffect(() => {
     const fromHistory = (history?.orders ?? []).filter(
@@ -558,9 +595,9 @@ export default function BuyNumbersPage() {
 
   // Restore reserved numbers after refresh (loaded from server, not local state).
   useEffect(() => {
-    if (!user?.id || !isService1) return;
+    if (!user?.id || !isBuyFlow) return;
 
-    void smsNumberService.syncActiveOrders().then((result) => {
+    void smsNumberService.syncActiveOrders(smsProvider).then((result) => {
       const restorable = result.orders.filter(
         (order) => !dismissedOrderIdsRef.current.has(order.id)
           && isPersistableReservedOrder(order),
@@ -579,7 +616,7 @@ export default function BuyNumbersPage() {
         pinnedOrderIdsRef.current,
       ));
     }).catch(() => undefined);
-  }, [user?.id, isService1]);
+  }, [isBuyFlow, smsProvider, user?.id]);
 
   const hasReservedOrders = activeOrders.length > 0;
 
@@ -604,7 +641,7 @@ export default function BuyNumbersPage() {
     const hasCode = isValidSmsVerificationCode(order.verification_code);
     if (!hasCode && !notifiedExpiryOrderIdsRef.current.has(order.id)) {
       notifiedExpiryOrderIdsRef.current.add(order.id);
-      void smsNumberService.syncActiveOrders().then((result) => {
+      void smsNumberService.syncActiveOrders(smsProvider).then((result) => {
         void refetchHistory();
         if (user?.id) {
           void queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
@@ -651,7 +688,7 @@ export default function BuyNumbersPage() {
     if (!user || !hasReservedOrders) return;
 
     const syncActiveOrders = () => {
-      void smsNumberService.syncActiveOrders().then((result) => {
+      void smsNumberService.syncActiveOrders(smsProvider).then((result) => {
         const refundedWithoutCode = result.orders.filter(
           (order) => (order.status === 'expired' || order.status === 'cancelled')
             && !isValidSmsVerificationCode(order.verification_code),
@@ -723,7 +760,7 @@ export default function BuyNumbersPage() {
     syncActiveOrders();
     const interval = window.setInterval(syncActiveOrders, ACTIVE_SYNC_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [hasReservedOrders, queryClient, refetchHistory, user]);
+  }, [hasReservedOrders, isBuyFlow, queryClient, refetchHistory, smsProvider, user]);
 
   const balance = walletStats?.balance ?? 0;
 
@@ -848,6 +885,7 @@ export default function BuyNumbersPage() {
         selectedCountry.id,
         selectedService.id,
         pool,
+        smsProvider,
       );
       pinnedOrderIdsRef.current.add(result.order.id);
       const summaryContext: SmsOrderSummaryContext = {
@@ -891,9 +929,9 @@ export default function BuyNumbersPage() {
     markWaitingForCode(orderId);
     setFetchingCodeOrderId(orderId);
     try {
-      const result = await smsNumberService.syncActiveOrders();
+      const result = await smsNumberService.syncActiveOrders(smsProvider);
       const updated = result.orders.find((order) => order.id === orderId)
-        ?? (await smsNumberService.checkOrder(orderId)).order;
+        ?? (await smsNumberService.checkOrder(orderId, smsProvider)).order;
 
       setActiveOrders((current) => mergeReservedOrders(
         current,
@@ -935,7 +973,7 @@ export default function BuyNumbersPage() {
 
     setResendingOrderId(order.id);
     try {
-      const result = await smsNumberService.resendOrder(order.id);
+      const result = await smsNumberService.resendOrder(order.id, smsProvider);
 
       setActiveOrders((current) => mergeReservedOrders(
         current,
@@ -958,7 +996,8 @@ export default function BuyNumbersPage() {
     if (cancellingOrderId) return;
 
     const cancelledOrder = activeOrders.find((order) => order.id === orderId);
-    const summaryContext = orderSummaryContext ?? loadOrderSummaryContextFromStorage(user?.id ?? '');
+    const summaryContext = orderSummaryContext
+      ?? (providerId ? loadOrderSummaryContextFromStorage(user?.id ?? '', providerId) : null);
 
     dismissedOrderIdsRef.current.add(orderId);
     pinnedOrderIdsRef.current.delete(orderId);
@@ -967,7 +1006,7 @@ export default function BuyNumbersPage() {
     setCancellingOrderId(orderId);
 
     try {
-      await smsNumberService.cancelOrder(orderId);
+      await smsNumberService.cancelOrder(orderId, smsProvider);
       if (summaryContext) {
         restoreOrderSummarySelection(summaryContext, {
           setSelectedCountry,
@@ -999,7 +1038,53 @@ export default function BuyNumbersPage() {
     }
   };
 
-  if (!isService1) {
+  const handleBanNumber = async (orderId: string) => {
+    if (banningOrderId || smsProvider !== 'fivesim') return;
+
+    const bannedOrder = activeOrders.find((order) => order.id === orderId);
+    const summaryContext = orderSummaryContext
+      ?? (providerId ? loadOrderSummaryContextFromStorage(user?.id ?? '', providerId) : null);
+
+    dismissedOrderIdsRef.current.add(orderId);
+    pinnedOrderIdsRef.current.delete(orderId);
+    clearWaitingForCode(orderId);
+    setActiveOrders((current) => current.filter((order) => order.id !== orderId));
+    setBanningOrderId(orderId);
+
+    try {
+      await smsNumberService.banOrder(orderId, smsProvider);
+      if (summaryContext) {
+        restoreOrderSummarySelection(summaryContext, {
+          setSelectedCountry,
+          setCountrySearch,
+          setSelectedService,
+          setSelectedPriceOption,
+        });
+        setOrderSummaryContext(summaryContext);
+      }
+      toast.success('Number reported as already used. Your wallet was refunded.');
+      await refetchHistory();
+      await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user?.id] });
+    } catch (error) {
+      dismissedOrderIdsRef.current.delete(orderId);
+      if (bannedOrder) {
+        pinnedOrderIdsRef.current.add(bannedOrder.id);
+        setActiveOrders((current) => mergeReservedOrders(
+          current,
+          [bannedOrder],
+          dismissedOrderIdsRef.current,
+          pinnedOrderIdsRef.current,
+        ));
+      }
+      const message = error instanceof Error ? error.message : 'Could not report this number.';
+      await refetchHistory();
+      toast.error(message);
+    } finally {
+      setBanningOrderId(null);
+    }
+  };
+
+  if (!isBuyFlow) {
     return (
       <div className="bg-gray-50 dark:bg-dm-bg min-h-full">
         <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-lg flex-col justify-center px-4 py-12 sm:px-6">
@@ -1087,8 +1172,8 @@ export default function BuyNumbersPage() {
                       )}
                     >
                       <span className="font-medium text-gray-900 dark:text-gray-100">{country.name}</span>
-                      {country.code && (
-                        <span className="text-xs text-gray-500">{country.code}</span>
+                      {formatCountryCodeLabel(country.code) && (
+                        <span className="text-xs text-gray-500">{formatCountryCodeLabel(country.code)}</span>
                       )}
                     </button>
                   ))
@@ -1301,6 +1386,7 @@ export default function BuyNumbersPage() {
           <section ref={reservedSectionRef} id="reserved-numbers" className="mt-8 space-y-6">
             {visibleReservedOrders.map((activeOrder) => {
               const isCancelling = cancellingOrderId === activeOrder.id;
+              const isBanning = banningOrderId === activeOrder.id;
               const isFetchingCode = fetchingCodeOrderId === activeOrder.id;
               const isResending = resendingOrderId === activeOrder.id;
               const displayCode = getDisplaySmsVerificationCode(activeOrder);
@@ -1389,7 +1475,7 @@ export default function BuyNumbersPage() {
                       {!isWaitingForCode && (
                         <button
                           type="button"
-                          disabled={isFetchingCode || isCancelling}
+                          disabled={isFetchingCode || isCancelling || isBanning}
                           onClick={() => void handleGetSmsCode(activeOrder.id)}
                           className="rounded-lg bg-[#f26522] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e05a1c] disabled:cursor-not-allowed disabled:opacity-60"
                         >
@@ -1403,9 +1489,26 @@ export default function BuyNumbersPage() {
                           )}
                         </button>
                       )}
+                      {smsProvider === 'fivesim' && isWaitingForCode && (
+                        <button
+                          type="button"
+                          disabled={isBanning || isCancelling || isFetchingCode}
+                          onClick={() => void handleBanNumber(activeOrder.id)}
+                          className="rounded-lg border border-amber-500 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-400 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/50"
+                        >
+                          {isBanning ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Reporting...
+                            </span>
+                          ) : (
+                            'Number Already Used'
+                          )}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        disabled={isCancelling || isFetchingCode}
+                        disabled={isCancelling || isBanning || isFetchingCode}
                         onClick={() => void handleCancel(activeOrder.id)}
                         className="rounded-lg bg-red-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
                       >

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Navigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Save, Smartphone, Wallet, History } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,10 +18,42 @@ import {
   adminStrongTextClass,
 } from '@/lib/admin-theme';
 import { formatDisplayPrice } from '@/lib/display-currency';
-import { formatUsd, normalizeSmsPricing } from '@/lib/sms-pricing';
+import {
+  formatUsd,
+  getSmsPricingForProvider,
+  normalizeSmsPricing,
+  type SmsPricingProvider,
+  type SmsPricingSettings,
+} from '@/lib/sms-pricing';
 import { smsNumberService } from '@/services/sms-number.service';
 
 const POPULAR_SERVICE_NAMES = ['whatsapp', 'telegram', 'google', 'facebook', 'instagram', 'tiktok'];
+
+const PROVIDER_CONFIG: Record<SmsPricingProvider, {
+  label: string;
+  description: string;
+  balanceHelp: string;
+  secretHint: string;
+  costColumnLabel: string;
+  historyTitle: string;
+}> = {
+  smspool: {
+    label: 'SMS Pool',
+    description: 'View SMS Pool prices, set markup for Service 1, and see your profit per country.',
+    balanceHelp: 'Your SMS Pool account balance in USD. Top up at smspool.net if this is low.',
+    secretHint: 'Check that SMSPOOL_API_KEY is set in Supabase secrets and redeploy the smspool function.',
+    costColumnLabel: 'SMS Pool',
+    historyTitle: 'SMS Pool provider history',
+  },
+  fivesim: {
+    label: '5sim',
+    description: 'View 5sim prices, set markup for Service 2, and see your profit per country.',
+    balanceHelp: 'Your 5sim account balance in USD. Top up at 5sim.net if this is low.',
+    secretHint: 'Check that FIVESIM_API_KEY is set in Supabase secrets and redeploy the fivesim function.',
+    costColumnLabel: '5sim',
+    historyTitle: '5sim provider history',
+  },
+};
 
 function sortServices<T extends { id: string; name: string }>(services: T[]) {
   return [...services].sort((a, b) => {
@@ -33,16 +66,34 @@ function sortServices<T extends { id: string; name: string }>(services: T[]) {
   });
 }
 
+function isSmsPricingProvider(value?: string): value is SmsPricingProvider {
+  return value === 'smspool' || value === 'fivesim';
+}
+
 export default function AdminSmsPricingPage() {
+  const { provider: providerParam } = useParams<{ provider?: string }>();
+
+  if (!isSmsPricingProvider(providerParam)) {
+    return <Navigate to="/admin/sms-pricing/smspool" replace />;
+  }
+
+  return <AdminSmsPricingPageContent provider={providerParam} />;
+}
+
+function AdminSmsPricingPageContent({ provider }: { provider: SmsPricingProvider }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const { content, setContent } = useSiteContent();
+  const providerMeta = PROVIDER_CONFIG[provider];
   const [serviceId, setServiceId] = useState('');
-  const [pricingDraft, setPricingDraft] = useState(() => normalizeSmsPricing(content.smsPricing));
+  const [pricingDraft, setPricingDraft] = useState<SmsPricingSettings>(() =>
+    getSmsPricingForProvider(content.smsPricing, provider),
+  );
 
   useEffect(() => {
-    setPricingDraft(normalizeSmsPricing(content.smsPricing));
-  }, [content.smsPricing]);
+    setPricingDraft(getSmsPricingForProvider(content.smsPricing, provider));
+    setServiceId('');
+  }, [content.smsPricing, provider]);
 
   const {
     data: overview,
@@ -50,8 +101,8 @@ export default function AdminSmsPricingPage() {
     error: overviewError,
     refetch: refetchOverview,
   } = useQuery({
-    queryKey: ['admin-sms-overview'],
-    queryFn: () => smsNumberService.getAdminOverview(),
+    queryKey: ['admin-sms-overview', provider],
+    queryFn: () => smsNumberService.getAdminOverview(provider),
     staleTime: 60_000,
   });
 
@@ -68,10 +119,11 @@ export default function AdminSmsPricingPage() {
   const {
     data: servicePrices,
     isFetching: pricesLoading,
+    error: pricesError,
     refetch: refetchPrices,
   } = useQuery({
-    queryKey: ['admin-sms-service-prices', serviceId],
-    queryFn: () => smsNumberService.getAdminServicePrices(serviceId),
+    queryKey: ['admin-sms-service-prices', provider, serviceId],
+    queryFn: () => smsNumberService.getAdminServicePrices(serviceId, provider),
     enabled: Boolean(serviceId),
     staleTime: 60_000,
   });
@@ -81,8 +133,8 @@ export default function AdminSmsPricingPage() {
     isFetching: providerHistoryLoading,
     refetch: refetchProviderHistory,
   } = useQuery({
-    queryKey: ['admin-sms-provider-history'],
-    queryFn: () => smsNumberService.getAdminProviderHistory(),
+    queryKey: ['admin-sms-provider-history', provider],
+    queryFn: () => smsNumberService.getAdminProviderHistory(provider),
     staleTime: 60_000,
   });
 
@@ -103,28 +155,36 @@ export default function AdminSmsPricingPage() {
 
     setContent({
       ...content,
-      smsPricing: normalized,
+      smsPricing: {
+        ...content.smsPricing,
+        [provider]: normalized,
+      },
     });
-    toast.success('SMS pricing settings saved.');
+    toast.success(`${providerMeta.label} pricing settings saved.`);
   };
 
   const resetPricing = () => {
-    const defaults = normalizeSmsPricing(defaultSiteContent.smsPricing);
+    const defaults = getSmsPricingForProvider(defaultSiteContent.smsPricing, provider);
     setPricingDraft(defaults);
     setContent({
       ...content,
-      smsPricing: defaults,
+      smsPricing: {
+        ...content.smsPricing,
+        [provider]: defaults,
+      },
     });
-    toast.success('SMS pricing reset to defaults.');
+    toast.success(`${providerMeta.label} pricing reset to defaults.`);
   };
 
   return (
     <div className={`space-y-6 ${adminPageClass(isDark)}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className={`text-2xl font-bold ${adminStrongTextClass(isDark)}`}>SMS Number Pricing</h1>
+          <h1 className={`text-2xl font-bold ${adminStrongTextClass(isDark)}`}>
+            SMS Pricing — {providerMeta.label}
+          </h1>
           <p className={`mt-1 text-sm ${adminMutedTextClass(isDark)}`}>
-            View SMS Pool prices, set one global markup for all services, and see your profit per country.
+            {providerMeta.description}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -144,7 +204,16 @@ export default function AdminSmsPricingPage() {
 
       {overviewError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
-          Could not load SMS Pool data. Check that `SMSPOOL_API_KEY` is set in Supabase secrets and redeploy the `smspool` function.
+          Could not load {providerMeta.label} data.{' '}
+          {overviewError instanceof Error ? overviewError.message : 'Request failed.'}{' '}
+          {providerMeta.secretHint}
+        </div>
+      )}
+
+      {overview?.balance_error && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          Could not load {providerMeta.label} balance: {overview.balance_error}. Services and prices may still work.
+          {' '}{providerMeta.secretHint}
         </div>
       )}
 
@@ -153,10 +222,10 @@ export default function AdminSmsPricingPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-primary" />
-              SMS Pool balance
+              {providerMeta.label} balance
             </CardTitle>
             <CardDescription className={adminMutedTextClass(isDark)}>
-              Your provider account balance in USD. Top up at smspool.net if this is low.
+              {providerMeta.balanceHelp}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -170,10 +239,10 @@ export default function AdminSmsPricingPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-primary" />
-              Global pricing
+              {providerMeta.label} pricing
             </CardTitle>
             <CardDescription className={adminMutedTextClass(isDark)}>
-              SMS Pool charges in USD — set your NGN conversion rate and profit markup here.
+              {providerMeta.label} charges in USD — set your NGN conversion rate and profit markup here.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -196,7 +265,7 @@ export default function AdminSmsPricingPage() {
                 className={adminInputClass(isDark)}
               />
               <p className={`text-xs ${adminMutedTextClass(isDark)}`}>
-                How many naira equals $1 from SMS Pool. Example: 1500 means $0.50 WhatsApp costs ₦750 before markup.
+                How many naira equals $1 from {providerMeta.label}. Example: 1500 means $0.50 WhatsApp costs ₦750 before markup.
               </p>
             </div>
 
@@ -219,7 +288,7 @@ export default function AdminSmsPricingPage() {
                 className={adminInputClass(isDark)}
               />
               <p className={`text-xs ${adminMutedTextClass(isDark)}`}>
-                {pricingDraft.markupPercent}% markup on a $1.00 SMS Pool number ={' '}
+                {pricingDraft.markupPercent}% markup on a $1.00 {providerMeta.label} number ={' '}
                 {formatDisplayPrice(
                   Math.ceil(pricingDraft.usdNgnRate * (1 + pricingDraft.markupPercent / 100)),
                 )}{' '}
@@ -236,7 +305,7 @@ export default function AdminSmsPricingPage() {
             <div>
               <CardTitle>Service price preview</CardTitle>
               <CardDescription className={adminMutedTextClass(isDark)}>
-                Pick a service to load SMS Pool prices for all available countries.
+                Pick a service to load {providerMeta.label} prices for available countries.
               </CardDescription>
             </div>
             <div className="flex w-full flex-col gap-2 md:w-80">
@@ -276,7 +345,11 @@ export default function AdminSmsPricingPage() {
 
           {!servicePrices?.rows.length ? (
             <p className={`text-sm ${adminMutedTextClass(isDark)}`}>
-              {pricesLoading ? 'Loading SMS Pool prices...' : 'No prices returned for this service.'}
+              {pricesLoading
+                ? `Loading ${providerMeta.label} prices...`
+                : pricesError
+                  ? `Could not load prices: ${pricesError instanceof Error ? pricesError.message : 'Request failed.'}`
+                  : 'No prices returned for this service.'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -284,7 +357,7 @@ export default function AdminSmsPricingPage() {
                 <thead>
                   <tr className={`border-b ${isDark ? 'border-dm-border' : 'border-gray-200'} ${adminMutedTextClass(isDark)}`}>
                     <th className="px-3 py-2 font-medium">Country</th>
-                    <th className="px-3 py-2 font-medium">SMS Pool</th>
+                    <th className="px-3 py-2 font-medium">{providerMeta.costColumnLabel}</th>
                     <th className="px-3 py-2 font-medium">Your price</th>
                     <th className="px-3 py-2 font-medium">Profit</th>
                   </tr>
@@ -323,10 +396,10 @@ export default function AdminSmsPricingPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5 text-primary" />
-                SMS Pool provider history
+                {providerMeta.historyTitle}
               </CardTitle>
               <CardDescription className={adminMutedTextClass(isDark)}>
-                Raw order history from SMS Pool for dispute handling and reconciliation with your Nexlogs orders.
+                Raw order history from {providerMeta.label} for dispute handling and reconciliation.
               </CardDescription>
             </div>
             <Button
@@ -344,7 +417,7 @@ export default function AdminSmsPricingPage() {
         <CardContent>
           {!providerHistory?.rows.length ? (
             <p className={`text-sm ${adminMutedTextClass(isDark)}`}>
-              {providerHistoryLoading ? 'Loading SMS Pool history...' : 'No provider history returned.'}
+              {providerHistoryLoading ? `Loading ${providerMeta.label} history...` : 'No provider history returned.'}
             </p>
           ) : (
             <div className="overflow-x-auto">

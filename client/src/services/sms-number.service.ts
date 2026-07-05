@@ -1,6 +1,8 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
+export type SmsNumberProvider = 'smspool' | 'fivesim';
+
 export interface SmsPoolCountry {
   id: string;
   name: string;
@@ -71,12 +73,13 @@ export interface SmsProviderHistoryOrder {
   createdAt: string | null;
 }
 
-type SmsPoolAction =
+type SmsProviderAction =
   | 'catalog'
   | 'price'
   | 'order'
   | 'check'
   | 'cancel'
+  | 'ban'
   | 'resend'
   | 'sync_active'
   | 'history'
@@ -86,7 +89,11 @@ type SmsPoolAction =
   | 'admin_service_prices'
   | 'admin_provider_history';
 
-const PUBLIC_SMSPOOL_ACTIONS = new Set<SmsPoolAction>(['catalog', 'country_service_pools']);
+const PUBLIC_SMS_ACTIONS = new Set<SmsProviderAction>(['catalog', 'country_service_pools']);
+
+function getFunctionName(provider: SmsNumberProvider) {
+  return provider === 'fivesim' ? 'fivesim' : 'smspool';
+}
 
 async function readFunctionErrorMessage(error: unknown, data: unknown) {
   if (data && typeof data === 'object' && 'error' in data && data.error) {
@@ -111,9 +118,12 @@ async function readFunctionErrorMessage(error: unknown, data: unknown) {
   return 'SMS number request failed';
 }
 
-async function invokeSmsPool<T>(body: Record<string, unknown>): Promise<T> {
-  const action = body.action as SmsPoolAction | undefined;
-  const requiresAuth = !action || !PUBLIC_SMSPOOL_ACTIONS.has(action);
+async function invokeSmsProvider<T>(
+  provider: SmsNumberProvider,
+  body: Record<string, unknown>,
+): Promise<T> {
+  const action = body.action as SmsProviderAction | undefined;
+  const requiresAuth = !action || !PUBLIC_SMS_ACTIONS.has(action);
 
   if (requiresAuth) {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -122,7 +132,7 @@ async function invokeSmsPool<T>(body: Record<string, unknown>): Promise<T> {
     }
   }
 
-  const { data, error } = await supabase.functions.invoke('smspool', { body });
+  const { data, error } = await supabase.functions.invoke(getFunctionName(provider), { body });
 
   if (error || !data?.ok) {
     throw new Error(await readFunctionErrorMessage(error, data));
@@ -132,27 +142,31 @@ async function invokeSmsPool<T>(body: Record<string, unknown>): Promise<T> {
 }
 
 export const smsNumberService = {
-  async getCatalog() {
-    return invokeSmsPool<{
+  async getCatalog(provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{
       ok: true;
       countries: SmsPoolCountry[];
       services: SmsPoolService[];
       pricing: SmsPricingSettings;
-    }>({ action: 'catalog' as SmsPoolAction });
+    }>(provider, { action: 'catalog' as SmsProviderAction });
   },
 
-  async getServiceCountries(serviceId: string) {
-    return invokeSmsPool<{
+  async getServiceCountries(serviceId: string, provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{
       ok: true;
       service_id: string;
       service_name: string | null;
       pricing: SmsPricingSettings;
       rows: SmsServicePriceRow[];
-    }>({ action: 'service_countries' as SmsPoolAction, service: serviceId });
+    }>(provider, { action: 'service_countries' as SmsProviderAction, service: serviceId });
   },
 
-  async getCountryServicePools(countryId: string, serviceId: string) {
-    return invokeSmsPool<{
+  async getCountryServicePools(
+    countryId: string,
+    serviceId: string,
+    provider: SmsNumberProvider = 'smspool',
+  ) {
+    return invokeSmsProvider<{
       ok: true;
       country_id: string;
       country_name: string | null;
@@ -160,87 +174,109 @@ export const smsNumberService = {
       service_name: string | null;
       pricing: SmsPricingSettings;
       rows: SmsPoolPriceOptionRow[];
-    }>({
-      action: 'country_service_pools' as SmsPoolAction,
+    }>(provider, {
+      action: 'country_service_pools' as SmsProviderAction,
       country: countryId,
       service: serviceId,
     });
   },
 
-  async getAdminOverview() {
-    return invokeSmsPool<{
+  async getAdminOverview(provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{
       ok: true;
       balance_usd: number;
+      balance_error?: string | null;
       pricing: SmsPricingSettings;
       services: SmsPoolService[];
-    }>({ action: 'admin_overview' as SmsPoolAction });
+    }>(provider, { action: 'admin_overview' as SmsProviderAction });
   },
 
-  async getAdminServicePrices(serviceId: string) {
-    return invokeSmsPool<{
+  async getAdminServicePrices(serviceId: string, provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{
       ok: true;
       service_id: string;
       service_name: string | null;
       pricing: SmsPricingSettings;
       rows: SmsServicePriceRow[];
-    }>({ action: 'admin_service_prices' as SmsPoolAction, service: serviceId });
+    }>(provider, { action: 'admin_service_prices' as SmsProviderAction, service: serviceId });
   },
 
-  async getPrice(country: string, service: string) {
-    return invokeSmsPool<{
+  async getPrice(country: string, service: string, provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{
       ok: true;
       cost_usd: number;
       charged_ngn: number;
       profit_ngn: number;
       pricing: SmsPricingSettings;
-    }>({ action: 'price' as SmsPoolAction, country, service });
+    }>(provider, { action: 'price' as SmsProviderAction, country, service });
   },
 
-  async orderNumber(country: string, service: string, pool?: string) {
-    return invokeSmsPool<{ ok: true; order: SmsNumberOrder }>({
-      action: 'order' as SmsPoolAction,
+  async orderNumber(
+    country: string,
+    service: string,
+    pool?: string,
+    provider: SmsNumberProvider = 'smspool',
+  ) {
+    return invokeSmsProvider<{ ok: true; order: SmsNumberOrder }>(provider, {
+      action: 'order' as SmsProviderAction,
       country,
       service,
       pool,
     });
   },
 
-  async checkOrder(orderId: string) {
-    return invokeSmsPool<{ ok: true; order: SmsNumberOrder; time_left_seconds?: number | null }>({
-      action: 'check' as SmsPoolAction,
+  async checkOrder(orderId: string, provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{ ok: true; order: SmsNumberOrder; time_left_seconds?: number | null }>(
+      provider,
+      {
+        action: 'check' as SmsProviderAction,
+        order_id: orderId,
+      },
+    );
+  },
+
+  async syncActiveOrders(provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{ ok: true; orders: SmsNumberOrder[]; refunded_orders?: string[] }>(
+      provider,
+      {
+        action: 'sync_active' as SmsProviderAction,
+      },
+    );
+  },
+
+  async resendOrder(orderId: string, provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{ ok: true; order: SmsNumberOrder; message?: string; charged_ngn?: number }>(
+      provider,
+      {
+        action: 'resend' as SmsProviderAction,
+        order_id: orderId,
+      },
+    );
+  },
+
+  async cancelOrder(orderId: string, provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{ ok: true; order: SmsNumberOrder }>(provider, {
+      action: 'cancel' as SmsProviderAction,
       order_id: orderId,
     });
   },
 
-  async syncActiveOrders() {
-    return invokeSmsPool<{ ok: true; orders: SmsNumberOrder[]; refunded_orders?: string[] }>({
-      action: 'sync_active' as SmsPoolAction,
-    });
-  },
-
-  async resendOrder(orderId: string) {
-    return invokeSmsPool<{ ok: true; order: SmsNumberOrder; message?: string; charged_ngn?: number }>({
-      action: 'resend' as SmsPoolAction,
+  async banOrder(orderId: string, provider: SmsNumberProvider = 'fivesim') {
+    return invokeSmsProvider<{ ok: true; order: SmsNumberOrder }>(provider, {
+      action: 'ban' as SmsProviderAction,
       order_id: orderId,
     });
   },
 
-  async cancelOrder(orderId: string) {
-    return invokeSmsPool<{ ok: true; order: SmsNumberOrder }>({
-      action: 'cancel' as SmsPoolAction,
-      order_id: orderId,
+  async getHistory(provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{ ok: true; orders: SmsNumberOrder[] }>(provider, {
+      action: 'history' as SmsProviderAction,
     });
   },
 
-  async getHistory() {
-    return invokeSmsPool<{ ok: true; orders: SmsNumberOrder[] }>({
-      action: 'history' as SmsPoolAction,
-    });
-  },
-
-  async getAdminProviderHistory() {
-    return invokeSmsPool<{ ok: true; rows: SmsProviderHistoryOrder[] }>({
-      action: 'admin_provider_history' as SmsPoolAction,
+  async getAdminProviderHistory(provider: SmsNumberProvider = 'smspool') {
+    return invokeSmsProvider<{ ok: true; rows: SmsProviderHistoryOrder[] }>(provider, {
+      action: 'admin_provider_history' as SmsProviderAction,
     });
   },
 };

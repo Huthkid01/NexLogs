@@ -279,6 +279,47 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-buy-numbers-services',
+    name: 'Buy Numbers — Service 1 & 2 (inbox-friendly)',
+    category: 'account',
+    description:
+      'Plain account notice for SMS verification with Service 1 (SMS Pool) and Service 2 (5sim). Best for Primary inbox.',
+    defaultSubject: `Number verification on ${APP_NAME} — Service 1 and Service 2`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'Number verification update',
+      preheader: `You now have two SMS verification options on ${APP_NAME} — Service 1 and Service 2.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We updated <strong>Buy Numbers</strong> on ${APP_NAME}. You can now choose between two verification services when you need a temporary phone number and SMS code.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Service 1</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                Our original SMS Pool option. Pick a country and service, pay from your wallet, then tap <strong>Get SMS Code</strong> when the message arrives.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Service 2</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                A second provider with more countries and operators — useful for WhatsApp, Telegram, Google, Facebook, and other apps when Service 1 has no stock.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>How to use it</strong></p>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Sign in and open <strong>Buy Numbers</strong></li>
+                <li>Select <strong>Service 1</strong> or <strong>Service 2</strong></li>
+                <li>Choose country and app (for example WhatsApp)</li>
+                <li>Pay from your wallet and wait for the code on the page</li>
+              </ol>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                If one service has no numbers for your country, try the other. Add wallet funds first if your balance is low.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open Buy Numbers',
+      linkUrl: `${appUrl}/buy-numbers`,
+    }),
+  },
+  {
     id: 'account-buy-numbers-announcement',
     name: 'Buy Numbers launch (inbox-friendly)',
     category: 'account',

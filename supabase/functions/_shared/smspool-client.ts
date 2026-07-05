@@ -700,15 +700,18 @@ export function getSmsPricingConfigFromEnv(): SmsPricingConfig {
   };
 }
 
-export async function loadSmsPricingConfig(client: {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        maybeSingle: () => Promise<{ data: { value?: unknown } | null; error: unknown }>;
+export async function loadSmsPricingConfig(
+  client: {
+    from: (table: string) => {
+      select: (columns: string) => {
+        eq: (column: string, value: string) => {
+          maybeSingle: () => Promise<{ data: { value?: unknown } | null; error: unknown }>;
+        };
       };
     };
-  };
-}): Promise<SmsPricingConfig> {
+  },
+  provider: 'smspool' | 'fivesim' = 'smspool',
+): Promise<SmsPricingConfig> {
   const envDefaults = getSmsPricingConfigFromEnv();
 
   try {
@@ -720,8 +723,19 @@ export async function loadSmsPricingConfig(client: {
 
     const value =
       data?.value && typeof data.value === 'object'
-        ? data.value as { usdNgnRate?: unknown; markupPercent?: unknown }
+        ? data.value as Record<string, unknown>
         : null;
+
+    if (value && ('smspool' in value || 'fivesim' in value)) {
+      const providerValue = value[provider];
+      if (providerValue && typeof providerValue === 'object') {
+        const settings = providerValue as { usdNgnRate?: unknown; markupPercent?: unknown };
+        return {
+          usdNgnRate: normalizeUsdNgnRate(settings.usdNgnRate, envDefaults.usdNgnRate),
+          markupPercent: normalizeMarkupPercent(settings.markupPercent, envDefaults.markupPercent),
+        };
+      }
+    }
 
     return {
       usdNgnRate: normalizeUsdNgnRate(value?.usdNgnRate, envDefaults.usdNgnRate),

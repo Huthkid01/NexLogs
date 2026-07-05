@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 import { APP_NAME } from '@/constants';
 import { normalizeWalletExchangeRates } from '@/lib/wallet-exchange-rates';
-import { DEFAULT_SMS_PRICING, normalizeSmsPricing } from '@/lib/sms-pricing';
+import { DEFAULT_SMS_PRICING, normalizeSmsProviderPricing, type SmsProviderPricingBundle } from '@/lib/sms-pricing';
 import { normalizeTelegramUrl } from '@/lib/telegram-url';
 import { DEFAULT_RDP_CATALOG, mergeRdpCatalog, type RdpCatalog } from '@/lib/rdp-catalog';
 
@@ -98,10 +98,7 @@ export interface SiteContent {
   wallet: {
     exchangeRates: Record<string, number>;
   };
-  smsPricing: {
-    usdNgnRate: number;
-    markupPercent: number;
-  };
+  smsPricing: SmsProviderPricingBundle;
   rdp: RdpCatalog;
 }
 
@@ -376,8 +373,14 @@ export const defaultSiteContent: SiteContent = {
     },
   },
   smsPricing: {
-    usdNgnRate: DEFAULT_SMS_PRICING.usdNgnRate,
-    markupPercent: DEFAULT_SMS_PRICING.markupPercent,
+    smspool: {
+      usdNgnRate: DEFAULT_SMS_PRICING.usdNgnRate,
+      markupPercent: DEFAULT_SMS_PRICING.markupPercent,
+    },
+    fivesim: {
+      usdNgnRate: DEFAULT_SMS_PRICING.usdNgnRate,
+      markupPercent: DEFAULT_SMS_PRICING.markupPercent,
+    },
   },
   rdp: DEFAULT_RDP_CATALOG,
 };
@@ -503,7 +506,7 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
     wallet: {
       exchangeRates: normalizeWalletExchangeRates(content?.wallet?.exchangeRates),
     },
-    smsPricing: normalizeSmsPricing(content?.smsPricing),
+    smsPricing: normalizeSmsProviderPricing(content?.smsPricing),
     rdp: mergeRdpCatalog(content?.rdp),
   };
 }

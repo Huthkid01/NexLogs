@@ -270,7 +270,7 @@ Deno.serve(async (req) => {
 
     const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || '').replace(/\/$/, '');
     const adminOrdersUrl = appUrl ? `${appUrl}/admin/orders` : '/admin/orders';
-    const adminSmsUrl = appUrl ? `${appUrl}/admin/sms-pricing` : '/admin/sms-pricing';
+    const adminSmsUrl = appUrl ? `${appUrl}/admin/sms-pricing/smspool` : '/admin/sms-pricing/smspool';
     const adminTransactionsUrl = appUrl ? `${appUrl}/admin/transactions` : '/admin/transactions';
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);

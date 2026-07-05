@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.smspool]
 verify_jwt = true
+
+[functions.fivesim]
+verify_jwt = true

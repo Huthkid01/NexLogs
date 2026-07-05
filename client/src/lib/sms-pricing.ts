@@ -11,6 +11,13 @@ export const DEFAULT_SMS_PRICING: SmsPricingSettings = {
   markupPercent: 50,
 };
 
+export type SmsPricingProvider = 'smspool' | 'fivesim';
+
+export interface SmsProviderPricingBundle {
+  smspool: SmsPricingSettings;
+  fivesim: SmsPricingSettings;
+}
+
 export function normalizeSmsPricing(value?: Partial<SmsPricingSettings> | null): SmsPricingSettings {
   const usdNgnRate = Number(value?.usdNgnRate);
   const markupPercent = Number(value?.markupPercent);
@@ -19,6 +26,31 @@ export function normalizeSmsPricing(value?: Partial<SmsPricingSettings> | null):
     usdNgnRate: usdNgnRate > 0 ? usdNgnRate : DEFAULT_SMS_PRICING.usdNgnRate,
     markupPercent: markupPercent >= 0 ? markupPercent : DEFAULT_SMS_PRICING.markupPercent,
   };
+}
+
+export function normalizeSmsProviderPricing(
+  value?: Partial<SmsProviderPricingBundle> | Partial<SmsPricingSettings> | null,
+): SmsProviderPricingBundle {
+  if (value && typeof value === 'object' && ('smspool' in value || 'fivesim' in value)) {
+    const bundle = value as Partial<SmsProviderPricingBundle>;
+    return {
+      smspool: normalizeSmsPricing(bundle.smspool),
+      fivesim: normalizeSmsPricing(bundle.fivesim),
+    };
+  }
+
+  const legacy = normalizeSmsPricing(value as Partial<SmsPricingSettings> | null);
+  return {
+    smspool: legacy,
+    fivesim: { ...legacy },
+  };
+}
+
+export function getSmsPricingForProvider(
+  bundle: SmsProviderPricingBundle,
+  provider: SmsPricingProvider,
+): SmsPricingSettings {
+  return bundle[provider];
 }
 
 export function calculateSmsCostNgn(costUsd: number, usdNgnRate: number) {
