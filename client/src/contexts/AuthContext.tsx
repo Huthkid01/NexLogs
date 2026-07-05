@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { User, Session } from '@supabase/supabase-js';
 import { authService } from '@/services/auth.service';
 import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
+import { queueQuickTourForUser } from '@/lib/quick-tour';
 import type { Profile } from '@/types';
 
 interface AuthContextType {
@@ -84,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === 'SIGNED_IN') {
         resetDisplayCurrencyForLogin();
+        if (sess?.user?.id) {
+          queueQuickTourForUser(sess.user.id);
+        }
         void applySession(sess, true);
         return;
       }

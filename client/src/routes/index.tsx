@@ -2,47 +2,48 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { ProtectedRoute, GuestRoute, AdminGuestRoute, AdminRedirectGate } from '@/routes/ProtectedRoute';
-
-import HomePage from '@/pages/HomePage';
-import AboutPage from '@/pages/AboutPage';
-import FaqPage from '@/pages/FaqPage';
-import SupportPage from '@/pages/SupportPage';
-import PrivacyPage from '@/pages/PrivacyPage';
-import RefundPage from '@/pages/RefundPage';
-import TermsPage from '@/pages/TermsPage';
-import SuspendedPage from '@/pages/SuspendedPage';
-
-import LoginPage from '@/pages/auth/LoginPage';
-import AdminLoginPage from '@/pages/auth/AdminLoginPage';
-import RegisterPage from '@/pages/auth/RegisterPage';
-import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
-import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
-import AuthCallbackPage from '@/pages/auth/AuthCallbackPage';
-
-import ProfilePage from '@/pages/ProfilePage';
-import MyPurchasesPage from '@/pages/MyPurchasesPage';
-import AddFundsPage from '@/pages/AddFundsPage';
-import PurchaseRdpPage from '@/pages/PurchaseRdpPage';
-import BuyNumbersPage from '@/pages/BuyNumbersPage';
-
-import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
-import AdminUsersPage from '@/pages/admin/AdminUsersPage';
-import AdminProductsPage from '@/pages/admin/AdminProductsPage';
-import AdminOrdersPage from '@/pages/admin/AdminOrdersPage';
-import AdminCategoriesPage from '@/pages/admin/AdminCategoriesPage';
-import AdminCouponsPage from '@/pages/admin/AdminCouponsPage';
-import AdminTicketsPage from '@/pages/admin/AdminTicketsPage';
-import AdminActivityLogsPage from '@/pages/admin/AdminActivityLogsPage';
-import AdminContentPage from '@/pages/admin/AdminContentPage';
-import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
-import AdminSlidesPage from '@/pages/admin/AdminSlidesPage';
-import AdminRdpPage from '@/pages/admin/AdminRdpPage';
-import AdminSenderPage from '@/pages/admin/AdminSenderPage';
-import AdminTransactionsPage from '@/pages/admin/AdminTransactionsPage';
-import AdminSmsPricingPage from '@/pages/admin/AdminSmsPricingPage';
-import UnsubscribePage from '@/pages/UnsubscribePage';
-import NotFoundPage from '@/pages/NotFoundPage';
+import { lazyPage } from '@/routes/lazyPage';
 import { RouterErrorPage } from '@/routes/RouterErrorPage';
+
+const HomePage = lazyPage(() => import('@/pages/HomePage'));
+const AboutPage = lazyPage(() => import('@/pages/AboutPage'));
+const FaqPage = lazyPage(() => import('@/pages/FaqPage'));
+const SupportPage = lazyPage(() => import('@/pages/SupportPage'));
+const PrivacyPage = lazyPage(() => import('@/pages/PrivacyPage'));
+const RefundPage = lazyPage(() => import('@/pages/RefundPage'));
+const TermsPage = lazyPage(() => import('@/pages/TermsPage'));
+const SuspendedPage = lazyPage(() => import('@/pages/SuspendedPage'));
+
+const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage'));
+const AdminLoginPage = lazyPage(() => import('@/pages/auth/AdminLoginPage'));
+const RegisterPage = lazyPage(() => import('@/pages/auth/RegisterPage'));
+const ForgotPasswordPage = lazyPage(() => import('@/pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazyPage(() => import('@/pages/auth/ResetPasswordPage'));
+const AuthCallbackPage = lazyPage(() => import('@/pages/auth/AuthCallbackPage'));
+
+const ProfilePage = lazyPage(() => import('@/pages/ProfilePage'));
+const MyPurchasesPage = lazyPage(() => import('@/pages/MyPurchasesPage'));
+const AddFundsPage = lazyPage(() => import('@/pages/AddFundsPage'));
+const PurchaseRdpPage = lazyPage(() => import('@/pages/PurchaseRdpPage'));
+const BuyNumbersPage = lazyPage(() => import('@/pages/BuyNumbersPage'));
+
+const AdminDashboardPage = lazyPage(() => import('@/pages/admin/AdminDashboardPage'));
+const AdminUsersPage = lazyPage(() => import('@/pages/admin/AdminUsersPage'));
+const AdminProductsPage = lazyPage(() => import('@/pages/admin/AdminProductsPage'));
+const AdminOrdersPage = lazyPage(() => import('@/pages/admin/AdminOrdersPage'));
+const AdminCategoriesPage = lazyPage(() => import('@/pages/admin/AdminCategoriesPage'));
+const AdminCouponsPage = lazyPage(() => import('@/pages/admin/AdminCouponsPage'));
+const AdminTicketsPage = lazyPage(() => import('@/pages/admin/AdminTicketsPage'));
+const AdminActivityLogsPage = lazyPage(() => import('@/pages/admin/AdminActivityLogsPage'));
+const AdminContentPage = lazyPage(() => import('@/pages/admin/AdminContentPage'));
+const AdminAnalyticsPage = lazyPage(() => import('@/pages/admin/AdminAnalyticsPage'));
+const AdminSlidesPage = lazyPage(() => import('@/pages/admin/AdminSlidesPage'));
+const AdminRdpPage = lazyPage(() => import('@/pages/admin/AdminRdpPage'));
+const AdminSenderPage = lazyPage(() => import('@/pages/admin/AdminSenderPage'));
+const AdminTransactionsPage = lazyPage(() => import('@/pages/admin/AdminTransactionsPage'));
+const AdminSmsPricingPage = lazyPage(() => import('@/pages/admin/AdminSmsPricingPage'));
+const UnsubscribePage = lazyPage(() => import('@/pages/UnsubscribePage'));
+const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'));
 
 const router = createBrowserRouter([
   { path: '/unsubscribe/:token', element: <UnsubscribePage />, errorElement: <RouterErrorPage /> },

@@ -7,6 +7,7 @@ import { CategoryDropdown } from '@/components/home/CategoryDropdown';
 import { SubscriptionCard } from '@/components/home/SubscriptionCard';
 import { ProductListRow } from '@/components/home/ProductListRow';
 import { ProductVariantsModal } from '@/components/home/ProductVariantsModal';
+import { RequestProductsEmptyState } from '@/components/home/RequestProductsEmptyState';
 import { AppLoader } from '@/components/common/AppLoader';
 import { SHOP_CATEGORIES, SHOP_CATEGORY_LINKS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -228,16 +229,7 @@ export default function HomePage() {
                 <AppLoader iconClassName="h-9 w-9" />
               </div>
             ) : !products?.data?.length ? (
-              <div className="py-12 text-gray-500 dark:text-gray-400 text-center">
-                <p>No products found.</p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/marketplace')}
-                  className="mt-4 text-[#f26522] font-medium hover:underline"
-                >
-                  {content.home.browseAllProductsLabel}
-                </button>
-              </div>
+              <RequestProductsEmptyState />
             ) : (
               <div>
                 {(products?.data ?? []).map((product) => (

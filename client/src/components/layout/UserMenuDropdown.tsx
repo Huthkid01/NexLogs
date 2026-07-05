@@ -52,6 +52,7 @@ export function UserMenuDropdown() {
     <div ref={containerRef} className="relative">
       <button
         type="button"
+        data-tour="user-menu"
         onClick={() => setOpen((prev) => !prev)}
         className="flex items-center gap-2 bg-[#f26522] text-white rounded-lg pl-1.5 pr-3 py-1.5 text-sm hover:bg-[#d94e0f] transition-colors max-w-[min(100%,320px)]"
         aria-expanded={open}

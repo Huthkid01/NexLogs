@@ -128,6 +128,40 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
             <Label htmlFor="home-browse-all">Browse All Products Label</Label>
             <Input id="home-browse-all" value={draft.home.browseAllProductsLabel} onChange={(e) => setDraft({ ...draft, home: { ...draft.home, browseAllProductsLabel: e.target.value } })} />
           </div>
+          <div>
+            <Label htmlFor="home-empty-title">Empty Catalog Title</Label>
+            <Input
+              id="home-empty-title"
+              value={draft.home.emptyCatalogTitle}
+              onChange={(e) => setDraft({ ...draft, home: { ...draft.home, emptyCatalogTitle: e.target.value } })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="home-empty-description">Empty Catalog Message</Label>
+            <Textarea
+              id="home-empty-description"
+              value={draft.home.emptyCatalogDescription}
+              onChange={(e) => setDraft({ ...draft, home: { ...draft.home, emptyCatalogDescription: e.target.value } })}
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label htmlFor="home-request-telegram">Telegram Button Label</Label>
+              <Input
+                id="home-request-telegram"
+                value={draft.home.requestOnTelegramLabel}
+                onChange={(e) => setDraft({ ...draft, home: { ...draft.home, requestOnTelegramLabel: e.target.value } })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="home-request-whatsapp">WhatsApp Button Label</Label>
+              <Input
+                id="home-request-whatsapp"
+                value={draft.home.requestOnWhatsAppLabel}
+                onChange={(e) => setDraft({ ...draft, home: { ...draft.home, requestOnWhatsAppLabel: e.target.value } })}
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>}
 
@@ -205,21 +239,49 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
             </div>
           </div>
 
-          <div className="max-w-xl">
-            <Label htmlFor="footer-telegram-url">Footer Telegram URL</Label>
-            <Input
-              id="footer-telegram-url"
-              value={draft.footer.socialLinks[0]?.href ?? ''}
-              placeholder="https://t.me/nexlogs or @nexlogs"
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  footer: {
-                    ...draft.footer,
-                    socialLinks: [{ label: 'Telegram', href: e.target.value }],
-                  },
-                })}
-            />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label htmlFor="footer-telegram-url">Footer Telegram URL</Label>
+              <Input
+                id="footer-telegram-url"
+                value={draft.footer.socialLinks.find((link) => link.label.toLowerCase() === 'telegram')?.href ?? ''}
+                placeholder="https://t.me/nexlogs or @nexlogs"
+                onChange={(e) => {
+                  const whatsapp = draft.footer.socialLinks.find((link) => link.label.toLowerCase() === 'whatsapp');
+                  setDraft({
+                    ...draft,
+                    footer: {
+                      ...draft.footer,
+                      socialLinks: [
+                        { label: 'Telegram', href: e.target.value },
+                        ...(whatsapp ? [whatsapp] : [{ label: 'WhatsApp', href: 'https://wa.me/15855938030' }]),
+                      ],
+                    },
+                  });
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="footer-whatsapp-url">Footer WhatsApp Number / URL</Label>
+              <Input
+                id="footer-whatsapp-url"
+                value={draft.footer.socialLinks.find((link) => link.label.toLowerCase() === 'whatsapp')?.href ?? ''}
+                placeholder="+15855938030 or https://wa.me/15855938030"
+                onChange={(e) => {
+                  const telegram = draft.footer.socialLinks.find((link) => link.label.toLowerCase() === 'telegram');
+                  setDraft({
+                    ...draft,
+                    footer: {
+                      ...draft.footer,
+                      socialLinks: [
+                        ...(telegram ? [telegram] : [{ label: 'Telegram', href: 'https://t.me/nexlogs' }]),
+                        { label: 'WhatsApp', href: e.target.value },
+                      ],
+                    },
+                  });
+                }}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>}

@@ -9,6 +9,7 @@ interface SlideBannerProps {
   variant?: SlideBannerVariant;
   children?: ReactNode;
   className?: string;
+  priority?: boolean;
 }
 
 const variantClass: Record<SlideBannerVariant, string> = {
@@ -29,6 +30,7 @@ export function SlideBanner({
   variant = 'live',
   children,
   className = '',
+  priority = false,
 }: SlideBannerProps) {
   const aspectStyle = variant === 'desktop-preview' ? { aspectRatio: SLIDE_BANNER_ASPECT } : undefined;
 
@@ -42,6 +44,9 @@ export function SlideBanner({
         alt={alt}
         className={imageClass[variant]}
         draggable={false}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        fetchPriority={priority ? 'high' : 'low'}
       />
       {children}
     </div>

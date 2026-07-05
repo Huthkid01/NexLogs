@@ -1,12 +1,27 @@
-import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
-import { Link } from 'react-router-dom';
-import NotFoundPage from '@/pages/NotFoundPage';
+import { isRouteErrorResponse, Link, useRouteError } from 'react-router-dom';
+
+function InlineNotFound() {
+  return (
+    <div className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-4 py-16 text-center">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Page not found</h1>
+      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+        The page you are looking for does not exist.
+      </p>
+      <Link
+        to="/"
+        className="mt-6 rounded-lg bg-[#f26522] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#d94e0f]"
+      >
+        Back to home
+      </Link>
+    </div>
+  );
+}
 
 export function RouterErrorPage() {
   const error = useRouteError();
 
   if (isRouteErrorResponse(error) && error.status === 404) {
-    return <NotFoundPage />;
+    return <InlineNotFound />;
   }
 
   const message =

@@ -3,6 +3,7 @@ import { APP_NAME } from '@/constants';
 import { normalizeWalletExchangeRates } from '@/lib/wallet-exchange-rates';
 import { DEFAULT_SMS_PRICING, normalizeSmsProviderPricing, type SmsProviderPricingBundle } from '@/lib/sms-pricing';
 import { normalizeTelegramUrl } from '@/lib/telegram-url';
+import { normalizeWhatsAppUrl } from '@/lib/social-links';
 import { DEFAULT_RDP_CATALOG, mergeRdpCatalog, type RdpCatalog } from '@/lib/rdp-catalog';
 
 export interface SiteContent {
@@ -25,6 +26,10 @@ export interface SiteContent {
     loginPromptLabel: string;
     latestProductsLabel: string;
     browseAllProductsLabel: string;
+    emptyCatalogTitle: string;
+    emptyCatalogDescription: string;
+    requestOnTelegramLabel: string;
+    requestOnWhatsAppLabel: string;
   };
   about: {
     title: string;
@@ -132,6 +137,11 @@ export const defaultSiteContent: SiteContent = {
     loginPromptLabel: 'Log in to view products',
     latestProductsLabel: 'Latest Products',
     browseAllProductsLabel: 'Browse all products',
+    emptyCatalogTitle: 'Request a product',
+    emptyCatalogDescription:
+      'No products are available here right now. Contact customer support on Telegram or WhatsApp to request products and we will help you source what you need.',
+    requestOnTelegramLabel: 'Message on Telegram',
+    requestOnWhatsAppLabel: 'Message on WhatsApp',
   },
   about: {
     title: `About ${APP_NAME}`,
@@ -144,6 +154,11 @@ export const defaultSiteContent: SiteContent = {
   faq: {
     title: 'Frequently Asked Questions',
     items: [
+      {
+        question: 'Where is the main menu and wallet?',
+        answer:
+          'Use the menu icon (☰) on the top left for Marketplace, Buy Numbers, My Purchases, and Support. Your wallet balance is in the orange button on the top right — open it to add funds, view your profile, or sign out. Watch the walkthrough above for a 30-second visual guide.',
+      },
       {
         question: 'How fast are orders delivered?',
         answer: 'Most eligible digital products are delivered shortly after payment verification, but some orders may require manual review.',
@@ -281,10 +296,9 @@ export const defaultSiteContent: SiteContent = {
         title: '2. Information We Collect',
         body: 'We collect information you provide directly and information generated when you use our services.',
         bullets: [
-          'Account information: name, email address, and password (for email sign-up).',
+          'Account information: name and email address.',
           'Profile information: display name and avatar, if provided.',
           'Transaction information: wallet top-ups, purchases, order history, and support tickets.',
-          'Technical information: device type, browser, IP address, and usage logs used for security and troubleshooting.',
         ],
       },
       {
@@ -357,6 +371,7 @@ export const defaultSiteContent: SiteContent = {
     telegramPromoDescription: 'Daily updates on high-follower and monetized accounts.',
     socialLinks: [
       { label: 'Telegram', href: 'https://t.me/nexlogs' },
+      { label: 'WhatsApp', href: 'https://wa.me/15855938030' },
     ],
   },
   wallet: {
@@ -413,16 +428,26 @@ function normalizeSlides(slides?: SiteContent['slides'] | null): SiteContent['sl
   });
 }
 
-function normalizeHomeContent(home?: Partial<SiteContent['home']> & { buyBulkLabel?: string } | null): SiteContent['home'] {
+function normalizeHomeContent(
+  home?: Partial<SiteContent['home']> & {
+    buyBulkLabel?: string;
+    requestOnInstagramLabel?: string;
+  } | null,
+): SiteContent['home'] {
   const legacyBulkLabel = home?.buyBulkLabel;
   const purchaseRdpLabel =
     home?.purchaseRdpLabel ??
     (legacyBulkLabel && legacyBulkLabel !== 'Buy In Bulk' ? legacyBulkLabel : defaultSiteContent.home.purchaseRdpLabel);
+  const requestOnWhatsAppLabel =
+    home?.requestOnWhatsAppLabel ??
+    home?.requestOnInstagramLabel ??
+    defaultSiteContent.home.requestOnWhatsAppLabel;
 
   return {
     ...defaultSiteContent.home,
     ...home,
     purchaseRdpLabel,
+    requestOnWhatsAppLabel,
   };
 }
 
@@ -445,15 +470,70 @@ function normalizeSocialLinks(
   const source = links ?? defaultSiteContent.footer.socialLinks;
   const telegram =
     source.find((link) => link.label.toLowerCase() === 'telegram') ??
-    defaultSiteContent.footer.socialLinks[0];
+    defaultSiteContent.footer.socialLinks.find((link) => link.label.toLowerCase() === 'telegram');
+  const whatsapp =
+    source.find((link) => link.label.toLowerCase() === 'whatsapp') ??
+    defaultSiteContent.footer.socialLinks.find((link) => link.label.toLowerCase() === 'whatsapp');
 
-  return [
-    {
+  const normalized: SiteContent['footer']['socialLinks'] = [];
+
+  if (telegram) {
+    normalized.push({
       ...telegram,
       label: 'Telegram',
       href: normalizeTelegramUrl(telegram.href) ?? telegram.href,
-    },
-  ];
+    });
+  }
+
+  if (whatsapp) {
+    const resolvedWhatsApp = normalizeWhatsAppUrl(whatsapp.href) ?? whatsapp.href;
+    if (resolvedWhatsApp) {
+      normalized.push({
+        ...whatsapp,
+        label: 'WhatsApp',
+        href: resolvedWhatsApp,
+      });
+    }
+  }
+
+  return normalized.length > 0 ? normalized : defaultSiteContent.footer.socialLinks;
+}
+
+function shouldRemovePrivacyBullet(text: string) {
+  return /technical information/i.test(text);
+}
+
+function sanitizePrivacyBullet(text: string) {
+  if (/account information/i.test(text) && /password/i.test(text)) {
+    return 'Account information: name and email address.';
+  }
+
+  return text;
+}
+
+function normalizePrivacyBullets(bullets?: string[] | null) {
+  if (!bullets) return undefined;
+
+  return bullets
+    .map(sanitizePrivacyBullet)
+    .filter((bullet) => !shouldRemovePrivacyBullet(bullet));
+}
+
+function normalizePrivacySections(
+  sections?: SiteContent['privacy']['sections'] | null,
+): SiteContent['privacy']['sections'] {
+  const merged = sections?.map((section, index) => ({
+    ...defaultSiteContent.privacy.sections[index],
+    ...section,
+    bullets: normalizePrivacyBullets(section.bullets)
+      ?? defaultSiteContent.privacy.sections[index]?.bullets,
+  })) ?? defaultSiteContent.privacy.sections;
+
+  return merged.map((section, index) => ({
+    ...section,
+    bullets: normalizePrivacyBullets(section.bullets)
+      ?? defaultSiteContent.privacy.sections[index]?.bullets,
+  }));
 }
 
 export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteContent {
@@ -492,10 +572,7 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
     privacy: {
       ...defaultSiteContent.privacy,
       ...content?.privacy,
-      sections: content?.privacy?.sections?.map((section, index) => ({
-        ...defaultSiteContent.privacy.sections[index],
-        ...section,
-      })) ?? defaultSiteContent.privacy.sections,
+      sections: normalizePrivacySections(content?.privacy?.sections),
     },
     footer: {
       ...defaultSiteContent.footer,

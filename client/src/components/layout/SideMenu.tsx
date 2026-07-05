@@ -16,11 +16,13 @@ const MENU_ITEMS = [
   { label: 'Purchase RDP', emoji: '🖥️', href: '/purchase-rdp', auth: true },
   { label: 'My Purchases', emoji: '🛒', href: '/purchases', auth: true },
   { label: 'Buy Numbers', emoji: '📱', href: '/buy-numbers', auth: true },
+  { label: 'FAQ', emoji: '❓', href: '/faq', auth: false },
   { label: 'Need help?', emoji: '👨‍💻', href: '/support', auth: false },
 ] as const;
 
 const GUEST_MENU_ITEMS = [
   { label: 'Log in/Sign up', emoji: '🔐', href: '/login' },
+  { label: 'FAQ', emoji: '❓', href: '/faq' },
   { label: 'Need help?', emoji: '👨‍💻', href: '/support' },
 ] as const;
 

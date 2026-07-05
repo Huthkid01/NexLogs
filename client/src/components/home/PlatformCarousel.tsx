@@ -56,7 +56,7 @@ export function PlatformCarousel() {
 
   return (
     <div className="relative w-full">
-      <SlideBanner src={slideImageUrl} alt={slide.title || 'Homepage banner slide'} variant="live">
+      <SlideBanner src={slideImageUrl} alt={slide.title || 'Homepage banner slide'} variant="live" priority={safeCurrent === 0}>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent sm:from-black/70 sm:via-black/35" />
 
         {hasOverlayContent && (

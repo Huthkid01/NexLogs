@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { LazyMenuWalletWalkthrough } from '@/components/onboarding/LazyMenuWalletWalkthrough';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
 export default function FaqPage() {
@@ -10,6 +11,9 @@ export default function FaqPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
       <h1 className="text-3xl font-bold mb-8 text-center">{content.faq.title}</h1>
+
+      <LazyMenuWalletWalkthrough />
+
       <div className="space-y-3">
         {content.faq.items.map((faq, i) => (
           <Card key={`${faq.question}-${i}`}>

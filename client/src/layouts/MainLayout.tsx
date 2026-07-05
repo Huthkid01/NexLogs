@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Menu, Send, CheckCircle, Lock, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_NAME } from '@/constants';
@@ -7,15 +7,23 @@ import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { SideMenu } from '@/components/layout/SideMenu';
 import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
 import { FloatingActions } from '@/components/layout/FloatingActions';
+import { useQuickTour } from '@/hooks/useQuickTour';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
-import { resolveSocialLinkHref } from '@/lib/telegram-url';
+import { resolveSocialLinkHref } from '@/lib/social-links';
+
+const QuickTour = lazy(() =>
+  import('@/components/onboarding/QuickTour').then((module) => ({
+    default: module.QuickTour,
+  })),
+);
 
 export function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
   const { content } = useSiteContent();
   const location = useLocation();
+  const { open: quickTourOpen, completeTour, dismissTour } = useQuickTour();
   useMarketplaceRealtime({ userId: user?.id ?? null });
   const authPages = ['/login', '/register', '/forgot-password', '/reset-password'];
   const isAuthPage = authPages.includes(location.pathname);
@@ -38,6 +46,7 @@ export function MainLayout() {
                 <>
                   <button
                     type="button"
+                    data-tour="main-menu"
                     className="shrink-0 p-0.5 text-gray-900 dark:text-gray-100 hover:text-[#f26522]"
                     onClick={() => setMenuOpen(true)}
                     aria-label="Open menu"
@@ -124,6 +133,11 @@ export function MainLayout() {
         </footer>
       </div>
       {!hideFloatingActions ? <FloatingActions /> : null}
+      {quickTourOpen ? (
+        <Suspense fallback={null}>
+          <QuickTour open={quickTourOpen} onClose={dismissTour} onComplete={completeTour} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

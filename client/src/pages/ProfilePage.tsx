@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Info, User } from 'lucide-react';
+import { Info, Map, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/copy-to-clipboard';
+import { openQuickTourNow, resetQuickTourForUser } from '@/lib/quick-tour';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileService } from '@/services/profile.service';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
@@ -67,6 +68,13 @@ export default function ProfilePage() {
     }
   };
 
+  const startQuickTour = () => {
+    if (!user?.id) return;
+    resetQuickTourForUser(user.id);
+    openQuickTourNow();
+    toast.message('Starting website quick tour...');
+  };
+
   return (
     <div className="bg-gray-50 dark:bg-dm-bg min-h-full">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -78,6 +86,14 @@ export default function ProfilePage() {
           {memberSince && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Member since {memberSince}</p>
           )}
+          <button
+            type="button"
+            onClick={startQuickTour}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#f26522] px-4 py-2 text-sm font-semibold text-[#f26522] transition-colors hover:bg-[#fff7f2] dark:hover:bg-[#f26522]/10"
+          >
+            <Map className="h-4 w-4" />
+            Take website quick tour
+          </button>
         </div>
 
         {statsLoading ? (
