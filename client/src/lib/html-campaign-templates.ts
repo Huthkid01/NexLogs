@@ -348,10 +348,90 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-reengagement-inbox',
+    name: 'We miss you — inbox-friendly (SMS + services)',
+    category: 'account',
+    description:
+      'Plain account-style re-engagement like a personal update. Includes SMS verification. Best for Primary inbox — not Promotions.',
+    defaultSubject: `A note from ${APP_NAME} for your account`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `We would like to see you back on ${APP_NAME}. SMS verification, marketplace, and RDP are on your account.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We miss having you on <strong>${APP_NAME}</strong>.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Happy new week. We hope this week brings you success and great opportunities.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We have added and improved services on your account, including:
+              </p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li><strong>SMS verification (Buy Numbers)</strong> — Service 1 and Service 2 for WhatsApp, Telegram, Google, Facebook, and more</li>
+                <li><strong>Marketplace</strong> — verified social media accounts and digital products</li>
+                <li><strong>Windows RDP</strong> — remote desktop plans paid from your wallet</li>
+                <li><strong>Wallet and order history</strong> — add funds, purchase, and track deliveries in one place</li>
+                <li><strong>Support</strong> — Telegram and email when you need help</li>
+              </ul>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Log in today to explore what is new. If you plan to use SMS verification or buy products, add funds to your wallet first from your account menu.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+                <a href="${appUrl}/buy-numbers" style="color:#111827;text-decoration:underline;">Open Buy Numbers (SMS verification)</a>
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Thank you for being a valued member of the ${APP_NAME} community. We would love to see you back.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Have a productive week,<br/>
+                <strong style="color:#111827;">Team ${APP_NAME}</strong>
+              </p>`,
+      linkLabel: `Sign in to ${APP_NAME}`,
+      linkUrl: `${appUrl}/login`,
+    }),
+  },
+  {
+    id: 'account-new-week-inbox',
+    name: 'Happy new week — inbox-friendly',
+    category: 'account',
+    description:
+      'Short weekly account note with SMS verification and services list. Plain layout for Primary inbox.',
+    defaultSubject: `Happy new week from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `A short account update from ${APP_NAME} — SMS verification, marketplace, and more.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Happy new week from <strong>${APP_NAME}</strong>. We hope this week goes well for you.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Here is what you can use on your account right now:
+              </p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li><strong>SMS verification</strong> — reserve a number and receive codes on the website (Service 1 and Service 2)</li>
+                <li><strong>Marketplace</strong> — browse and buy digital products from your wallet</li>
+                <li><strong>Purchase RDP</strong> — Windows remote desktop plans</li>
+                <li><strong>My Purchases</strong> — view order history and delivery details</li>
+              </ul>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Need a verification number? Open Buy Numbers, pick your country and app, and pay from your wallet balance.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">Team ${APP_NAME}</strong>
+              </p>`,
+      linkLabel: 'Open Buy Numbers',
+      linkUrl: `${appUrl}/buy-numbers`,
+    }),
+  },
+  {
     id: 'marketing-reengagement',
     name: 'We miss you',
     category: 'marketing',
-    description: 'Gentle re-engagement email for inactive contacts.',
+    description: 'Gentle re-engagement email for inactive contacts. Often lands in Promotions — use the inbox-friendly version under Account emails instead.',
     defaultSubject: `Still shopping on ${APP_NAME}?`,
     html: buildMarketingEmailHtml({
       title: 'We miss you',
