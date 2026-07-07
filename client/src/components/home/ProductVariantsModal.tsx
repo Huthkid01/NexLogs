@@ -82,7 +82,9 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     try {
       const orderId = await orderService.purchaseWithWallet(displayProduct.id, 1);
       const order = await orderService.getOrderById(orderId);
-      const purchasedDetails = order?.order_items?.[0]?.delivered_details ?? null;
+      const purchasedItem = order?.order_items?.find((item) => item.product_id === displayProduct.id)
+        ?? order?.order_items?.[0];
+      const purchasedDetails = purchasedItem?.delivered_details ?? null;
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       setLogSeed(variantId);

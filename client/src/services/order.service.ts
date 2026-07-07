@@ -42,11 +42,22 @@ export const orderService = {
     if (itemError) throw itemError;
 
     if (trimmed) {
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({ status: 'completed' } as never)
-        .eq('id', orderId);
-      if (orderError) throw orderError;
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('delivered_details')
+        .eq('order_id', orderId);
+      if (orderItemsError) throw orderItemsError;
+
+      const allDelivered = (orderItems || []).every((item) =>
+        Boolean((item.delivered_details as string | null)?.trim()));
+
+      if (allDelivered) {
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({ status: 'completed' } as never)
+          .eq('id', orderId);
+        if (orderError) throw orderError;
+      }
 
       const order = await this.getOrderById(orderId);
       if (order?.user_id) {

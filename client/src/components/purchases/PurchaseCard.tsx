@@ -39,10 +39,6 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
   };
 
   const handleView = () => {
-    if (!product) {
-      toast.error('Product details unavailable');
-      return;
-    }
     setDetailsOpen(true);
   };
 
@@ -95,16 +91,16 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
         </button>
       </article>
 
-      {product && (
-        <ProductDetailsModal
-          product={product}
-          orderDate={order.created_at}
-          logSeed={`${order.id}-credentials`}
-          deliveredDetails={orderItem?.delivered_details}
-          open={detailsOpen}
-          onClose={() => setDetailsOpen(false)}
-        />
-      )}
+      <ProductDetailsModal
+        product={product ?? null}
+        fallbackTitle={product?.title ?? 'Purchased product'}
+        fallbackDescription={product?.description}
+        orderDate={order.created_at}
+        logSeed={`${order.id}-credentials`}
+        deliveredDetails={orderItem?.delivered_details}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+      />
     </>
   );
 }

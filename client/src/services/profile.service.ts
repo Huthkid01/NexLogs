@@ -8,11 +8,15 @@ function makeRef(prefix: string) {
 export const profileService = {
   async getStats(userId: string): Promise<ProfileStats> {
     const [walletRes, ordersRes] = await Promise.all([
-      supabase.from('wallets').select('balance').eq('user_id', userId).single(),
+      supabase.from('wallets').select('balance').eq('user_id', userId).maybeSingle(),
       supabase.from('orders').select('total_amount, payment_status').eq('user_id', userId),
     ]);
 
-    const balance = walletRes.data?.balance ? Number(walletRes.data.balance) : 0;
+    if (walletRes.error) {
+      throw walletRes.error;
+    }
+
+    const balance = walletRes.data?.balance != null ? Number(walletRes.data.balance) : 0;
     const paidOrders = (ordersRes.data || []).filter((o) => o.payment_status === 'paid');
     const totalSpent = paidOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
 

@@ -157,10 +157,17 @@ export const contentService = {
 
 export const adminService = {
   async getStats(): Promise<AdminStats> {
-    const [usersRes, ordersRes, productsRes, recentOrdersRes, ticketsRes] = await Promise.all([
+    const [usersRes, ordersRes, productsRes, stockOutProductsRes, recentOrdersRes, ticketsRes] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('orders').select('total_amount'),
       supabase.from('products').select('*', { count: 'exact', head: true }),
+      supabase
+        .from('products')
+        .select('id, title, slug, stock, is_active, updated_at')
+        .eq('is_active', true)
+        .lte('stock', 0)
+        .order('updated_at', { ascending: false })
+        .limit(8),
       supabase
         .from('orders')
         .select('*, order_items(*, product:products(title)), profile:profiles(full_name, email)')
@@ -182,6 +189,7 @@ export const adminService = {
       totalProducts: productsRes.count || 0,
       openTickets: ticketsRes.count || 0,
       recentOrders: (recentOrdersRes.data || []) as AdminStats['recentOrders'],
+      stockOutProducts: (stockOutProductsRes.data || []) as AdminStats['stockOutProducts'],
     };
   },
 

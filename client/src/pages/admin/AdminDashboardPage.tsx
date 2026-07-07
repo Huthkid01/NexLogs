@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowRight, DollarSign, FolderKanban, LifeBuoy, Mail, Package, RefreshCw, Settings, ShoppingBag, Trash2, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowRight, DollarSign, FolderKanban, LifeBuoy, Mail, Package, RefreshCw, Settings, ShoppingBag, Trash2, Users, Wallet } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,6 +61,7 @@ export default function AdminDashboardPage() {
     { label: 'Revenue', value: formatPrice(stats?.totalRevenue || 0), icon: DollarSign, iconClass: 'bg-emerald-500/15 text-emerald-300' },
     { label: 'Products', value: stats?.totalProducts || 0, icon: Package, iconClass: 'bg-amber-500/15 text-amber-200' },
     { label: 'Open tickets', value: stats?.openTickets || 0, icon: LifeBuoy, iconClass: 'bg-rose-500/15 text-rose-300' },
+    { label: 'Stock outs', value: stats?.stockOutProducts?.length || 0, icon: AlertTriangle, iconClass: 'bg-red-500/15 text-red-300' },
   ];
 
   const quickLinks = [
@@ -137,7 +138,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statCards.map((s) => (
           <Card
             key={s.label}
@@ -261,6 +262,63 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card
+        className={cn(
+          'rounded-2xl',
+          isDark ? 'border-[#18263b] bg-[#0a1527] text-slate-100 shadow-[0_18px_50px_rgba(2,6,23,0.32)]' : 'border-slate-200 bg-white text-slate-900 shadow-sm'
+        )}
+      >
+        <CardContent className="p-6">
+          <div className="mb-5">
+            <h2 className="admin-heading text-2xl font-semibold">Stock outs</h2>
+            <p className={cn('mt-1 text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
+              Products that are active but currently out of stock.
+            </p>
+          </div>
+
+          {stats?.stockOutProducts?.length ? (
+            <div className="space-y-3">
+              {stats.stockOutProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className={cn(
+                    'rounded-2xl border p-4',
+                    isDark ? 'border-[#18263b] bg-[#06111f]' : 'border-slate-200 bg-slate-50',
+                  )}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className={cn('font-medium', isDark ? 'text-slate-50' : 'text-slate-900')}>{product.title}</p>
+                      <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-slate-600')}>/{product.slug}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          isDark ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700',
+                        )}
+                      >
+                        Stock: {product.stock}
+                      </Badge>
+                      <Link
+                        to="/admin/products"
+                        className={cn('text-sm font-medium hover:underline', isDark ? 'text-slate-200' : 'text-slate-700')}
+                      >
+                        Restock
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className={cn('py-4 text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
+              No stock-out products right now.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <DeleteConfirmModal
         open={clearOrdersOpen}

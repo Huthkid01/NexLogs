@@ -34,9 +34,13 @@ export function GoogleSignInButton({
     loadGoogleScript()
       .then(() => {
         if (cancelled || !container) return;
+        if (!window.google?.accounts?.id) {
+          onErrorRef.current?.(new Error('Google sign-in is unavailable right now.'));
+          return;
+        }
 
         container.innerHTML = '';
-        window.google!.accounts.id.initialize({
+        window.google.accounts.id.initialize({
           client_id: getGoogleClientId(),
           callback: (response) => {
             if (response.credential) {
@@ -53,7 +57,7 @@ export function GoogleSignInButton({
         });
 
         const width = Math.max(container.offsetWidth || 0, 280);
-        window.google!.accounts.id.renderButton(container, {
+        window.google.accounts.id.renderButton(container, {
           type: 'standard',
           size: 'large',
           theme: 'outline',

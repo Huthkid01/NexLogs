@@ -27,6 +27,7 @@ import {
   getServiceRoleClient,
   jsonResponse,
   mapOrderRow,
+  refundWallet,
   requireAdmin,
   syncSmsOrderFromRemote,
 } from '../_shared/sms-number-handler.ts';
@@ -277,11 +278,19 @@ Deno.serve(async (req) => {
       try {
         purchase = await purchaseFiveSimNumber(country, service, operator);
       } catch (purchaseError) {
-        await supabase.rpc('wallet_refund_sms', {
-          p_amount_ngn: chargedNgn,
-          p_reason: '5sim purchase failed',
-          p_metadata: { provider: SMS_PROVIDER, country_id: country, service_id: service },
-        });
+        try {
+          await refundWallet(
+            supabase,
+            chargedNgn,
+            '5sim purchase failed',
+            { provider: SMS_PROVIDER, country_id: country, service_id: service },
+          );
+        } catch {
+          return jsonResponse({
+            ok: false,
+            error: 'Purchase failed and we could not refund your wallet automatically. Please contact support.',
+          }, 500);
+        }
 
         const message = purchaseError instanceof Error
           ? purchaseError.message
@@ -324,11 +333,16 @@ Deno.serve(async (req) => {
 
       if (insertError || !orderRow) {
         await cancelFiveSimOrder(purchase.orderId).catch(() => undefined);
-        await supabase.rpc('wallet_refund_sms', {
-          p_amount_ngn: chargedNgn,
-          p_reason: 'Could not save SMS order',
-          p_metadata: { provider: SMS_PROVIDER, fivesim_order_id: purchase.orderId },
-        });
+        try {
+          await refundWallet(
+            supabase,
+            chargedNgn,
+            'Could not save SMS order',
+            { provider: SMS_PROVIDER, fivesim_order_id: purchase.orderId },
+          );
+        } catch {
+          throw new Error('Could not save SMS order and wallet refund failed. Please contact support.');
+        }
         throw new Error(insertError?.message || 'Could not save SMS order.');
       }
 

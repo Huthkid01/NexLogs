@@ -286,6 +286,14 @@ export interface AdminStats {
   totalProducts: number;
   openTickets: number;
   recentOrders: Order[];
+  stockOutProducts: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    stock: number;
+    is_active: boolean;
+    updated_at: string;
+  }>;
 }
 
 export interface AdminAnalyticsSnapshot {

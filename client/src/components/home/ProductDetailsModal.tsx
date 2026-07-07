@@ -13,6 +13,8 @@ interface ProductDetailsModalProps {
   orderDate: string;
   logSeed: string;
   deliveredDetails?: string | null;
+  fallbackTitle?: string;
+  fallbackDescription?: string;
   open: boolean;
   onClose: () => void;
 }
@@ -22,18 +24,25 @@ export function ProductDetailsModal({
   orderDate,
   logSeed,
   deliveredDetails,
+  fallbackTitle,
+  fallbackDescription,
   open,
   onClose,
 }: ProductDetailsModalProps) {
   const [copied, setCopied] = useState(false);
 
-  const logContent = product ? getProductLog(product, logSeed, deliveredDetails) : '';
+  const logContent = product
+    ? getProductLog(product, logSeed, deliveredDetails)
+    : deliveredDetails?.trim() || 'Product details are available only in this order record.';
   const isPendingRdp =
     product && isRdpProduct(product) && !deliveredDetails?.trim();
 
   useModalLock(open, onClose);
 
-  if (!open || !product) return null;
+  if (!open) return null;
+
+  const displayTitle = product?.title ?? fallbackTitle ?? 'Purchased product';
+  const displayDescription = product?.description ?? fallbackDescription ?? 'Product record is no longer active, but your delivered details are still available below.';
 
   const handleCopyLog = async () => {
     try {
@@ -82,11 +91,11 @@ export function ProductDetailsModal({
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4 text-sm text-gray-900 dark:text-gray-100">
           <p>
             <span className="font-bold">Name:</span>{' '}
-            <span className="uppercase">{product.title}</span>
+            <span className="uppercase">{displayTitle}</span>
           </p>
 
           <p>
-            <span className="font-bold">Description:</span> {product.description}
+            <span className="font-bold">Description:</span> {displayDescription}
           </p>
 
           <p>

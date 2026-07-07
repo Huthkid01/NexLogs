@@ -23,6 +23,10 @@ export function loadGoogleScript(): Promise<void> {
     scriptPromise = new Promise((resolve, reject) => {
       const existing = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_GIS_SCRIPT}"]`);
       if (existing) {
+        if (window.google?.accounts?.id) {
+          resolve();
+          return;
+        }
         existing.addEventListener('load', () => resolve(), { once: true });
         existing.addEventListener('error', () => reject(new Error('Failed to load Google sign-in')), { once: true });
         return;
