@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { SessionIdleGuard } from '@/components/auth/SessionIdleGuard';
 import { AppLoader } from '@/components/common/AppLoader';
 import { AppToaster } from '@/components/common/AppToaster';
 import { ErrorReportCenter } from '@/components/common/ErrorReportCenter';
@@ -13,6 +14,7 @@ export function AppContent() {
 
   return (
     <>
+      <SessionIdleGuard />
       <AppRouter />
       <AppToaster />
       <ErrorReportCenter />

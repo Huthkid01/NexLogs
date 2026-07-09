@@ -189,9 +189,9 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                   className="transition-colors hover:bg-gray-50 dark:bg-dm-product-row dark:hover:bg-dm-product-row-hover"
                 >
                   <div className="py-4 px-5 sm:px-6">
-                    <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
-                      {variant.description}{' '}
-                      <span className="text-[#1b5e20] font-semibold">{formatProductPrice(variant.price)}</span>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-relaxed uppercase">
+                      {displayProduct.title}{' '}
+                      <span className="text-[#1b5e20] font-semibold normal-case">{formatProductPrice(variant.price)}</span>
                     </p>
 
                     <div className="flex items-center justify-end gap-3 mt-3">

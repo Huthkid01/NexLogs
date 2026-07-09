@@ -3,6 +3,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import { authService } from '@/services/auth.service';
 import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
 import { queueQuickTourForUser } from '@/lib/quick-tour';
+import { clearSessionActivity, touchSessionActivity } from '@/lib/session-idle';
 import type { Profile } from '@/types';
 
 interface AuthContextType {
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const sess = s as Session | null;
 
       if (event === 'SIGNED_OUT') {
+        clearSessionActivity();
         setSession(null);
         setUser(null);
         setProfile(null);
@@ -85,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === 'SIGNED_IN') {
         resetDisplayCurrencyForLogin();
+        touchSessionActivity();
         if (sess?.user?.id) {
           queueQuickTourForUser(sess.user.id);
         }
