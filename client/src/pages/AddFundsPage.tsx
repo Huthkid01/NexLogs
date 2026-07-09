@@ -8,6 +8,10 @@ import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import {
+  getDepositChargeNgn,
+  MIN_WALLET_DEPOSIT_NGN,
+} from '@/lib/wallet-deposit-fees';
+import {
   completeKoraRedirect,
   startKoraDeposit,
   finalizeDepositSuccess,
@@ -23,6 +27,7 @@ export default function AddFundsPage() {
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [verifyingRedirect, setVerifyingRedirect] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const redirectHandled = useRef(false);
   const { data: walletStats } = useWalletBalance(user?.id);
 
@@ -53,13 +58,24 @@ export default function AddFundsPage() {
     })();
   }, [user?.id, searchParams, setSearchParams, queryClient, verifyingRedirect, walletStats?.balance]);
 
+  const minimumAmountLabel = useMemo(
+    () => `NGN ${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`,
+    [],
+  );
+
   const depositPreview = useMemo(() => {
     const value = parseFloat(amount);
     if (!amount || Number.isNaN(value) || value <= 0) return null;
     return `₦${value.toLocaleString('en-NG')} will be added to your wallet`;
   }, [amount]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const totalPaymentPreview = useMemo(() => {
+    const value = parseFloat(amount);
+    if (!amount || Number.isNaN(value) || value < MIN_WALLET_DEPOSIT_NGN) return null;
+    return getDepositChargeNgn(value);
+  }, [amount]);
+
+  const openPaymentConfirm = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
@@ -72,6 +88,33 @@ export default function AddFundsPage() {
       toast.error('Please enter a valid amount');
       return;
     }
+
+    if (value < MIN_WALLET_DEPOSIT_NGN) {
+      toast.error('Minimum deposit is 2000');
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!user) {
+      toast.error('Please login first');
+      return;
+    }
+
+    const value = parseFloat(amount);
+    if (!amount || Number.isNaN(value) || value <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    if (value < MIN_WALLET_DEPOSIT_NGN) {
+      toast.error('Minimum deposit is 2000');
+      return;
+    }
+
+    const totalToPay = getDepositChargeNgn(value);
+
     setSubmitting(true);
     try {
       if (!hasSupabaseConfig()) {
@@ -88,12 +131,13 @@ export default function AddFundsPage() {
         userId: user.id,
         email: user.email,
         name: profile?.full_name,
-        amount: value,
+        amount: totalToPay,
         currency: 'NGN' as const,
         walletAmount: value,
         paymentMethod: 'kora_card',
       };
 
+      setConfirmOpen(false);
       await startKoraDeposit(depositParams);
       return;
     } catch (err: unknown) {
@@ -140,7 +184,7 @@ export default function AddFundsPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
+          <form onSubmit={openPaymentConfirm} className="space-y-5 max-w-md">
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1.5">
                 Amount (NGN)
@@ -156,6 +200,9 @@ export default function AddFundsPage() {
                 className={`${inputClassName} placeholder:text-gray-400`}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                Minimum amount: {minimumAmountLabel}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {depositPreview ?? 'Enter an amount to see wallet credit'}
               </p>
             </div>
@@ -174,6 +221,56 @@ export default function AddFundsPage() {
           </form>
         </div>
       </div>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center px-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60"
+            aria-label="Close payment confirmation"
+            onClick={() => setConfirmOpen(false)}
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-confirm-title"
+            className="relative w-full max-w-md rounded-2xl bg-white dark:bg-dm-surface border border-gray-200 dark:border-dm-border shadow-xl p-6 text-center"
+          >
+            <p className="text-3xl mb-2" aria-hidden="true">⚠️</p>
+            <h2
+              id="payment-confirm-title"
+              className="text-3xl font-extrabold text-gray-900 dark:text-gray-100"
+            >
+              Attention!!!
+            </h2>
+
+            <p className="mt-5 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              Please ensure you pay the exact amount shown, including all applicable charges.
+            </p>
+            <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              Paying less or more than the specified amount may result in delays or a failed transaction.
+            </p>
+            {totalPaymentPreview != null ? (
+              <p className="mt-4 text-base font-bold text-gray-900 dark:text-gray-100">
+                You will pay NGN {totalPaymentPreview.toLocaleString('en-NG')} now.
+              </p>
+            ) : null}
+            <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Thank you for your attention.
+            </p>
+
+            <button
+              type="button"
+              disabled={submitting || verifyingRedirect}
+              onClick={() => void handleSubmit()}
+              className="mt-6 inline-flex items-center justify-center rounded-md bg-[#f26522] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#d94e0f] disabled:opacity-60"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

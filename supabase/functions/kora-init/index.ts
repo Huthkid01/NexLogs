@@ -5,6 +5,10 @@ import {
   koraErrorMessage,
   type KoraInitializeResponse,
 } from '../_shared/kora-payment.ts';
+import {
+  getDepositChargeNgn,
+  MIN_WALLET_DEPOSIT_NGN,
+} from '../_shared/wallet-deposit-fees.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,6 +102,16 @@ Deno.serve(async (req) => {
       throw new Error('Only NGN wallet deposits are supported');
     }
 
+    if (amountNgn < MIN_WALLET_DEPOSIT_NGN || chargeAmount < MIN_WALLET_DEPOSIT_NGN) {
+      throw new Error(`Minimum deposit amount is NGN ${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`);
+    }
+    const expectedChargeAmount = getDepositChargeNgn(amountNgn);
+    if (chargeAmount !== expectedChargeAmount) {
+      throw new Error(
+        `Invalid payment total. Expected NGN ${expectedChargeAmount.toLocaleString('en-NG')} including fee.`,
+      );
+    }
+
     const reference = createKoraMerchantReference();
     const appUrl = resolveAppUrl(req);
     const redirectUrl = new URL('/add-funds', appUrl).toString();
@@ -138,7 +152,6 @@ Deno.serve(async (req) => {
         notification_url: notificationUrl,
         narration: 'Add funds to your Nexlogs wallet',
         channels: ['card', 'bank_transfer', 'pay_with_bank'],
-        default_channel: 'card',
         customer: {
           email: user.email,
           name: customerName,
