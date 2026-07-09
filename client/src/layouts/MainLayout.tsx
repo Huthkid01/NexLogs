@@ -38,43 +38,43 @@ export function MainLayout() {
     <div className="min-h-screen-safe bg-white dark:bg-dm-bg">
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <div className="min-h-screen-safe flex flex-col">
-        <header className="sticky top-0 z-30 shrink-0 border-b border-gray-100 bg-white dark:border-dm-border dark:bg-dm-bg">
-          <div className="flex items-center justify-between h-[52px] px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-2 sm:gap-3">
-              {!menuOpen && (
-                <>
-                  <button
-                    type="button"
-                    data-tour="main-menu"
-                    className="shrink-0 p-0.5 text-gray-900 dark:text-gray-100 hover:text-[#f26522]"
-                    onClick={() => setMenuOpen(true)}
-                    aria-label="Open menu"
-                  >
-                    <Menu className="h-6 w-6" strokeWidth={2} />
-                  </button>
-                  <Link to="/" className="flex items-center">
-                    <NexLogsLogo className="h-7 sm:h-8" />
-                  </Link>
-                </>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 ml-auto">
-              {user ? (
-                <UserMenuDropdown />
-              ) : !hideAuthLink ? (
-                <Link
-                  to="/login"
-                  className="text-sm text-gray-800 dark:text-gray-200 hover:text-[#f26522] font-medium whitespace-nowrap"
+      <header className="site-header-fixed shrink-0">
+        <div className="flex items-center justify-between h-[52px] px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {!menuOpen && (
+              <>
+                <button
+                  type="button"
+                  data-tour="main-menu"
+                  className="shrink-0 p-0.5 text-gray-900 dark:text-gray-100 hover:text-[#f26522]"
+                  onClick={() => setMenuOpen(true)}
+                  aria-label="Open menu"
                 >
-                  Log in/Sign up
+                  <Menu className="h-6 w-6" strokeWidth={2} />
+                </button>
+                <Link to="/" className="flex items-center">
+                  <NexLogsLogo className="h-7 sm:h-8" />
                 </Link>
-              ) : null}
-            </div>
+              </>
+            )}
           </div>
-        </header>
 
+          <div className="flex items-center gap-3 ml-auto">
+            {user ? (
+              <UserMenuDropdown />
+            ) : !hideAuthLink ? (
+              <Link
+                to="/login"
+                className="text-sm text-gray-800 dark:text-gray-200 hover:text-[#f26522] font-medium whitespace-nowrap"
+              >
+                Log in/Sign up
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      <div className="min-h-screen-safe flex flex-col site-main-offset">
         <main className={`w-full flex-1 ${isAuthPage ? 'lg:flex lg:flex-col' : ''}`}>
           <Outlet />
         </main>

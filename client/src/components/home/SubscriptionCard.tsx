@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { buildProductMarketplacePath } from '@/lib/product-deep-link';
 import { ProductIcon } from '@/components/common/ProductIcon';
-import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import type { Product } from '@/types';
 
@@ -20,11 +19,6 @@ export function SubscriptionCard({ product }: SubscriptionCardProps) {
           <h3 className="text-sm font-bold leading-snug break-words text-gray-900 dark:text-gray-100 sm:line-clamp-3">
             {product.title}
           </h3>
-          <LinkifiedText
-            text={product.description}
-            className="mt-2 text-xs leading-relaxed break-words text-gray-500 dark:text-gray-400 sm:line-clamp-4"
-            as="p"
-          />
         </div>
       </div>
 

@@ -8,7 +8,10 @@ import { SiteContentProvider } from '@/contexts/SiteContentContext';
 import { DisplayCurrencyProvider } from '@/contexts/DisplayCurrencyContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { isGoogleSignInConfigured, loadGoogleScript } from '@/lib/google-auth';
+import { initProductionDevtoolsGuard } from '@/lib/production-devtools-guard';
 import './index.css';
+
+initProductionDevtoolsGuard();
 
 if (isGoogleSignInConfigured()) {
   void loadGoogleScript();

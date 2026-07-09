@@ -15,6 +15,7 @@ import {
 } from '@/lib/purchase-errors';
 import { getDisplayOrderId } from '@/lib/purchase-utils';
 import { getProductVariants } from '@/lib/product-variants';
+import { isTelegramProduct, TELEGRAM_PRE_PURCHASE_INSTRUCTIONS } from '@/lib/telegram-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { orderService, productService, profileService } from '@/services';
@@ -52,6 +53,11 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const displayProduct = liveProduct ?? product;
   const variants = displayProduct ? getProductVariants(displayProduct) : [];
   const previewUrl = displayProduct?.preview_url?.trim() ?? '';
+  const isTelegram = displayProduct ? isTelegramProduct(displayProduct) : false;
+  const loginInstructions = displayProduct?.login_instructions?.trim();
+  const displayInstructions = isTelegram
+    ? loginInstructions || TELEGRAM_PRE_PURCHASE_INSTRUCTIONS
+    : loginInstructions;
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['profile-stats', user?.id],
@@ -187,6 +193,19 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                 </div>
               </div>
             </div>
+
+            {displayInstructions ? (
+              <div className="rounded-lg border border-gray-200 dark:border-dm-border dark:bg-dm-product-row p-4 mb-4">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                  {isTelegram ? 'How to receive your order' : 'Login instructions'}
+                </p>
+                <LinkifiedText
+                  text={displayInstructions}
+                  className="text-sm leading-relaxed break-words whitespace-pre-wrap text-gray-800 dark:text-gray-200"
+                  as="div"
+                />
+              </div>
+            ) : null}
 
             <div className="-mx-5 sm:-mx-6 border-t border-gray-300 dark:border-dm-border">
               {variants.map((variant) => (

@@ -96,8 +96,26 @@ html {
   bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
 }
 
-.safe-top {
+.site-main-offset {
+  padding-top: calc(52px + env(safe-area-inset-top, 0px));
+}
+
+.site-header-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
   padding-top: env(safe-area-inset-top, 0px);
+  border-bottom: 1px solid var(--color-border);
+  background-color: color-mix(in srgb, var(--color-background) 95%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .site-header-fixed {
+  border-bottom-color: var(--color-dm-border);
+  background-color: color-mix(in srgb, var(--color-dm-bg) 95%, transparent);
 }
 
 a,
