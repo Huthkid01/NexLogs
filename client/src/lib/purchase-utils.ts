@@ -1,4 +1,11 @@
-import type { Product, PlatformType } from '@/types';
+import type { Order, OrderItem, Product, PlatformType } from '@/types';
+
+export function getOrderItemForDisplay(order: Pick<Order, 'order_items'>): OrderItem | null {
+  const items = order.order_items ?? [];
+  if (items.length === 0) return null;
+  if (items.length === 1) return items[0];
+  return items[0] ?? null;
+}
 
 const PLATFORM_LABELS: Record<PlatformType, string> = {
   instagram: 'INSTAGRAM/threads',

@@ -13,6 +13,7 @@ import {
   isInsufficientFundsError,
   isOutOfStockError,
 } from '@/lib/purchase-errors';
+import { getDisplayOrderId } from '@/lib/purchase-utils';
 import { getProductVariants } from '@/lib/product-variants';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
@@ -32,6 +33,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const { formatProductPrice, formatDisplayAmount } = useFormatDisplayPrice();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState('');
+  const [purchaseOrderId, setPurchaseOrderId] = useState('');
   const [logSeed, setLogSeed] = useState('');
   const [deliveredDetails, setDeliveredDetails] = useState<string | null>(null);
   const [insufficientOpen, setInsufficientOpen] = useState(false);
@@ -89,7 +91,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       setLogSeed(variantId);
-      setPurchaseDate(new Date().toISOString());
+      setPurchaseDate(order?.created_at ?? new Date().toISOString());
+      setPurchaseOrderId(order?.order_number ? getDisplayOrderId(order.order_number) : '');
       setDeliveredDetails(purchasedDetails);
       setDetailsOpen(true);
       onClose();
@@ -128,6 +131,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     setDetailsOpen(false);
     setLogSeed('');
     setPurchaseDate('');
+    setPurchaseOrderId('');
     setDeliveredDetails(null);
   };
 
@@ -271,6 +275,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
         product={displayProduct}
         orderDate={purchaseDate || new Date().toISOString()}
         logSeed={logSeed}
+        orderId={purchaseOrderId}
         deliveredDetails={deliveredDetails}
         open={detailsOpen && !!displayProduct && !!logSeed}
         onClose={handleDetailsClose}

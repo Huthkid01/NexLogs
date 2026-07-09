@@ -7,9 +7,11 @@ import {
   formatPurchaseAmount,
   formatPurchaseDate,
   getDisplayOrderId,
+  getOrderItemForDisplay,
   getPurchasePlatformLabel,
 } from '@/lib/purchase-utils';
 import { isRdpProduct } from '@/lib/rdp-utils';
+import { getTelegramPendingDetailsMessage, isTelegramProduct } from '@/lib/telegram-utils';
 import type { Order } from '@/types';
 
 interface PurchaseCardProps {
@@ -20,11 +22,12 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
   const [copied, setCopied] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const orderItem = order.order_items?.[0];
+  const orderItem = getOrderItemForDisplay(order);
   const product = orderItem?.product;
   const orderId = getDisplayOrderId(order.order_number);
   const pendingRdpDetails =
     product && isRdpProduct(product) && !orderItem?.delivered_details?.trim();
+  const isTelegram = Boolean(product && isTelegramProduct(product));
 
   const handleCopyOrderId = async () => {
     try {
@@ -80,6 +83,11 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
               Details pending — check back within 5 to 10 minutes.
             </p>
           )}
+          {isTelegram && (
+            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded-md px-2.5 py-2 leading-relaxed whitespace-pre-wrap">
+              {getTelegramPendingDetailsMessage()}
+            </p>
+          )}
         </div>
 
         <button
@@ -97,6 +105,7 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
         fallbackDescription={product?.description}
         orderDate={order.created_at}
         logSeed={`${order.id}-credentials`}
+        orderId={orderId}
         deliveredDetails={orderItem?.delivered_details}
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}

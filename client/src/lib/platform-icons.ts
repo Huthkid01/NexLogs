@@ -16,7 +16,7 @@ export function resolveCategoryIconUrl(category?: {
   image_url?: string | null;
 } | null) {
   if (!category) return null;
-  return category.image_url || getCategoryIconPath(category);
+  return normalizeIconUrl(category.image_url) || getCategoryIconPath(category);
 }
 
 export function resolveProductIconUrl(input: {
@@ -30,15 +30,30 @@ export function resolveProductIconUrl(input: {
 
   const storedImage =
     input.product_images?.find((image) => image.sort_order === 0) ?? input.product_images?.[0];
-  if (storedImage?.image_url) return storedImage.image_url;
+  const storedIconUrl = normalizeIconUrl(storedImage?.image_url);
+  if (storedIconUrl) return storedIconUrl;
+
+  if (normalizeValue(input.slug).includes('telegram') || input.category?.slug === 'telegram') {
+    return TELEGRAM_ICON_PATH;
+  }
 
   return getProductIconPathFromSlug(input.slug, input.platform);
 }
 
 export const RDP_ICON_PATH = '/images/platforms/rdp.svg';
+export const TELEGRAM_ICON_PATH = '/images/platforms/telegram.png';
 
 function normalizeValue(value: string) {
   return value.trim().toLowerCase();
+}
+
+function normalizeIconUrl(url: string | null | undefined): string | null {
+  const trimmed = url?.trim();
+  if (!trimmed) return null;
+  if (trimmed.endsWith('/telegram.svg') || trimmed === 'telegram.svg') {
+    return TELEGRAM_ICON_PATH;
+  }
+  return trimmed;
 }
 
 export function getPlatformIconPath(platform: PlatformType) {
@@ -52,6 +67,7 @@ export function getProductIconPath(product: Pick<Product, 'slug' | 'platform'>) 
 
 export function getProductIconPathFromSlug(slug: string, platform: PlatformType) {
   if (slug.includes('-rdp-')) return RDP_ICON_PATH;
+  if (slug.includes('telegram')) return TELEGRAM_ICON_PATH;
   return getPlatformIconPath(platform);
 }
 
@@ -64,12 +80,16 @@ export function getPlatformFromCategory(value: string): PlatformType | null {
   if (normalized.includes('twitter') || normalized === 'x' || normalized.includes('x-twitter')) return 'x';
   if (normalized.includes('youtube')) return 'youtube';
   if (normalized.includes('snapchat')) return 'snapchat';
+  if (normalized.includes('telegram')) return null;
 
   return null;
 }
 
 export function getCategoryIconPath(input: { name?: string | null; slug?: string | null }) {
-  const platform = getPlatformFromCategory(input.slug || input.name || '');
+  const normalized = normalizeValue(input.slug || input.name || '');
+  if (normalized.includes('telegram')) return TELEGRAM_ICON_PATH;
+
+  const platform = getPlatformFromCategory(normalized);
   return platform ? getPlatformIconPath(platform) : null;
 }
 

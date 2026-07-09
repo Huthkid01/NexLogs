@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { isRdpProduct } from '@/lib/rdp-utils';
+import { isTelegramProduct } from '@/lib/telegram-utils';
 import { orderService } from '@/services';
 import { formatPrice } from '@/lib/utils';
 import { ORDER_STATUS_LABELS } from '@/constants';
@@ -40,7 +41,8 @@ function OrderItemFulfillment({
 }) {
   const queryClient = useQueryClient();
   const [details, setDetails] = useState(item.delivered_details ?? '');
-  const needsFulfillment = isRdpProduct(item.product) && !item.delivered_details?.trim();
+  const isTelegram = isTelegramProduct(item.product);
+  const needsRdpFulfillment = isRdpProduct(item.product) && !item.delivered_details?.trim();
 
   const saveMutation = useMutation({
     mutationFn: () => orderService.updateOrderItemDeliveredDetails(item.id, details, order.id),
@@ -62,9 +64,18 @@ function OrderItemFulfillment({
         <p className={cn('text-sm font-medium', isDark ? 'text-slate-100' : 'text-slate-900')}>
           {item.product?.title ?? 'Product'}
         </p>
-        {needsFulfillment && <Badge variant="warning">Awaiting RDP details</Badge>}
-        {item.delivered_details?.trim() && <Badge variant="success">Details delivered</Badge>}
+        {needsRdpFulfillment && <Badge variant="warning">Awaiting RDP details</Badge>}
+        {isTelegram && <Badge variant="outline">Telegram support fulfillment</Badge>}
+        {item.delivered_details?.trim() && isRdpProduct(item.product) && (
+          <Badge variant="success">Details delivered</Badge>
+        )}
       </div>
+
+      {isTelegram && (
+        <p className={cn('text-sm leading-relaxed', isDark ? 'text-slate-300' : 'text-slate-600')}>
+          Buyer receives this order on Telegram. They copy their Order ID from My Purchases and contact support using the floating Telegram button. No in-app details to paste here.
+        </p>
+      )}
 
       {isRdpProduct(item.product) && (
         <>
@@ -120,7 +131,7 @@ export default function AdminOrdersPage() {
     return titles.join(', ');
   };
 
-  const orderNeedsFulfillment = (order: Order) =>
+  const orderNeedsRdpFulfillment = (order: Order) =>
     order.order_items?.some((item) => isRdpProduct(item.product) && !item.delivered_details?.trim());
 
   if (isLoading) {
@@ -138,13 +149,13 @@ export default function AdminOrdersPage() {
       <div className="space-y-2">
         <h1 className={cn('text-xl font-bold sm:text-2xl', isDark ? 'text-slate-50' : 'text-slate-900')}>Orders</h1>
         <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
-          Review purchases and paste RDP credentials for buyers when an order is awaiting fulfillment.
+          Review purchases and paste RDP credentials for buyers when an RDP order is awaiting fulfillment. Telegram orders are fulfilled via support on Telegram.
         </p>
       </div>
       <div className="space-y-3">
         {orders?.map((order) => {
           const expanded = expandedOrderId === order.id;
-          const pendingRdp = orderNeedsFulfillment(order);
+          const pendingRdp = orderNeedsRdpFulfillment(order);
 
           return (
             <Card

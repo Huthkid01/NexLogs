@@ -13,10 +13,37 @@ function isRdpSlug(slug: string | null | undefined) {
   return Boolean(slug?.includes('-rdp-'));
 }
 
+type PurchaseEmailProduct = {
+  title: string;
+  slug: string;
+  niche?: string | null;
+  category?: { slug?: string | null } | { slug?: string | null }[] | null;
+};
+
+function isTelegramProduct(product: PurchaseEmailProduct | null | undefined) {
+  if (!product) return false;
+  const category = Array.isArray(product.category) ? product.category[0] : product.category;
+  if (category?.slug === 'telegram') return true;
+  if (product.niche?.trim().toLowerCase() === 'telegram') return true;
+  if (product.slug.includes('telegram')) return true;
+  if (product.title.toUpperCase().includes('TELEGRAM')) return true;
+  return false;
+}
+
+function resolvePurchaseFulfillmentType(items: Array<{ product: unknown }>) {
+  const products = items
+    .map((item) => normalizeProduct(item.product))
+    .filter(Boolean) as PurchaseEmailProduct[];
+
+  if (products.some(isTelegramProduct)) return 'telegram';
+  if (products.some((product) => isRdpSlug(product.slug))) return 'rdp';
+  return 'standard';
+}
+
 function normalizeProduct(product: unknown) {
   if (!product) return null;
   if (Array.isArray(product)) return product[0] ?? null;
-  return product as { title: string; slug: string };
+  return product as PurchaseEmailProduct;
 }
 
 function formatNgn(amount: number) {
@@ -71,7 +98,7 @@ export async function sendTransactionalEmail(input: {
         order_items(
           quantity,
           price,
-          product:products(title, slug)
+          product:products(title, slug, niche, category:categories(slug))
         )
       `)
       .eq('id', input.orderId)
@@ -103,9 +130,7 @@ export async function sendTransactionalEmail(input: {
       const product = normalizeProduct(item.product);
       return `${product?.title ?? 'Product'} x${item.quantity} — ${formatNgn(item.price)}`;
     });
-    const pendingRdp =
-      items.some((item) => isRdpSlug(normalizeProduct(item.product)?.slug)) &&
-      orderRow.status === 'processing';
+    const fulfillmentType = resolvePurchaseFulfillmentType(items);
 
     const email = buildPurchaseEmail({
       appName,
@@ -114,7 +139,7 @@ export async function sendTransactionalEmail(input: {
       orderNumber: orderRow.order_number || orderRow.id,
       productLines,
       totalAmount: Number(orderRow.total_amount),
-      pendingRdp,
+      fulfillmentType,
     });
     await sendMail({ to: profileRow.email, ...email });
     return;

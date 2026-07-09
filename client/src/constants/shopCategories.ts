@@ -1,5 +1,5 @@
 import type { PlatformType } from '@/types';
-import { RDP_ICON_PATH } from '@/lib/platform-icons';
+import { RDP_ICON_PATH, TELEGRAM_ICON_PATH } from '@/lib/platform-icons';
 
 export const SHOP_CATEGORIES = [
   { slug: 'instagram', label: 'INSTAGRAM' },
@@ -7,6 +7,7 @@ export const SHOP_CATEGORIES = [
   { slug: 'x-twitter', label: 'TWITTER' },
   { slug: 'tiktok', label: 'TIKTOK' },
   { slug: 'snapchat', label: 'SNAPCHAT' },
+  { slug: 'telegram', label: 'TELEGRAM' },
   { slug: 'rdp', label: 'RDP' },
 ] as const;
 
@@ -21,6 +22,7 @@ export const SHOP_CATEGORY_PLATFORMS: Partial<Record<ShopCategorySlug, PlatformT
 };
 
 export const SHOP_CATEGORY_ICON_PATHS: Partial<Record<ShopCategorySlug, string>> = {
+  telegram: TELEGRAM_ICON_PATH,
   rdp: RDP_ICON_PATH,
 };
 

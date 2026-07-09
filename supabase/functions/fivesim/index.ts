@@ -25,6 +25,7 @@ import {
   corsHeaders,
   getAuthenticatedUser,
   getServiceRoleClient,
+  getServiceRoleClientAsUser,
   jsonResponse,
   mapOrderRow,
   refundWallet,
@@ -211,6 +212,7 @@ Deno.serve(async (req) => {
     }
 
     const { supabase, user } = await getAuthenticatedUser(req);
+    const walletClient = getServiceRoleClientAsUser(req.headers.get('Authorization') ?? '');
 
     if (action === 'history') {
       const { data, error } = await supabase
@@ -253,7 +255,7 @@ Deno.serve(async (req) => {
 
       await ensureFiveSimMaxPrice(service, selectedPool.costUsd);
 
-      const { data: walletTxId, error: debitError } = await supabase.rpc('wallet_debit_for_sms', {
+      const { data: walletTxId, error: debitError } = await walletClient.rpc('wallet_debit_for_sms', {
         p_amount_ngn: chargedNgn,
         p_metadata: {
           provider: SMS_PROVIDER,
@@ -280,7 +282,7 @@ Deno.serve(async (req) => {
       } catch (purchaseError) {
         try {
           await refundWallet(
-            supabase,
+            walletClient,
             chargedNgn,
             '5sim purchase failed',
             { provider: SMS_PROVIDER, country_id: country, service_id: service },
@@ -335,7 +337,7 @@ Deno.serve(async (req) => {
         await cancelFiveSimOrder(purchase.orderId).catch(() => undefined);
         try {
           await refundWallet(
-            supabase,
+            walletClient,
             chargedNgn,
             'Could not save SMS order',
             { provider: SMS_PROVIDER, fivesim_order_id: purchase.orderId },
@@ -465,7 +467,7 @@ Deno.serve(async (req) => {
       let resendWalletTxId: string | null = null;
 
       if (hasValidCode) {
-        const { data: walletTxId, error: debitError } = await supabase.rpc('wallet_debit_for_sms', {
+        const { data: walletTxId, error: debitError } = await walletClient.rpc('wallet_debit_for_sms', {
           p_amount_ngn: resendChargeNgn,
           p_metadata: {
             provider: SMS_PROVIDER,
@@ -546,7 +548,7 @@ Deno.serve(async (req) => {
         try {
           const { refundTxId, order } = await cancelSmsNumberOrderAtomic(
             admin,
-            supabase,
+            walletClient,
             user.id,
             orderRow as Record<string, unknown>,
             providerAction,

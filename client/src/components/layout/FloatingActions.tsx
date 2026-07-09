@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronUp, MessageCircle } from 'lucide-react';
+import { ChevronUp } from 'lucide-react';
+import { TelegramIcon } from '@/components/common/TelegramIcon';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { getTelegramSupportUrl } from '@/lib/telegram-url';
 
@@ -42,9 +43,9 @@ export function FloatingActions() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Open Telegram support"
-        className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f26522] text-white shadow-lg transition-colors hover:bg-[#d94e0f]"
+        className="flex h-12 w-12 items-center justify-center transition-transform hover:scale-105"
       >
-        <MessageCircle className="h-5 w-5" strokeWidth={2.5} />
+        <TelegramIcon className="h-12 w-12 rounded-full shadow-lg" />
       </a>
     </div>
   );

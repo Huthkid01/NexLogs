@@ -178,6 +178,9 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
     const admin = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const adminAsUser = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const accessToken = extractBearerToken(authHeader);
     if (!accessToken) {
@@ -309,7 +312,7 @@ Deno.serve(async (req) => {
       creditedAmount = credit.amount;
       creditedCurrency = credit.currency;
 
-      depositId = await creditWalletDeposit(supabase, {
+      depositId = await creditWalletDeposit(adminAsUser, {
         amountNgn: credit.walletAmount,
         verifiedAmount: credit.amount,
         verifiedCurrency: credit.currency,

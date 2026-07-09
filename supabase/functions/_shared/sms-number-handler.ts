@@ -32,6 +32,19 @@ export function getServiceRoleClient() {
   return createClient(supabaseUrl, serviceRoleKey);
 }
 
+/** Service-role client that preserves auth.uid() from the caller JWT for wallet RPCs. */
+export function getServiceRoleClientAsUser(authHeader: string) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Supabase service role is not configured.');
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+}
+
 export async function getAuthenticatedUser(req: Request) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
@@ -69,12 +82,12 @@ export async function requireAdmin(supabase: ReturnType<typeof createClient>, us
 }
 
 export async function refundWallet(
-  userClient: ReturnType<typeof createClient>,
+  walletClient: ReturnType<typeof createClient>,
   amountNgn: number,
   reason: string,
   metadata: Record<string, unknown>,
 ) {
-  const { data, error } = await userClient.rpc('wallet_refund_sms', {
+  const { data, error } = await walletClient.rpc('wallet_refund_sms', {
     p_amount_ngn: amountNgn,
     p_reason: reason,
     p_metadata: metadata,

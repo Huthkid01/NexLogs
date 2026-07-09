@@ -1,4 +1,10 @@
 import { isRdpProduct, RDP_PENDING_DETAILS_MESSAGE } from '@/lib/rdp-utils';
+import {
+  getTelegramPendingDetailsMessage,
+  isTelegramPendingDelivery,
+  isTelegramProduct,
+  TELEGRAM_MANUAL_FULFILLMENT_MARKER,
+} from '@/lib/telegram-utils';
 import { parseProductDetailLines } from '@/lib/product-details';
 import type { Product } from '@/types';
 
@@ -20,8 +26,18 @@ export function getProductLog(
   _seed: string,
   deliveredDetails?: string | null,
 ): string {
+  if (isTelegramProduct(product)) {
+    return getTelegramPendingDetailsMessage();
+  }
+
   const purchasedDetails = deliveredDetails?.trim();
-  if (purchasedDetails) return purchasedDetails;
+  if (purchasedDetails && !isTelegramPendingDelivery(purchasedDetails)) {
+    return purchasedDetails;
+  }
+
+  if (purchasedDetails === TELEGRAM_MANUAL_FULFILLMENT_MARKER) {
+    return getTelegramPendingDetailsMessage();
+  }
 
   if (isRdpProduct(product)) {
     return RDP_PENDING_DETAILS_MESSAGE;

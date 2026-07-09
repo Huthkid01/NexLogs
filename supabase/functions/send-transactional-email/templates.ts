@@ -88,7 +88,7 @@ export function buildPurchaseEmail(options: {
   orderNumber: string;
   productLines: string[];
   totalAmount: number;
-  pendingRdp: boolean;
+  fulfillmentType?: 'standard' | 'rdp' | 'telegram';
 }) {
   const productsHtml = options.productLines
     .map(
@@ -97,9 +97,12 @@ export function buildPurchaseEmail(options: {
     )
     .join('');
 
-  const pendingNote = options.pendingRdp
-    ? `<p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#374151;">Your RDP order is being prepared. We will deliver your credentials within 5–10 minutes. Check <strong>My Purchases</strong> for updates.</p>`
-    : `<p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#374151;">Your product details are available in <strong>My Purchases</strong>.</p>`;
+  const fulfillmentNote =
+    options.fulfillmentType === 'rdp'
+      ? `<p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#374151;">Your order is being processed. Check <strong>My Purchases</strong> within 5–10 minutes for your RDP details.</p>`
+      : options.fulfillmentType === 'telegram'
+        ? `<p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#374151;">Copy your Order ID from <strong>My Purchases</strong>, then click the Telegram floating button on the marketplace to contact support with your Order ID and receive your order.</p>`
+        : `<p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#374151;">Your product details are available in <strong>My Purchases</strong>.</p>`;
 
   const html = emailLayout({
     appName: options.appName,
@@ -111,7 +114,7 @@ export function buildPurchaseEmail(options: {
       <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Order ID:</strong> ${escapeHtml(options.orderNumber)}</p>
       <ul style="margin:0;padding-left:18px;">${productsHtml}</ul>
       <p style="margin:16px 0 0;font-size:16px;line-height:1.7;color:#111827;"><strong>Total:</strong> ${formatNgn(options.totalAmount)}</p>
-      ${pendingNote}
+      ${fulfillmentNote}
     `,
     ctaLabel: 'View my purchases',
     ctaUrl: `${options.appUrl.replace(/\/$/, '')}/purchases`,

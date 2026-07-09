@@ -243,6 +243,32 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-telegram-marketplace-announcement',
+    name: 'Telegram marketplace (inbox-friendly)',
+    category: 'account',
+    description:
+      'Short plain notice that Telegram is on the marketplace. Best for Primary inbox.',
+    defaultSubject: `Telegram is now on the ${APP_NAME} marketplace`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `Telegram is now available on the ${APP_NAME} marketplace.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                <strong>Telegram</strong> is now on the ${APP_NAME} marketplace. Open the Marketplace, choose the <strong>Telegram</strong> category, and pay from your wallet.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                After you buy, copy your <strong>Order ID</strong> from <strong>My Purchases</strong> and send it to support using the <strong>Telegram button</strong> on the site.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
     id: 'marketing-buy-numbers-sms',
     name: 'Buy Numbers — SMS verification',
     category: 'marketing',

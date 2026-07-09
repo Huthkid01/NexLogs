@@ -208,9 +208,10 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const flutterwaveSecretKey = Deno.env.get('FLUTTERWAVE_SECRET_KEY');
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
       throw new Error('Supabase environment is not configured');
     }
 
@@ -219,6 +220,9 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const adminAsUser = createClient(supabaseUrl, supabaseServiceRoleKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
@@ -325,7 +329,7 @@ Deno.serve(async (req) => {
       },
     );
 
-    const depositId = await creditWalletDeposit(supabase, {
+    const depositId = await creditWalletDeposit(adminAsUser, {
       amountUsd: credit.amountUsd,
       verifiedAmount: credit.amount,
       verifiedCurrency: credit.currency,

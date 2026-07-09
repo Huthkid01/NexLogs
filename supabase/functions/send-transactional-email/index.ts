@@ -20,10 +20,37 @@ function isRdpSlug(slug: string | null | undefined) {
   return Boolean(slug?.includes('-rdp-'));
 }
 
+type PurchaseEmailProduct = {
+  title: string;
+  slug: string;
+  niche?: string | null;
+  category?: { slug?: string | null } | { slug?: string | null }[] | null;
+};
+
+function isTelegramProduct(product: PurchaseEmailProduct | null | undefined) {
+  if (!product) return false;
+  const category = Array.isArray(product.category) ? product.category[0] : product.category;
+  if (category?.slug === 'telegram') return true;
+  if (product.niche?.trim().toLowerCase() === 'telegram') return true;
+  if (product.slug.includes('telegram')) return true;
+  if (product.title.toUpperCase().includes('TELEGRAM')) return true;
+  return false;
+}
+
+function resolvePurchaseFulfillmentType(items: Array<{ product: unknown }>) {
+  const products = items
+    .map((item) => normalizeProduct(item.product) as PurchaseEmailProduct | null)
+    .filter(Boolean) as PurchaseEmailProduct[];
+
+  if (products.some(isTelegramProduct)) return 'telegram';
+  if (products.some((product) => isRdpSlug(product.slug))) return 'rdp';
+  return 'standard';
+}
+
 function normalizeProduct(product: unknown) {
   if (!product) return null;
   if (Array.isArray(product)) return product[0] ?? null;
-  return product as { title: string; slug: string };
+  return product as PurchaseEmailProduct;
 }
 
 function formatNgn(amount: number) {
@@ -174,7 +201,7 @@ Deno.serve(async (req) => {
           order_items(
             quantity,
             price,
-            product:products(title, slug)
+            product:products(title, slug, niche, category:categories(slug))
           )
         `)
         .eq('id', orderId)
@@ -202,9 +229,7 @@ Deno.serve(async (req) => {
         return `${product?.title ?? 'Product'} x${item.quantity} — ${formatNgn(item.price)}`;
       });
 
-      const pendingRdp =
-        items.some((item: { product: unknown }) => isRdpSlug(normalizeProduct(item.product)?.slug)) &&
-        order.status === 'processing';
+      const fulfillmentType = resolvePurchaseFulfillmentType(items);
 
       const email = buildPurchaseEmail({
         appName,
@@ -213,7 +238,7 @@ Deno.serve(async (req) => {
         orderNumber: order.order_number || order.id,
         productLines,
         totalAmount: Number(order.total_amount),
-        pendingRdp,
+        fulfillmentType,
       });
 
       await sendMail({ to: profile.email, ...email });

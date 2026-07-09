@@ -3,6 +3,7 @@ import { useModalLock } from '@/hooks/useModalLock';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
+import { isTelegramProduct, TELEGRAM_PRE_PURCHASE_INSTRUCTIONS } from '@/lib/telegram-utils';
 import type { Product } from '@/types';
 
 interface ProductInstructionsModalProps {
@@ -25,7 +26,11 @@ export function ProductInstructionsModal({
   if (!open || !product) return null;
 
   const instructions = product.login_instructions?.trim();
-  const hasInstructions = Boolean(instructions);
+  const isTelegram = isTelegramProduct(product);
+  const displayInstructions = isTelegram
+    ? instructions || TELEGRAM_PRE_PURCHASE_INSTRUCTIONS
+    : instructions;
+  const hasInstructions = Boolean(displayInstructions);
 
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
@@ -81,12 +86,12 @@ export function ProductInstructionsModal({
 
           <section>
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              Login instructions
+              {isTelegram ? 'How to receive your order' : 'Login instructions'}
             </h3>
             {hasInstructions ? (
               <div className="rounded-lg border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row p-4">
               <LinkifiedText
-                text={instructions ?? ''}
+                text={displayInstructions ?? ''}
                 className="text-sm leading-relaxed whitespace-pre-wrap break-words"
                 as="div"
               />

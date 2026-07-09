@@ -7,12 +7,14 @@ import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { getProductLog } from '@/lib/account-details';
 import { formatPurchaseDate } from '@/lib/purchase-utils';
 import { isRdpProduct, RDP_PENDING_DETAILS_MESSAGE } from '@/lib/rdp-utils';
+import { getTelegramPendingDetailsMessage, isTelegramProduct } from '@/lib/telegram-utils';
 import type { Product } from '@/types';
 
 interface ProductDetailsModalProps {
   product: Product | null;
   orderDate: string;
   logSeed: string;
+  orderId?: string;
   deliveredDetails?: string | null;
   fallbackTitle?: string;
   fallbackDescription?: string;
@@ -24,6 +26,7 @@ export function ProductDetailsModal({
   product,
   orderDate,
   logSeed,
+  orderId,
   deliveredDetails,
   fallbackTitle,
   fallbackDescription,
@@ -35,8 +38,14 @@ export function ProductDetailsModal({
   const logContent = product
     ? getProductLog(product, logSeed, deliveredDetails)
     : deliveredDetails?.trim() || 'Product details are available only in this order record.';
+  const isTelegram = Boolean(product && isTelegramProduct(product));
   const isPendingRdp =
     product && isRdpProduct(product) && !deliveredDetails?.trim();
+  const pendingMessage = isTelegram
+    ? getTelegramPendingDetailsMessage(orderId)
+    : isPendingRdp
+      ? RDP_PENDING_DETAILS_MESSAGE
+      : null;
 
   useModalLock(open, onClose);
 
@@ -107,7 +116,7 @@ export function ProductDetailsModal({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className="font-bold">Product details/Log:</span>
-              {!isPendingRdp && (
+              {!isTelegram && !isPendingRdp && (
                 <button
                   type="button"
                   onClick={handleCopyLog}
@@ -118,9 +127,9 @@ export function ProductDetailsModal({
               )}
             </div>
 
-            {isPendingRdp ? (
-              <div className="rounded border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-amber-900 dark:text-amber-100">
-                {RDP_PENDING_DETAILS_MESSAGE}
+            {pendingMessage ? (
+              <div className="rounded border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap">
+                {pendingMessage}
               </div>
             ) : (
               <div className="rounded border border-gray-300 dark:border-dm-border bg-white dark:bg-dm-product-row p-3 min-h-[180px] max-h-[320px] overflow-y-auto">

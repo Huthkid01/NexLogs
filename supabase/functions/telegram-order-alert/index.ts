@@ -237,14 +237,19 @@ Deno.serve(async (req) => {
 
   try {
     const expectedSecret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET');
-    if (expectedSecret) {
-      const providedSecret = req.headers.get('x-telegram-webhook-secret');
-      if (providedSecret !== expectedSecret) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (!expectedSecret) {
+      return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const providedSecret = req.headers.get('x-telegram-webhook-secret');
+    if (providedSecret !== expectedSecret) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const body = await req.json() as {

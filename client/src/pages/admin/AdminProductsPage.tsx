@@ -18,6 +18,14 @@ import { applyRdpProductToCatalog, removeRdpProductFromCatalog } from '@/lib/rdp
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { getPlatformFromCategory, resolveCategoryIconUrl, resolveProductIconUrl } from '@/lib/platform-icons';
 import { isRdpProduct, isRdpFormProduct } from '@/lib/rdp-utils';
+import {
+  buildTelegramPlaceholderInventory,
+  getTelegramPendingDetailsMessage,
+  isTelegramFormProduct,
+  isTelegramPlaceholderInventory,
+  isTelegramProduct,
+  TELEGRAM_PRE_PURCHASE_INSTRUCTIONS,
+} from '@/lib/telegram-utils';
 import { countProductDetailLines, normalizeProductDetailsStorage } from '@/lib/product-details';
 import {
   adminActionIconButtonClass,
@@ -94,6 +102,14 @@ function createEmptyForm(categoryId = ''): ProductFormState {
 }
 
 function createFormFromProduct(product: Product): ProductFormState {
+  const normalizedDetails = normalizeProductDetailsStorage(product.product_details);
+  const isTelegram = isTelegramFormProduct({
+    slug: product.slug,
+    title: product.title,
+    niche: product.niche,
+    categorySlug: product.category?.slug,
+  });
+
   return {
     title: product.title,
     slug: product.slug,
@@ -108,7 +124,8 @@ function createFormFromProduct(product: Product): ProductFormState {
     following: product.following != null ? String(product.following) : '',
     description: product.description,
     login_instructions: product.login_instructions ?? '',
-    product_details: normalizeProductDetailsStorage(product.product_details),
+    product_details:
+      isTelegram && isTelegramPlaceholderInventory(normalizedDetails) ? '' : normalizedDetails,
     preview_url: product.preview_url ?? '',
     featured: product.featured,
     verified: product.verified,
@@ -116,10 +133,44 @@ function createFormFromProduct(product: Product): ProductFormState {
   };
 }
 
-function buildProductPayload(form: ProductFormState, categorySlug?: string | null) {
-  const detailLineCount = countProductDetailLines(form.product_details);
-  const isRdp = isRdpFormProduct({ slug: form.slug, niche: form.niche, categorySlug });
-  const stockValue = isRdp || detailLineCount === 0 ? Number(form.stock) : detailLineCount;
+function productSkipsBuyerCopyLines(
+  input: {
+    slug?: string | null;
+    title?: string | null;
+    niche?: string | null;
+    categorySlug?: string | null;
+  },
+  editingProduct?: Product | null,
+) {
+  if (isRdpFormProduct(input) || isTelegramFormProduct(input)) return true;
+  if (!editingProduct) return false;
+  return isRdpProduct(editingProduct) || isTelegramProduct(editingProduct);
+}
+
+function buildProductPayload(
+  form: ProductFormState,
+  categorySlug?: string | null,
+  editingProduct?: Product | null,
+) {
+  const skipsBuyerCopyLines = productSkipsBuyerCopyLines(
+    { slug: form.slug, title: form.title, niche: form.niche, categorySlug },
+    editingProduct,
+  );
+  const isTelegram = isTelegramFormProduct({
+    slug: form.slug,
+    title: form.title,
+    niche: form.niche,
+    categorySlug,
+  }) || Boolean(editingProduct && isTelegramProduct(editingProduct));
+  const isRdp = isRdpFormProduct({ slug: form.slug, niche: form.niche, categorySlug })
+    || Boolean(editingProduct && isRdpProduct(editingProduct));
+  const detailLineCount = skipsBuyerCopyLines ? 0 : countProductDetailLines(form.product_details);
+  const stockValue = isRdp || isTelegram || detailLineCount === 0 ? Number(form.stock) : detailLineCount;
+  const productDetails = isTelegram
+    ? stockValue > 0
+      ? buildTelegramPlaceholderInventory(stockValue)
+      : ''
+    : normalizeProductDetailsStorage(form.product_details);
 
   return {
     title: form.title.trim(),
@@ -135,7 +186,7 @@ function buildProductPayload(form: ProductFormState, categorySlug?: string | nul
     following: form.following ? Number(form.following) : null,
     description: form.description.trim(),
     login_instructions: form.login_instructions.trim() || null,
-    product_details: normalizeProductDetailsStorage(form.product_details),
+    product_details: productDetails,
     preview_url: form.preview_url.trim() || null,
     featured: form.featured,
     verified: form.verified,
@@ -156,7 +207,6 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productPendingDelete, setProductPendingDelete] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(() => createEmptyForm());
-  const detailLineCount = countProductDetailLines(form.product_details);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -174,6 +224,22 @@ export default function AdminProductsPage() {
     niche: form.niche,
     categorySlug: selectedCategory?.slug,
   });
+  const isTelegramForm = isTelegramFormProduct({
+    slug: form.slug,
+    title: form.title,
+    niche: form.niche,
+    categorySlug: selectedCategory?.slug,
+  }) || Boolean(editingProduct && isTelegramProduct(editingProduct));
+  const skipsBuyerCopyLines = productSkipsBuyerCopyLines(
+    {
+      slug: form.slug,
+      title: form.title,
+      niche: form.niche,
+      categorySlug: selectedCategory?.slug,
+    },
+    editingProduct,
+  );
+  const detailLineCount = skipsBuyerCopyLines ? 0 : countProductDetailLines(form.product_details);
   const productIconUrl =
     resolveCategoryIconUrl(selectedCategory) ||
     resolveProductIconUrl({ slug: form.slug, platform: form.platform, category: selectedCategory });
@@ -278,12 +344,14 @@ export default function AdminProductsPage() {
       return;
     }
 
-    if (!isRdpForm && detailLineCount === 0) {
+    if (!skipsBuyerCopyLines && detailLineCount === 0) {
       toast.error('Fill in the required product details first. Add at least one buyer copy line.');
       return;
     }
 
-    saveProduct.mutate({ payload: buildProductPayload(form, selectedCategory?.slug) });
+    saveProduct.mutate({
+      payload: buildProductPayload(form, selectedCategory?.slug, editingProduct),
+    });
   };
 
   if (isLoading || categoriesLoading) {
@@ -492,6 +560,7 @@ export default function AdminProductsPage() {
                         onChange={(event) => {
                           const categoryId = event.target.value;
                           const category = categories?.find((item) => item.id === categoryId);
+                          const isTelegramCategory = category?.slug === 'telegram';
                           const nextPlatform = category
                             ? getPlatformFromCategory(category.slug || category.name)
                             : null;
@@ -499,7 +568,14 @@ export default function AdminProductsPage() {
                           setForm((current) => ({
                             ...current,
                             category_id: categoryId,
-                            platform: nextPlatform ?? current.platform,
+                            platform: isTelegramCategory ? 'snapchat' : (nextPlatform ?? current.platform),
+                            niche: isTelegramCategory ? 'Telegram' : current.niche,
+                            login_instructions:
+                              isTelegramCategory && !current.login_instructions.trim()
+                                ? TELEGRAM_PRE_PURCHASE_INSTRUCTIONS
+                                : current.login_instructions,
+                            stock: isTelegramCategory && !current.stock.trim() ? '100' : current.stock,
+                            product_details: isTelegramCategory ? '' : current.product_details,
                           }));
                         }}
                         className="admin-select"
@@ -544,13 +620,17 @@ export default function AdminProductsPage() {
                       <Input
                         type="number"
                         min="0"
-                        value={detailLineCount > 0 ? String(detailLineCount) : form.stock}
+                        value={isTelegramForm || detailLineCount === 0 ? form.stock : String(detailLineCount)}
                         onChange={(event) => setForm((current) => ({ ...current, stock: event.target.value }))}
                         className="admin-input"
-                        placeholder="12"
-                        readOnly={detailLineCount > 0}
+                        placeholder={isTelegramForm ? '100' : '12'}
+                        readOnly={!isTelegramForm && detailLineCount > 0}
                       />
-                      {detailLineCount > 0 ? (
+                      {isTelegramForm ? (
+                        <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
+                          Available units for sale. Account details are pasted in Admin → Orders after each purchase.
+                        </p>
+                      ) : detailLineCount > 0 ? (
                         <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
                           Stock is synced to the number of buyer copy lines.
                         </p>
@@ -566,7 +646,9 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Login instructions</label>
+                      <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>
+                        {isTelegramForm ? 'How to receive your order' : 'Login instructions'}
+                      </label>
                       <Textarea
                         value={form.login_instructions}
                         onChange={(event) => setForm((current) => ({ ...current, login_instructions: event.target.value }))}
@@ -597,6 +679,24 @@ export default function AdminProductsPage() {
                           isDark ? 'border-[#22324a] bg-[#06101d] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
                         )}>
                           RDP products use manual fulfillment. After a buyer purchases, paste their credentials in Admin → Orders. Buyer copy lines are not required.
+                        </div>
+                      ) : isTelegramForm ? (
+                        <div className="space-y-3">
+                          <div className={cn(
+                            'rounded-2xl border px-4 py-3 text-sm',
+                            isDark ? 'border-[#22324a] bg-[#06101d] text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600',
+                          )}>
+                            Telegram orders are fulfilled on Telegram support, not in Admin → Orders. Buyers see instructions to copy their Order ID from My Purchases and contact support using the floating Telegram button. Set stock above.
+                          </div>
+                          <div className={cn(
+                            'rounded-xl border px-4 py-3 text-sm whitespace-pre-wrap',
+                            isDark ? 'border-[#22324a] bg-[#06101d] text-slate-200' : 'border-slate-200 bg-white text-slate-700',
+                          )}>
+                            <p className={cn('text-xs font-semibold uppercase tracking-wide mb-2', adminSubtleTextClass(isDark))}>
+                              What buyer sees in Product Details
+                            </p>
+                            {getTelegramPendingDetailsMessage()}
+                          </div>
                         </div>
                       ) : (
                         <ProductBuyerDetailsEditor

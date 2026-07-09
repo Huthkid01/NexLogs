@@ -22,6 +22,7 @@ import {
   corsHeaders,
   getAuthenticatedUser,
   getServiceRoleClient,
+  getServiceRoleClientAsUser,
   jsonResponse,
   mapOrderRow,
   refundWallet,
@@ -219,6 +220,7 @@ Deno.serve(async (req) => {
     }
 
     const { supabase, user } = await getAuthenticatedUser(req);
+    const walletClient = getServiceRoleClientAsUser(req.headers.get('Authorization') ?? '');
 
     if (action === 'price') {
       if (!body.country?.trim() || !body.service?.trim()) {
@@ -268,7 +270,7 @@ Deno.serve(async (req) => {
       const quote = await fetchSmsPoolPrice(country, service, pool);
       const chargedNgn = calculateSmsChargeNgn(quote.costUsd, pricing);
 
-      const { data: walletTxId, error: debitError } = await supabase.rpc('wallet_debit_for_sms', {
+      const { data: walletTxId, error: debitError } = await walletClient.rpc('wallet_debit_for_sms', {
         p_amount_ngn: chargedNgn,
         p_metadata: {
           country_id: country,
@@ -293,7 +295,7 @@ Deno.serve(async (req) => {
         purchase = await purchaseSmsPoolNumber(country, service, quote.costUsd * 1.2, pool);
       } catch (purchaseError) {
         await refundWallet(
-          supabase,
+          walletClient,
           chargedNgn,
           'SMS Pool purchase failed',
           { country_id: country, service_id: service },
@@ -339,7 +341,7 @@ Deno.serve(async (req) => {
       if (insertError || !orderRow) {
         await cancelSmsPoolOrder(purchase.orderId).catch(() => undefined);
         await refundWallet(
-          supabase,
+          walletClient,
           chargedNgn,
           'Could not save SMS order',
           { smspool_order_id: purchase.orderId },
@@ -492,7 +494,7 @@ Deno.serve(async (req) => {
       }
 
       if (hasValidCode) {
-        const { data: walletTxId, error: debitError } = await supabase.rpc('wallet_debit_for_sms', {
+        const { data: walletTxId, error: debitError } = await walletClient.rpc('wallet_debit_for_sms', {
           p_amount_ngn: resendChargeNgn,
           p_metadata: {
             order_id: orderRow.id,
@@ -571,7 +573,7 @@ Deno.serve(async (req) => {
         try {
           const { refundTxId, order } = await cancelSmsNumberOrderAtomic(
             admin,
-            supabase,
+            walletClient,
             user.id,
             orderRow as Record<string, unknown>,
             cancelSmsPoolOrder,

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { ORDER_PRODUCT_SELECT } from '@/services/product.service';
 import type { Order, Coupon } from '@/types';
 
 export const orderService = {
@@ -61,10 +62,12 @@ export const orderService = {
 
       const order = await this.getOrderById(orderId);
       if (order?.user_id) {
+        const orderItem = order.order_items?.find((item) => item.id === orderItemId);
+        const productTitle = orderItem?.product?.title ?? 'order';
         await supabase.from('notifications').insert({
           user_id: order.user_id,
-          title: 'RDP Details Ready',
-          message: 'Your RDP details are now available in My Purchases.',
+          title: 'Order Details Ready',
+          message: `Your ${productTitle} details are now available in My Purchases.`,
           link: '/purchases',
         } as never);
       }
@@ -74,7 +77,7 @@ export const orderService = {
   async getUserOrders(userId: string): Promise<Order[]> {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, product:products(*, product_images(*)))')
+      .select(`*, order_items(*, product:products(${ORDER_PRODUCT_SELECT}))`)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -84,7 +87,7 @@ export const orderService = {
   async getOrderById(orderId: string): Promise<Order | null> {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, product:products(*, product_images(*)))')
+      .select(`*, order_items(*, product:products(${ORDER_PRODUCT_SELECT}))`)
       .eq('id', orderId)
       .single();
     if (error) return null;
