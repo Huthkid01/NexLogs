@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useModalLock } from '@/hooks/useModalLock';
 import { ProductIcon } from '@/components/common/ProductIcon';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import type { Product } from '@/types';
 
@@ -71,7 +72,11 @@ export function ProductInstructionsModal({
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
               About this product
             </h3>
-            <p className="leading-relaxed break-words whitespace-pre-wrap">{product.description}</p>
+            <LinkifiedText
+              text={product.description}
+              className="leading-relaxed break-words whitespace-pre-wrap"
+              as="p"
+            />
           </section>
 
           <section>
@@ -80,9 +85,11 @@ export function ProductInstructionsModal({
             </h3>
             {hasInstructions ? (
               <div className="rounded-lg border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row p-4">
-                <pre className="text-sm leading-relaxed whitespace-pre-wrap break-words font-sans">
-                  {instructions}
-                </pre>
+              <LinkifiedText
+                text={instructions ?? ''}
+                className="text-sm leading-relaxed whitespace-pre-wrap break-words"
+                as="div"
+              />
               </div>
             ) : (
               <p className="text-gray-500 dark:text-gray-400 leading-relaxed">

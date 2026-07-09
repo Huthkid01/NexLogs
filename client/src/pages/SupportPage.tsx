@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Mail, Send } from 'lucide-react';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { normalizeTelegramUrl } from '@/lib/telegram-url';
 
 const SUPPORT_CHANNELS = [
@@ -41,7 +42,7 @@ export default function SupportPage() {
               {content.support.title}
             </h1>
             <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-              {content.support.intro}
+              <LinkifiedText text={content.support.intro} />
             </p>
           </div>
 
@@ -68,7 +69,9 @@ export default function SupportPage() {
                   </span>
                   <div>
                     <p className="text-base font-bold text-gray-900 dark:text-gray-100">{channel.title}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{channel.description}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      <LinkifiedText text={channel.description} />
+                    </p>
                   </div>
                 </a>
               );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModalLock } from '@/hooks/useModalLock';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { getProductLog } from '@/lib/account-details';
 import { formatPurchaseDate } from '@/lib/purchase-utils';
@@ -95,7 +96,8 @@ export function ProductDetailsModal({
           </p>
 
           <p>
-            <span className="font-bold">Description:</span> {displayDescription}
+            <span className="font-bold">Description:</span>{' '}
+            <LinkifiedText text={displayDescription} />
           </p>
 
           <p>
@@ -122,9 +124,11 @@ export function ProductDetailsModal({
               </div>
             ) : (
               <div className="rounded border border-gray-300 dark:border-dm-border bg-white dark:bg-dm-product-row p-3 min-h-[180px] max-h-[320px] overflow-y-auto">
-                <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words font-sans leading-relaxed">
-                  {logContent}
-                </pre>
+                <LinkifiedText
+                  text={logContent}
+                  className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words leading-relaxed"
+                  as="div"
+                />
               </div>
             )}
           </div>

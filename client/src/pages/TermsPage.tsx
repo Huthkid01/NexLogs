@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 
 export default function TermsPage() {
   const { content } = useSiteContent();
@@ -24,7 +25,7 @@ export default function TermsPage() {
                   {section.title}
                 </h2>
                 <p className="text-sm sm:text-base leading-7 text-gray-700 dark:text-gray-300">
-                  {section.body}
+                  <LinkifiedText text={section.body} />
                   {index === content.terms.sections.length - 1 && (
                     <a
                       href={`mailto:${content.terms.contactEmail}`}
@@ -49,7 +50,9 @@ export default function TermsPage() {
                 {section.bullets && (
                   <ul className="list-disc pl-5 space-y-2 text-sm sm:text-base text-gray-700 dark:text-gray-300">
                     {section.bullets.map((bullet) => (
-                      <li key={bullet}>{bullet}</li>
+                      <li key={bullet}>
+                        <LinkifiedText text={bullet} />
+                      </li>
                     ))}
                   </ul>
                 )}

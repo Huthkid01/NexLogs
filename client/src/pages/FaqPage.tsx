@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { LazyMenuWalletWalkthrough } from '@/components/onboarding/LazyMenuWalletWalkthrough';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
@@ -21,7 +22,11 @@ export default function FaqPage() {
               <span className="font-medium pr-4">{faq.question}</span>
               <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open === i ? 'rotate-180' : ''}`} />
             </button>
-            {open === i && <CardContent className="pt-0 pb-4 text-muted-foreground">{faq.answer}</CardContent>}
+            {open === i && (
+              <CardContent className="pt-0 pb-4 text-muted-foreground">
+                <LinkifiedText text={faq.answer} />
+              </CardContent>
+            )}
           </Card>
         ))}
       </div>

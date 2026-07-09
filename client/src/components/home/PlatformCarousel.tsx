@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SlideBanner } from '@/components/home/SlideBanner';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
 function resolveSlideImageUrl(imageUrl: string) {
@@ -68,9 +69,12 @@ export function PlatformCarousel() {
                 </h2>
               )}
               {slide.description && (
-                <p className="max-w-md text-[11px] leading-snug text-white/90 drop-shadow sm:text-sm">
-                  {slide.description}
-                </p>
+                <LinkifiedText
+                  text={slide.description}
+                  className="max-w-md text-[11px] leading-snug text-white/90 drop-shadow sm:text-sm"
+                  linkClassName="text-white underline hover:text-white/90"
+                  as="p"
+                />
               )}
               {slide.ctaLabel && slide.linkUrl && (
                 <Button

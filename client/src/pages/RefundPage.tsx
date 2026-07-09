@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 
 export default function RefundPage() {
   const { content } = useSiteContent();
@@ -13,13 +14,15 @@ export default function RefundPage() {
               {content.refund.title}
             </h1>
             <p className="text-sm sm:text-base leading-7 text-gray-700 dark:text-gray-300">
-              {content.refund.intro}
+              <LinkifiedText text={content.refund.intro} />
             </p>
           </div>
 
           <ul className="mt-8 list-disc pl-5 space-y-4 text-sm sm:text-base leading-7 text-gray-700 dark:text-gray-300">
             {content.refund.rules.map((rule) => (
-              <li key={rule}>{rule}</li>
+              <li key={rule}>
+                <LinkifiedText text={rule} />
+              </li>
             ))}
             <li>
               To request a refund or replacement, please contact our{' '}
@@ -31,7 +34,7 @@ export default function RefundPage() {
           </ul>
 
           <p className="mt-10 text-sm text-gray-500 dark:text-gray-400">
-            {content.refund.updateNote}
+            <LinkifiedText text={content.refund.updateNote} />
           </p>
         </div>
       </div>

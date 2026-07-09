@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react';
 import { ProductIcon } from '@/components/common/ProductIcon';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { ProductInstructionsModal } from '@/components/home/ProductInstructionsModal';
 import { ProductVariantsModal } from '@/components/home/ProductVariantsModal';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
@@ -42,9 +43,11 @@ export function ProductListRow({ product }: ProductListRowProps) {
                 <h3 className="text-sm font-bold leading-snug break-words text-gray-900 dark:text-gray-100">
                   {product.title}
                 </h3>
-                <p className="mt-1.5 text-xs leading-relaxed break-words text-gray-500 dark:text-gray-400 sm:line-clamp-2">
-                  {product.description}
-                </p>
+                <LinkifiedText
+                  text={product.description}
+                  className="mt-1.5 text-xs leading-relaxed break-words text-gray-500 dark:text-gray-400 sm:line-clamp-2"
+                  as="p"
+                />
                 <p className="mt-2 text-sm font-medium text-[#1b5e20]">
                   Starting from {formatProductPrice(product.price)}
                 </p>

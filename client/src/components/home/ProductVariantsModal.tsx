@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useModalLock } from '@/hooks/useModalLock';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
 import { ProductIcon } from '@/components/common/ProductIcon';
+import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { openErrorReport } from '@/lib/error-report';
 import {
   getPurchaseErrorMessage,
@@ -172,9 +173,10 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                   <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
                     Description
                   </p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-relaxed">
-                    {displayProduct.description}
-                  </p>
+                  <LinkifiedText
+                    text={displayProduct.description}
+                    className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-relaxed"
+                  />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                     {displayProduct.stock} pcs available
                   </p>
