@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import nodemailer from 'npm:nodemailer@6.9.16';
-import { buildPurchaseEmail, buildWalletDepositEmail } from './templates.ts';
+import { buildPurchaseEmail, buildWalletDepositEmail, buildOrderDetailsReadyEmail } from './templates.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -157,13 +157,14 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json() as {
-      type?: EmailType;
+      type?: string;
       order_id?: string;
       transaction_id?: string;
+      order_item_id?: string;
     };
 
     const type = body.type;
-    if (type !== 'purchase' && type !== 'wallet_deposit') {
+    if (type !== 'purchase' && type !== 'wallet_deposit' && type !== 'order_details_ready') {
       throw new Error('Unsupported or missing email type');
     }
 
@@ -238,6 +239,59 @@ Deno.serve(async (req) => {
         orderNumber: order.order_number || order.id,
         productLines,
         totalAmount: Number(order.total_amount),
+        fulfillmentType,
+      });
+
+      await sendMail({ to: profile.email, ...email });
+    }
+
+    if (type === 'order_details_ready') {
+      const orderItemId = body.order_item_id?.trim();
+      if (!orderItemId) throw new Error('Missing order_item_id');
+
+      const { data: orderItem, error: orderItemError } = await supabase
+        .from('order_items')
+        .select(`
+          id,
+          order_id,
+          product:products(title, slug, niche, category:categories(slug))
+        `)
+        .eq('id', orderItemId)
+        .single();
+
+      if (orderItemError || !orderItem) throw toError(orderItemError, 'Order item not found');
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('id, order_number, user_id')
+        .eq('id', orderItem.order_id)
+        .single();
+
+      if (orderError || !order) throw toError(orderError, 'Order not found');
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', order.user_id)
+        .single();
+
+      if (profileError || !profile?.email) throw toError(profileError, 'Buyer profile not found');
+
+      const product = normalizeProduct(orderItem.product) as PurchaseEmailProduct | null;
+      const fulfillmentType = isTelegramProduct(product)
+        ? 'telegram'
+        : isRdpSlug(product?.slug)
+          ? 'rdp'
+          : 'standard';
+
+      console.log('[send-transactional-email] order details ready email to', profile.email);
+
+      const email = buildOrderDetailsReadyEmail({
+        appName,
+        appUrl,
+        fullName: profile.full_name || profile.email.split('@')[0],
+        orderNumber: order.order_number || order.id,
+        productTitle: product?.title ?? 'your order',
         fulfillmentType,
       });
 

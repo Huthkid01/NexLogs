@@ -42,15 +42,17 @@ function OrderItemFulfillment({
   const queryClient = useQueryClient();
   const [details, setDetails] = useState(item.delivered_details ?? '');
   const isTelegram = isTelegramProduct(item.product);
-  const needsRdpFulfillment = isRdpProduct(item.product) && !item.delivered_details?.trim();
+  const isRdp = isRdpProduct(item.product);
+  const needsManualFulfillment = (isRdp || isTelegram) && !item.delivered_details?.trim();
+  const fulfillmentLabel = isTelegram ? 'Telegram' : 'RDP';
 
   const saveMutation = useMutation({
     mutationFn: () => orderService.updateOrderItemDeliveredDetails(item.id, details, order.id),
     onSuccess: () => {
-      toast.success('RDP details saved. Buyer can now view them in My Purchases.');
+      toast.success(`${fulfillmentLabel} details saved. Buyer will be emailed to check My Purchases.`);
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
     },
-    onError: () => toast.error('Failed to save RDP details.'),
+    onError: () => toast.error(`Failed to save ${fulfillmentLabel} details.`),
   });
 
   return (
@@ -64,29 +66,27 @@ function OrderItemFulfillment({
         <p className={cn('text-sm font-medium', isDark ? 'text-slate-100' : 'text-slate-900')}>
           {item.product?.title ?? 'Product'}
         </p>
-        {needsRdpFulfillment && <Badge variant="warning">Awaiting RDP details</Badge>}
-        {isTelegram && <Badge variant="outline">Telegram support fulfillment</Badge>}
-        {item.delivered_details?.trim() && isRdpProduct(item.product) && (
+        {needsManualFulfillment && <Badge variant="warning">Awaiting {fulfillmentLabel} details</Badge>}
+        {isTelegram && <Badge variant="outline">Telegram fulfillment</Badge>}
+        {item.delivered_details?.trim() && (isRdp || isTelegram) && (
           <Badge variant="success">Details delivered</Badge>
         )}
       </div>
 
-      {isTelegram && (
-        <p className={cn('text-sm leading-relaxed', isDark ? 'text-slate-300' : 'text-slate-600')}>
-          Buyer receives this order on Telegram. They copy their Order ID from My Purchases and contact support using the floating Telegram button. No in-app details to paste here.
-        </p>
-      )}
-
-      {isRdpProduct(item.product) && (
+      {(isRdp || isTelegram) && (
         <>
           <label className={cn('block text-xs font-semibold uppercase tracking-wide', isDark ? 'text-slate-400' : 'text-slate-600')}>
-            Paste RDP details for buyer
+            Paste {fulfillmentLabel} details for buyer
           </label>
           <textarea
             value={details}
             onChange={(event) => setDetails(event.target.value)}
             rows={8}
-            placeholder={'IP: 203.0.113.10\nUsername: admin\nPassword: your-password\nPort: 3389'}
+            placeholder={
+              isTelegram
+                ? 'Paste the Telegram account or channel details the buyer should receive.'
+                : 'IP: 203.0.113.10\nUsername: admin\nPassword: your-password\nPort: 3389'
+            }
             className={cn(
               'w-full rounded-lg border px-3 py-2 text-sm font-mono resize-y min-h-[160px]',
               isDark
@@ -107,7 +107,7 @@ function OrderItemFulfillment({
                 Saving...
               </>
             ) : (
-              'Save RDP details'
+              `Save ${fulfillmentLabel} details`
             )}
           </Button>
         </>
@@ -131,8 +131,11 @@ export default function AdminOrdersPage() {
     return titles.join(', ');
   };
 
-  const orderNeedsRdpFulfillment = (order: Order) =>
-    order.order_items?.some((item) => isRdpProduct(item.product) && !item.delivered_details?.trim());
+  const orderNeedsManualFulfillment = (order: Order) =>
+    order.order_items?.some((item) => {
+      const needsDetails = isRdpProduct(item.product) || isTelegramProduct(item.product);
+      return needsDetails && !item.delivered_details?.trim();
+    });
 
   if (isLoading) {
     return (
@@ -149,13 +152,13 @@ export default function AdminOrdersPage() {
       <div className="space-y-2">
         <h1 className={cn('text-xl font-bold sm:text-2xl', isDark ? 'text-slate-50' : 'text-slate-900')}>Orders</h1>
         <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
-          Review purchases and paste RDP credentials for buyers when an RDP order is awaiting fulfillment. Telegram orders are fulfilled via support on Telegram.
+          Review purchases and paste RDP or Telegram credentials for buyers. They receive an email when details are ready in My Purchases.
         </p>
       </div>
       <div className="space-y-3">
         {orders?.map((order) => {
           const expanded = expandedOrderId === order.id;
-          const pendingRdp = orderNeedsRdpFulfillment(order);
+          const pendingFulfillment = orderNeedsManualFulfillment(order);
 
           return (
             <Card
@@ -182,7 +185,7 @@ export default function AdminOrdersPage() {
                     <p className="mt-1 font-bold text-primary">{formatPrice(Number(order.total_amount))}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
-                    {pendingRdp && <Badge variant="warning">RDP pending</Badge>}
+                    {pendingFulfillment && <Badge variant="warning">Fulfillment pending</Badge>}
                     <Badge variant={getOrderStatusVariant(order.status)}>
                       {ORDER_STATUS_LABELS[order.status] ?? order.status}
                     </Badge>

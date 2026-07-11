@@ -42,6 +42,7 @@ const AdminRdpPage = lazyPage(() => import('@/pages/admin/AdminRdpPage'));
 const AdminSenderPage = lazyPage(() => import('@/pages/admin/AdminSenderPage'));
 const AdminTransactionsPage = lazyPage(() => import('@/pages/admin/AdminTransactionsPage'));
 const AdminSmsPricingPage = lazyPage(() => import('@/pages/admin/AdminSmsPricingPage'));
+const AdminReviewsPage = lazyPage(() => import('@/pages/admin/AdminReviewsPage'));
 const UnsubscribePage = lazyPage(() => import('@/pages/UnsubscribePage'));
 const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'));
 
@@ -92,6 +93,7 @@ const router = createBrowserRouter([
       { path: 'users', element: <AdminUsersPage /> },
       { path: 'products', element: <AdminProductsPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },
+      { path: 'reviews', element: <AdminReviewsPage /> },
       { path: 'transactions', element: <AdminTransactionsPage /> },
       { path: 'categories', element: <AdminCategoriesPage /> },
       { path: 'coupons', element: <AdminCouponsPage /> },

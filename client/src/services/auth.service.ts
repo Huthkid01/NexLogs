@@ -1,12 +1,22 @@
 import { supabase } from '@/lib/supabase';
+import { getVisitorLocation } from '@/lib/visitor-location';
 import type { Profile } from '@/types';
 
 export const authService = {
   async signUp(email: string, password: string, fullName: string) {
+    const location = await getVisitorLocation();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: {
+          full_name: fullName,
+          signup_ip: location.ip,
+          signup_country: location.country,
+          signup_region: location.region,
+          signup_city: location.city,
+        },
+      },
     });
     if (error) throw error;
     return data;
@@ -27,6 +37,7 @@ export const authService = {
   },
 
   async signInWithGoogle(idToken: string) {
+    const location = await getVisitorLocation();
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
       token: idToken,
@@ -34,6 +45,18 @@ export const authService = {
     if (error) throw error;
 
     const userId = data.user?.id ?? data.session?.user?.id;
+    if (userId && (location.ip || location.country || location.region || location.city)) {
+      void supabase
+        .from('profiles')
+        .update({
+          signup_ip: location.ip,
+          signup_country: location.country,
+          signup_region: location.region,
+          signup_city: location.city,
+        } as never)
+        .eq('id', userId)
+        .is('signup_ip', null);
+    }
     if (userId) {
       void supabase.from('activity_logs').insert({
         user_id: userId,

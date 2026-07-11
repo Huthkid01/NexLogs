@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
+import { PurchaseReviewModal } from '@/components/purchases/PurchaseReviewModal';
+import { StarRating } from '@/components/common/StarRating';
 import {
   formatPurchaseAmount,
   formatPurchaseDate,
@@ -12,15 +14,18 @@ import {
 } from '@/lib/purchase-utils';
 import { isRdpProduct } from '@/lib/rdp-utils';
 import { getTelegramPendingDetailsMessage, isTelegramProduct } from '@/lib/telegram-utils';
-import type { Order } from '@/types';
+import type { Order, Review } from '@/types';
 
 interface PurchaseCardProps {
   order: Order;
+  existingReview?: Review | null;
+  onReviewSubmitted?: () => void;
 }
 
-export function PurchaseCard({ order }: PurchaseCardProps) {
+export function PurchaseCard({ order, existingReview, onReviewSubmitted }: PurchaseCardProps) {
   const [copied, setCopied] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const orderItem = getOrderItemForDisplay(order);
   const product = orderItem?.product;
@@ -90,13 +95,30 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleView}
-          className="mt-4 self-start text-sm font-medium bg-[#f26522] text-white px-4 py-1.5 rounded-md hover:bg-[#d94e0f] transition-colors"
-        >
-          View
-        </button>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleView}
+            className="text-sm font-medium bg-[#f26522] text-white px-4 py-1.5 rounded-md hover:bg-[#d94e0f] transition-colors"
+          >
+            View
+          </button>
+          {existingReview ? (
+            <div className="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <StarRating value={existingReview.rating} size="sm" />
+              <span>Reviewed</span>
+            </div>
+          ) : product ? (
+            <button
+              type="button"
+              onClick={() => setReviewOpen(true)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#f26522] hover:underline"
+            >
+              <Star className="h-4 w-4" />
+              Rate order
+            </button>
+          ) : null}
+        </div>
       </article>
 
       <ProductDetailsModal
@@ -110,6 +132,17 @@ export function PurchaseCard({ order }: PurchaseCardProps) {
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}
       />
+
+      {product && !existingReview ? (
+        <PurchaseReviewModal
+          open={reviewOpen}
+          onClose={() => setReviewOpen(false)}
+          orderId={order.id}
+          productId={product.id}
+          productTitle={product.title}
+          onSubmitted={onReviewSubmitted}
+        />
+      ) : null}
     </>
   );
 }

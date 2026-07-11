@@ -157,3 +157,41 @@ export function buildWalletDepositEmail(options: {
     text: `${formatNgn(options.amountNgn)} was added to your ${options.appName} wallet. New balance: ${formatNgn(options.newBalance)}.`,
   };
 }
+
+export function buildOrderDetailsReadyEmail(options: {
+  appName: string;
+  appUrl: string;
+  fullName: string;
+  orderNumber: string;
+  productTitle: string;
+  fulfillmentType: 'standard' | 'rdp' | 'telegram';
+}) {
+  const fulfillmentNote =
+    options.fulfillmentType === 'telegram'
+      ? 'Your Telegram order details are now available in My Purchases.'
+      : options.fulfillmentType === 'rdp'
+        ? 'Your RDP login details are now available in My Purchases.'
+        : 'Your order details are now available in My Purchases.';
+
+  const html = emailLayout({
+    appName: options.appName,
+    preheader: `Order ${options.orderNumber} — details are ready`,
+    title: 'Your order details are ready',
+    bodyHtml: `
+      <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi ${escapeHtml(options.fullName || 'there')},</p>
+      <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">${escapeHtml(fulfillmentNote)}</p>
+      <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Order ID:</strong> ${escapeHtml(options.orderNumber)}</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#111827;"><strong>Product:</strong> ${escapeHtml(options.productTitle)}</p>
+      <p style="margin:0;font-size:15px;line-height:1.7;color:#374151;">Sign in and open <strong>My Purchases</strong> to view and copy your details.</p>
+    `,
+    ctaLabel: 'Open My Purchases',
+    ctaUrl: `${options.appUrl.replace(/\/$/, '')}/purchases`,
+    footerNote: 'For your security, full account details are only shown inside your Nexlogs account.',
+  });
+
+  return {
+    subject: `${options.appName} — your order details are ready`,
+    html,
+    text: `${fulfillmentNote} Order ${options.orderNumber}. Open My Purchases: ${options.appUrl.replace(/\/$/, '')}/purchases`,
+  };
+}

@@ -11,10 +11,10 @@ export function AppToaster() {
       position="top-right"
       closeButton
       expand={false}
-      visibleToasts={4}
+      visibleToasts={2}
       gap={12}
       offset={{ top: 20, right: 20, left: 20 }}
-      duration={4000}
+      duration={2000}
       toastOptions={{
         classNames: {
           toast: cn(

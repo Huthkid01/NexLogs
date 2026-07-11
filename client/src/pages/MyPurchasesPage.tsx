@@ -1,22 +1,51 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PurchaseCard } from '@/components/purchases/PurchaseCard';
+import { PurchaseReviewModal } from '@/components/purchases/PurchaseReviewModal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
-import { orderService } from '@/services';
+import { getOrderItemForDisplay } from '@/lib/purchase-utils';
+import { orderService, reviewService } from '@/services';
 
 const PAGE_SIZE = 10;
 
 export default function MyPurchasesPage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [promptReviewOrderId, setPromptReviewOrderId] = useState<string | null>(null);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['user-orders', user?.id],
     queryFn: () => orderService.getUserOrders(user!.id),
     enabled: !!user,
   });
+
+  const orderIds = useMemo(() => orders?.map((order) => order.id) ?? [], [orders]);
+
+  const { data: reviewsByOrder } = useQuery({
+    queryKey: ['order-reviews', user?.id, orderIds.join(',')],
+    queryFn: () => reviewService.getReviewsForOrders(orderIds),
+    enabled: !!user && orderIds.length > 0,
+  });
+
+  useEffect(() => {
+    const state = location.state as { reviewOrderId?: string } | null;
+    if (state?.reviewOrderId) {
+      setPromptReviewOrderId(state.reviewOrderId);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
+
+  const promptReviewOrder = useMemo(
+    () => orders?.find((order) => order.id === promptReviewOrderId) ?? null,
+    [orders, promptReviewOrderId],
+  );
+  const promptReviewItem = promptReviewOrder ? getOrderItemForDisplay(promptReviewOrder) : null;
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
@@ -41,6 +70,10 @@ export default function MyPurchasesPage() {
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
+  };
+
+  const refreshReviews = () => {
+    void queryClient.invalidateQueries({ queryKey: ['order-reviews', user?.id] });
   };
 
   return (
@@ -70,7 +103,12 @@ export default function MyPurchasesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
           {paginatedOrders.map((order) => (
-            <PurchaseCard key={order.id} order={order} />
+            <PurchaseCard
+              key={order.id}
+              order={order}
+              existingReview={reviewsByOrder?.[order.id] ?? null}
+              onReviewSubmitted={refreshReviews}
+            />
           ))}
         </div>
       )}
@@ -80,10 +118,10 @@ export default function MyPurchasesPage() {
           <button
             type="button"
             disabled={page <= 1}
-            onClick={() => setPage((current) => current - 1)}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-dm-input-border rounded-md bg-white dark:bg-dm-surface text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-dm-input"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-dm-border disabled:opacity-40"
           >
-            Prev
+            Previous
           </button>
           <span className="text-sm text-gray-600 dark:text-gray-400">
             Page {page} of {totalPages}
@@ -91,13 +129,27 @@ export default function MyPurchasesPage() {
           <button
             type="button"
             disabled={page >= totalPages}
-            onClick={() => setPage((current) => current + 1)}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-dm-input-border rounded-md bg-white dark:bg-dm-surface text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-dm-input"
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-dm-border disabled:opacity-40"
           >
             Next
           </button>
         </div>
       )}
+
+      {promptReviewOrder && promptReviewItem?.product && !reviewsByOrder?.[promptReviewOrder.id] ? (
+        <PurchaseReviewModal
+          open
+          orderId={promptReviewOrder.id}
+          productId={promptReviewItem.product.id}
+          productTitle={promptReviewItem.product.title}
+          onClose={() => setPromptReviewOrderId(null)}
+          onSubmitted={() => {
+            refreshReviews();
+            setPromptReviewOrderId(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

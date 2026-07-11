@@ -1,4 +1,5 @@
 export interface VisitorLocation {
+  ip: string | null;
   country: string | null;
   region: string | null;
   city: string | null;
@@ -7,6 +8,7 @@ export interface VisitorLocation {
 const CACHE_KEY = 'nexlogs_visitor_location';
 
 const EMPTY_LOCATION: VisitorLocation = {
+  ip: null,
   country: null,
   region: null,
   city: null,
@@ -26,6 +28,7 @@ export async function getVisitorLocation(): Promise<VisitorLocation> {
     if (!response.ok) return EMPTY_LOCATION;
 
     const data = (await response.json()) as {
+      ip?: string;
       country_name?: string;
       country?: string;
       region?: string;
@@ -33,6 +36,7 @@ export async function getVisitorLocation(): Promise<VisitorLocation> {
     };
 
     const location: VisitorLocation = {
+      ip: data.ip || null,
       country: data.country_name || data.country || null,
       region: data.region || null,
       city: data.city || null,
@@ -50,7 +54,10 @@ export function formatVisitorLocation(
 ): string {
   if (!location) return 'Location unknown';
   const parts = [location.city, location.region, location.country].filter(Boolean);
-  return parts.length > 0 ? parts.join(', ') : 'Location unknown';
+  const locationText = parts.length > 0 ? parts.join(', ') : null;
+  if (location.ip && locationText) return `${locationText} (${location.ip})`;
+  if (location.ip) return location.ip;
+  return locationText ?? 'Location unknown';
 }
 
 export function getVisitorDisplayName(

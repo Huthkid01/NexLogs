@@ -93,7 +93,7 @@ export default function PurchaseRdpPage() {
         return;
       }
 
-      await orderService.purchaseRdpBySlug(productSlug, 1);
+      const orderId = await orderService.purchaseRdpBySlug(productSlug, 1);
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });
@@ -101,7 +101,7 @@ export default function PurchaseRdpPage() {
         'Purchase completed. Check your purchase history within 5 to 10 mins for details.',
         { duration: 8000 },
       );
-      navigate('/purchases');
+      navigate('/purchases', { state: { reviewOrderId: orderId } });
     } catch (error: unknown) {
       if (isInsufficientFundsError(error)) {
         toast.error('Insufficient wallet balance. Please add funds.');

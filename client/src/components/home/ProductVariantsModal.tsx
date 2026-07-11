@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModalLock } from '@/hooks/useModalLock';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
+import { PurchaseReviewModal } from '@/components/purchases/PurchaseReviewModal';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { openErrorReport } from '@/lib/error-report';
@@ -40,6 +41,12 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const [insufficientOpen, setInsufficientOpen] = useState(false);
   const [requiredAmount, setRequiredAmount] = useState(0);
   const [purchasing, setPurchasing] = useState(false);
+  const [pendingReview, setPendingReview] = useState<{
+    orderId: string;
+    productId: string;
+    productTitle: string;
+  } | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   useModalLock(open, onClose);
 
@@ -100,6 +107,13 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       setPurchaseDate(order?.created_at ?? new Date().toISOString());
       setPurchaseOrderId(order?.order_number ? getDisplayOrderId(order.order_number) : '');
       setDeliveredDetails(purchasedDetails);
+      if (order?.id) {
+        setPendingReview({
+          orderId: order.id,
+          productId: displayProduct.id,
+          productTitle: displayProduct.title,
+        });
+      }
       setDetailsOpen(true);
       onClose();
       toast.success('Purchase successful');
@@ -139,6 +153,14 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     setPurchaseDate('');
     setPurchaseOrderId('');
     setDeliveredDetails(null);
+    if (pendingReview) {
+      setReviewOpen(true);
+    }
+  };
+
+  const handleReviewClose = () => {
+    setReviewOpen(false);
+    setPendingReview(null);
   };
 
   return (
@@ -299,6 +321,17 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
         open={detailsOpen && !!displayProduct && !!logSeed}
         onClose={handleDetailsClose}
       />
+
+      {pendingReview ? (
+        <PurchaseReviewModal
+          open={reviewOpen}
+          onClose={handleReviewClose}
+          orderId={pendingReview.orderId}
+          productId={pendingReview.productId}
+          productTitle={pendingReview.productTitle}
+          onSubmitted={handleReviewClose}
+        />
+      ) : null}
     </>
   );
 }

@@ -137,12 +137,14 @@ export interface Review {
   id: string;
   user_id: string;
   product_id: string;
+  order_id?: string | null;
   rating: number;
   comment: string | null;
   is_approved: boolean;
   created_at: string;
   updated_at: string;
   profile?: Profile;
+  product?: Pick<Product, 'id' | 'title' | 'slug'>;
 }
 
 export interface Coupon {

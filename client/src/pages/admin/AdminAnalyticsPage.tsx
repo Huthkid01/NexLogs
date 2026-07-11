@@ -21,7 +21,7 @@ export default function AdminAnalyticsPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-xl sm:text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-muted-foreground">Live overview of sales, revenue, and marketplace activity from your orders.</p>
+        <p className="text-sm text-muted-foreground">Live overview of sales, revenue, and activity from marketplace orders and SMS verification.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

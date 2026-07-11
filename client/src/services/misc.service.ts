@@ -157,9 +157,10 @@ export const contentService = {
 
 export const adminService = {
   async getStats(): Promise<AdminStats> {
-    const [usersRes, ordersRes, productsRes, stockOutProductsRes, recentOrdersRes, ticketsRes] = await Promise.all([
+    const [usersRes, ordersRes, smsOrdersRes, productsRes, stockOutProductsRes, recentOrdersRes, ticketsRes] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('orders').select('total_amount'),
+      supabase.from('orders').select('total_amount, status, payment_status'),
+      supabase.from('sms_number_orders').select('charged_ngn, status'),
       supabase.from('products').select('*', { count: 'exact', head: true }),
       supabase
         .from('products')
@@ -179,12 +180,19 @@ export const adminService = {
         .in('status', ['open', 'in_progress']),
     ]);
 
-    const orders = (ordersRes.data || []) as { total_amount: number }[];
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+    const orders = (ordersRes.data || []) as { total_amount: number; status: string; payment_status: string }[];
+    const smsOrders = (smsOrdersRes.data || []) as { charged_ngn: number; status: string }[];
+    const productRevenue = orders
+      .filter((order) => order.payment_status === 'paid' && order.status !== 'cancelled')
+      .reduce((sum, order) => sum + Number(order.total_amount), 0);
+    const smsRevenue = smsOrders
+      .filter((order) => order.status === 'active' || order.status === 'completed')
+      .reduce((sum, order) => sum + Number(order.charged_ngn), 0);
+    const totalRevenue = productRevenue + smsRevenue;
 
     return {
       totalUsers: usersRes.count || 0,
-      totalOrders: orders.length,
+      totalOrders: orders.length + smsOrders.length,
       totalRevenue,
       totalProducts: productsRes.count || 0,
       openTickets: ticketsRes.count || 0,
@@ -194,15 +202,19 @@ export const adminService = {
   },
 
   async getAnalytics(): Promise<AdminAnalyticsSnapshot> {
-    const [ordersRes, orderItemsRes] = await Promise.all([
+    const [ordersRes, orderItemsRes, smsOrdersRes] = await Promise.all([
       supabase.from('orders').select('total_amount, status, payment_status, created_at'),
       supabase
         .from('order_items')
         .select('quantity, price, product:products(platform, country, slug, title)'),
+      supabase
+        .from('sms_number_orders')
+        .select('charged_ngn, status, created_at, country_name, country_id'),
     ]);
 
     if (ordersRes.error) throw ordersRes.error;
     if (orderItemsRes.error) throw orderItemsRes.error;
+    if (smsOrdersRes.error) throw smsOrdersRes.error;
 
     const orders = (ordersRes.data || []) as Array<{
       total_amount: number;
@@ -224,11 +236,28 @@ export const adminService = {
       };
     });
 
-    if (!orders.length && !orderItems.length) {
+    const smsOrders = (smsOrdersRes.data || []).map((row) => {
+      const order = row as {
+        charged_ngn: number;
+        status: string;
+        created_at: string;
+        country_name: string | null;
+        country_id: string;
+      };
+      return {
+        charged_ngn: Number(order.charged_ngn),
+        status: order.status,
+        created_at: order.created_at,
+        country_name: order.country_name,
+        country_id: order.country_id,
+      };
+    });
+
+    if (!orders.length && !orderItems.length && !smsOrders.length) {
       return EMPTY_ADMIN_ANALYTICS;
     }
 
-    return buildAdminAnalyticsSnapshot(orders, orderItems);
+    return buildAdminAnalyticsSnapshot(orders, orderItems, smsOrders);
   },
 
   async clearOrderHistory(): Promise<{ deleted_orders: number }> {

@@ -35,8 +35,28 @@ const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   refunded: 'Refunded',
 };
 
+interface AnalyticsSmsOrder {
+  charged_ngn: number;
+  status: string;
+  created_at: string;
+  country_name: string | null;
+  country_id: string;
+}
+
+const SMS_STATUS_LABELS: Record<string, string> = {
+  active: 'SMS Active',
+  completed: 'SMS Completed',
+  cancelled: 'SMS Cancelled',
+  refunded: 'SMS Refunded',
+  expired: 'SMS Expired',
+};
+
 function isCountableOrder(order: AnalyticsOrder): boolean {
   return order.payment_status === 'paid' && order.status !== 'cancelled';
+}
+
+function isCountableSmsOrder(order: AnalyticsSmsOrder): boolean {
+  return order.status === 'active' || order.status === 'completed';
 }
 
 function getPlatformLabel(product: NonNullable<AnalyticsOrderItem['product']>): string {
@@ -83,12 +103,14 @@ function toPercentageMap(totals: Map<string, number>): { label: string; value: n
 export function buildAdminAnalyticsSnapshot(
   orders: AnalyticsOrder[],
   orderItems: AnalyticsOrderItem[],
+  smsOrders: AnalyticsSmsOrder[] = [],
 ): AdminAnalyticsSnapshot {
   const countableOrders = orders.filter(isCountableOrder);
+  const countableSmsOrders = smsOrders.filter(isCountableSmsOrder);
   const weekBuckets = buildRevenueWeekBuckets();
 
   const revenueByWeek = weekBuckets.map((bucket) => {
-    const value = countableOrders.reduce((sum, order) => {
+    const productRevenue = countableOrders.reduce((sum, order) => {
       const createdAt = new Date(order.created_at);
       if (createdAt >= bucket.start && createdAt <= bucket.end) {
         return sum + Number(order.total_amount);
@@ -96,7 +118,15 @@ export function buildAdminAnalyticsSnapshot(
       return sum;
     }, 0);
 
-    return { label: bucket.label, value: Math.round(value * 100) / 100 };
+    const smsRevenue = countableSmsOrders.reduce((sum, order) => {
+      const createdAt = new Date(order.created_at);
+      if (createdAt >= bucket.start && createdAt <= bucket.end) {
+        return sum + Number(order.charged_ngn);
+      }
+      return sum;
+    }, 0);
+
+    return { label: bucket.label, value: Math.round((productRevenue + smsRevenue) * 100) / 100 };
   });
 
   const platformTotals = new Map<string, number>();
@@ -106,6 +136,10 @@ export function buildAdminAnalyticsSnapshot(
     const amount = Number(item.price) * Number(item.quantity);
     platformTotals.set(label, (platformTotals.get(label) ?? 0) + amount);
   }
+  for (const smsOrder of countableSmsOrders) {
+    const amount = Number(smsOrder.charged_ngn);
+    platformTotals.set('SMS Verification', (platformTotals.get('SMS Verification') ?? 0) + amount);
+  }
 
   const countryTotals = new Map<string, number>();
   for (const item of orderItems) {
@@ -114,10 +148,18 @@ export function buildAdminAnalyticsSnapshot(
     const amount = Number(item.quantity);
     countryTotals.set(label, (countryTotals.get(label) ?? 0) + amount);
   }
+  for (const smsOrder of countableSmsOrders) {
+    const label = getCountryLabel(smsOrder.country_name || smsOrder.country_id);
+    countryTotals.set(label, (countryTotals.get(label) ?? 0) + 1);
+  }
 
   const statusCounts = new Map<string, number>();
   for (const order of orders) {
     const label = ORDER_STATUS_LABELS[order.status] ?? order.status;
+    statusCounts.set(label, (statusCounts.get(label) ?? 0) + 1);
+  }
+  for (const smsOrder of smsOrders) {
+    const label = SMS_STATUS_LABELS[smsOrder.status] ?? `SMS ${smsOrder.status}`;
     statusCounts.set(label, (statusCounts.get(label) ?? 0) + 1);
   }
 
