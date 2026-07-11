@@ -1,4 +1,5 @@
 import type { AdminAnalyticsSnapshot, OrderStatus } from '@/types';
+import { isCountableSmsOrder } from '@/lib/sms-verification-code';
 
 interface AnalyticsOrder {
   total_amount: number;
@@ -41,6 +42,7 @@ interface AnalyticsSmsOrder {
   created_at: string;
   country_name: string | null;
   country_id: string;
+  verification_code: string | null;
 }
 
 const SMS_STATUS_LABELS: Record<string, string> = {
@@ -52,11 +54,18 @@ const SMS_STATUS_LABELS: Record<string, string> = {
 };
 
 function isCountableOrder(order: AnalyticsOrder): boolean {
-  return order.payment_status === 'paid' && order.status !== 'cancelled';
+  return isCountableProductOrder(order);
 }
 
-function isCountableSmsOrder(order: AnalyticsSmsOrder): boolean {
-  return order.status === 'active' || order.status === 'completed';
+export function isCountableProductOrder(order: {
+  payment_status: string;
+  status: string;
+}): boolean {
+  return (
+    order.payment_status === 'paid'
+    && order.status !== 'cancelled'
+    && order.status !== 'refunded'
+  );
 }
 
 function getPlatformLabel(product: NonNullable<AnalyticsOrderItem['product']>): string {

@@ -399,7 +399,7 @@ function AdminSmsPricingPageContent({ provider }: { provider: SmsPricingProvider
                 {providerMeta.historyTitle}
               </CardTitle>
               <CardDescription className={adminMutedTextClass(isDark)}>
-                Raw order history from {providerMeta.label} for dispute handling and reconciliation.
+                Orders where a verification code was received (cancelled and refunded numbers are hidden).
               </CardDescription>
             </div>
             <Button
@@ -417,10 +417,15 @@ function AdminSmsPricingPageContent({ provider }: { provider: SmsPricingProvider
         <CardContent>
           {!providerHistory?.rows.length ? (
             <p className={`text-sm ${adminMutedTextClass(isDark)}`}>
-              {providerHistoryLoading ? `Loading ${providerMeta.label} history...` : 'No provider history returned.'}
+              {providerHistoryLoading
+                ? `Loading ${providerMeta.label} history...`
+                : 'No completed SMS orders with a verification code yet.'}
             </p>
           ) : (
             <div className="overflow-x-auto">
+              <p className={`mb-3 text-sm ${adminMutedTextClass(isDark)}`}>
+                Showing {providerHistory.rows.length} order{providerHistory.rows.length === 1 ? '' : 's'} with a code.
+              </p>
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className={`border-b ${isDark ? 'border-dm-border' : 'border-gray-200'} ${adminMutedTextClass(isDark)}`}>

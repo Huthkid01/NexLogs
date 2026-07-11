@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { buildAdminAnalyticsSnapshot, EMPTY_ADMIN_ANALYTICS } from '@/lib/admin-analytics';
+import { buildAdminAnalyticsSnapshot, EMPTY_ADMIN_ANALYTICS, isCountableProductOrder } from '@/lib/admin-analytics';
+import { isCountableSmsOrder } from '@/lib/sms-verification-code';
 import type { Notification, Category, Faq, Testimonial, Profile, AdminStats, AdminAnalyticsSnapshot, SupportTicket, ActivityLog, Coupon, AdminWalletTransaction, AdminWalletDepositRecord } from '@/types';
 
 function isKoraWalletDeposit(tx: Pick<AdminWalletDepositRecord, 'kind' | 'payment_method' | 'metadata'>) {
@@ -160,7 +161,7 @@ export const adminService = {
     const [usersRes, ordersRes, smsOrdersRes, productsRes, stockOutProductsRes, recentOrdersRes, ticketsRes] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('orders').select('total_amount, status, payment_status'),
-      supabase.from('sms_number_orders').select('charged_ngn, status'),
+      supabase.from('sms_number_orders').select('charged_ngn, status, verification_code'),
       supabase.from('products').select('*', { count: 'exact', head: true }),
       supabase
         .from('products')
@@ -181,18 +182,16 @@ export const adminService = {
     ]);
 
     const orders = (ordersRes.data || []) as { total_amount: number; status: string; payment_status: string }[];
-    const smsOrders = (smsOrdersRes.data || []) as { charged_ngn: number; status: string }[];
-    const productRevenue = orders
-      .filter((order) => order.payment_status === 'paid' && order.status !== 'cancelled')
-      .reduce((sum, order) => sum + Number(order.total_amount), 0);
-    const smsRevenue = smsOrders
-      .filter((order) => order.status === 'active' || order.status === 'completed')
-      .reduce((sum, order) => sum + Number(order.charged_ngn), 0);
+    const smsOrders = (smsOrdersRes.data || []) as { charged_ngn: number; status: string; verification_code: string | null }[];
+    const countableProductOrders = orders.filter(isCountableProductOrder);
+    const countableSmsOrders = smsOrders.filter(isCountableSmsOrder);
+    const productRevenue = countableProductOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
+    const smsRevenue = countableSmsOrders.reduce((sum, order) => sum + Number(order.charged_ngn), 0);
     const totalRevenue = productRevenue + smsRevenue;
 
     return {
       totalUsers: usersRes.count || 0,
-      totalOrders: orders.length + smsOrders.length,
+      totalOrders: countableProductOrders.length + countableSmsOrders.length,
       totalRevenue,
       totalProducts: productsRes.count || 0,
       openTickets: ticketsRes.count || 0,
@@ -209,7 +208,7 @@ export const adminService = {
         .select('quantity, price, product:products(platform, country, slug, title)'),
       supabase
         .from('sms_number_orders')
-        .select('charged_ngn, status, created_at, country_name, country_id'),
+        .select('charged_ngn, status, created_at, country_name, country_id, verification_code'),
     ]);
 
     if (ordersRes.error) throw ordersRes.error;
@@ -243,6 +242,7 @@ export const adminService = {
         created_at: string;
         country_name: string | null;
         country_id: string;
+        verification_code: string | null;
       };
       return {
         charged_ngn: Number(order.charged_ngn),
@@ -250,6 +250,7 @@ export const adminService = {
         created_at: order.created_at,
         country_name: order.country_name,
         country_id: order.country_id,
+        verification_code: order.verification_code,
       };
     });
 

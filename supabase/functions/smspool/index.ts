@@ -211,7 +211,9 @@ Deno.serve(async (req) => {
       const { supabase, user } = await getAuthenticatedUser(req);
       await requireAdmin(supabase, user.id);
 
-      const rows = await fetchSmsPoolOrderHistory();
+      const rows = (await fetchSmsPoolOrderHistory()).filter((row) =>
+        isValidSmsVerificationCode(row.code)
+      );
 
       return jsonResponse({
         ok: true,

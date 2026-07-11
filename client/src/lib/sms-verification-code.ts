@@ -15,3 +15,14 @@ export function getDisplaySmsVerificationCode(order: {
     ? String(order.verification_code).trim()
     : null;
 }
+
+/** SMS orders that actually received a code (excludes cancel/refund/expired and pending numbers). */
+export function isCountableSmsOrder(order: {
+  status: string;
+  verification_code: string | null;
+}): boolean {
+  if (order.status === 'cancelled' || order.status === 'refunded' || order.status === 'expired') {
+    return false;
+  }
+  return isValidSmsVerificationCode(order.verification_code);
+}
