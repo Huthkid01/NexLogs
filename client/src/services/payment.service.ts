@@ -32,7 +32,17 @@ interface PendingDeposit {
 }
 
 const PENDING_DEPOSIT_KEY = 'nexlogs_pending_deposit';
-const PENDING_DEPOSIT_MAX_AGE_MS = 45 * 60 * 1000;
+const PENDING_DEPOSIT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const PENDING_INTENT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface PendingWalletPaymentIntent {
+  reference: string;
+  expected_amount_ngn: number;
+  charge_amount: number;
+  payment_method: string;
+  status: string;
+  created_at: string;
+}
 
 /** Retry up to ~30s — Kora can lag after successful payment. */
 const VERIFY_RETRY_DELAYS_MS = [0, 1500, 3000, 5000, 8000, 12000];
@@ -295,6 +305,86 @@ async function verifyKoraDepositWithRetry(
   }
 
   throw lastError ?? new Error('Payment verification failed');
+}
+
+export async function getPendingWalletPaymentIntents(userId: string): Promise<PendingWalletPaymentIntent[]> {
+  const { data, error } = await supabase
+    .from('wallet_payment_intents')
+    .select('reference, expected_amount_ngn, charge_amount, payment_method, status, created_at')
+    .eq('user_id', userId)
+    .eq('provider', 'kora')
+    .in('status', ['pending', 'processing'])
+    .is('wallet_transaction_id', null)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  if (error) {
+    throw new Error(error.message || 'Could not load pending payments');
+  }
+
+  return (data ?? []).filter((row) => {
+    const createdAtMs = new Date(String(row.created_at)).getTime();
+    return Number.isFinite(createdAtMs) && Date.now() - createdAtMs <= PENDING_INTENT_MAX_AGE_MS;
+  }).map((row) => ({
+    reference: String(row.reference),
+    expected_amount_ngn: Number(row.expected_amount_ngn),
+    charge_amount: Number(row.charge_amount),
+    payment_method: String(row.payment_method || 'kora'),
+    status: String(row.status),
+    created_at: String(row.created_at),
+  }));
+}
+
+export async function verifyWalletDepositReference(
+  reference: string,
+  userId: string,
+  paymentMethod = 'kora',
+) {
+  await verifyKoraDepositWithRetry(reference, paymentMethod, userId);
+  clearPendingDeposit(userId);
+}
+
+function isUnpaidKoraError(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes('not successful') || normalized.includes('payment was not');
+}
+
+/** Try local pending deposit + server-side payment intents (e.g. user paid but redirect/webhook missed). */
+export async function recoverPendingDeposits(userId: string) {
+  const credited: string[] = [];
+  const stillPending: string[] = [];
+
+  const localPending = getPendingDeposit(userId);
+  if (localPending?.reference) {
+    try {
+      await verifyKoraDepositWithRetry(localPending.reference, localPending.paymentMethod, userId);
+      clearPendingDeposit(userId);
+      credited.push(localPending.reference);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Verification failed';
+      if (!isUnpaidKoraError(message)) {
+        stillPending.push(localPending.reference);
+      }
+    }
+  }
+
+  const intents = await getPendingWalletPaymentIntents(userId);
+  for (const intent of intents) {
+    if (credited.includes(intent.reference)) continue;
+
+    try {
+      await verifyKoraDepositWithRetry(intent.reference, intent.payment_method, userId);
+      clearPendingDeposit(userId);
+      credited.push(intent.reference);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Verification failed';
+      if (!isUnpaidKoraError(message)) {
+        stillPending.push(intent.reference);
+      }
+    }
+  }
+
+  return { credited, stillPending };
 }
 
 /** Resume a previous deposit session after refresh (Kora or Flutterwave). */

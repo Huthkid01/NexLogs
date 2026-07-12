@@ -13,8 +13,12 @@ import {
 } from '@/lib/wallet-deposit-fees';
 import {
   completeKoraRedirect,
-  startKoraDeposit,
   finalizeDepositSuccess,
+  getPendingWalletPaymentIntents,
+  recoverPendingDeposits,
+  startKoraDeposit,
+  verifyWalletDepositReference,
+  type PendingWalletPaymentIntent,
 } from '@/services/payment.service';
 
 const inputClassName =
@@ -28,8 +32,27 @@ export default function AddFundsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [verifyingRedirect, setVerifyingRedirect] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingIntents, setPendingIntents] = useState<PendingWalletPaymentIntent[]>([]);
+  const [recoveringDeposit, setRecoveringDeposit] = useState(false);
   const redirectHandled = useRef(false);
+  const recoveryHandled = useRef(false);
   const { data: walletStats } = useWalletBalance(user?.id);
+
+  const refreshPendingIntents = async (userId: string) => {
+    const intents = await getPendingWalletPaymentIntents(userId);
+    setPendingIntents(intents);
+    return intents;
+  };
+
+  const handleDepositCredited = async () => {
+    if (!user?.id) return;
+    await finalizeDepositSuccess(user.id, walletStats?.balance ?? 0, async () => {
+      await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
+      await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
+    });
+    await refreshPendingIntents(user.id);
+    toast.success('Payment successful. Funds added to your wallet.');
+  };
 
   useEffect(() => {
     if (!user?.id || redirectHandled.current || verifyingRedirect) return;
@@ -42,11 +65,7 @@ export default function AddFundsPage() {
         const completed = await completeKoraRedirect(searchParams, user.id);
         if (!completed) return;
 
-        await finalizeDepositSuccess(user.id, walletStats?.balance ?? 0, async () => {
-          await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
-          await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
-        });
-        toast.success('Payment successful. Funds added to your wallet.');
+        await handleDepositCredited();
         setSearchParams({}, { replace: true });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Payment verification failed';
@@ -57,6 +76,41 @@ export default function AddFundsPage() {
       }
     })();
   }, [user?.id, searchParams, setSearchParams, queryClient, verifyingRedirect, walletStats?.balance]);
+
+  useEffect(() => {
+    if (!user?.id || recoveryHandled.current || verifyingRedirect) return;
+    if (searchParams.get('reference')) return;
+
+    recoveryHandled.current = true;
+    void (async () => {
+      try {
+        const { credited } = await recoverPendingDeposits(user.id);
+        if (credited.length > 0) {
+          await handleDepositCredited();
+          return;
+        }
+        await refreshPendingIntents(user.id);
+      } catch {
+        // Ignore background recovery errors; user can tap Verify payment.
+      }
+    })();
+  }, [user?.id, searchParams, verifyingRedirect, walletStats?.balance]);
+
+  const handleVerifyPendingIntent = async (intent: PendingWalletPaymentIntent) => {
+    if (!user?.id) return;
+
+    setRecoveringDeposit(true);
+    try {
+      await verifyWalletDepositReference(intent.reference, user.id, intent.payment_method);
+      await handleDepositCredited();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Payment verification failed';
+      toast.error(message);
+      await refreshPendingIntents(user.id);
+    } finally {
+      setRecoveringDeposit(false);
+    }
+  };
 
   const minimumAmountLabel = useMemo(
     () => `NGN ${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`,
@@ -168,6 +222,45 @@ export default function AddFundsPage() {
             </div>
           )}
 
+          {pendingIntents.length > 0 && !verifyingRedirect && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/30 px-3 py-3 mb-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                    Pending wallet top-up
+                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                    If you already paid on Kora, tap verify below to credit your wallet.
+                  </p>
+                </div>
+              </div>
+              {pendingIntents.map((intent) => (
+                <div
+                  key={intent.reference}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border border-amber-200/80 dark:border-amber-900/50 bg-white/70 dark:bg-dm-surface/80 px-3 py-2.5"
+                >
+                  <div className="text-sm text-gray-800 dark:text-gray-200">
+                    <p className="font-medium">
+                      ₦{intent.expected_amount_ngn.toLocaleString('en-NG')} wallet credit
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Pay total: ₦{intent.charge_amount.toLocaleString('en-NG')} · Ref {intent.reference}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={recoveringDeposit || submitting || verifyingRedirect}
+                    onClick={() => void handleVerifyPendingIntent(intent)}
+                    className="shrink-0 rounded-md bg-[#f26522] px-4 py-2 text-sm font-semibold text-white hover:bg-[#d94e0f] disabled:opacity-60"
+                  >
+                    {recoveringDeposit ? 'Verifying...' : 'Verify payment'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {isKoraTestMode() && import.meta.env.DEV && (
             <div className="flex items-start gap-2 rounded-lg bg-[#fff3eb] border border-[#fde0cc] px-3 py-2.5 mb-4">
               <Info className="h-4 w-4 text-[#f26522] shrink-0 mt-0.5" />
@@ -209,10 +302,10 @@ export default function AddFundsPage() {
 
             <button
               type="submit"
-              disabled={submitting || verifyingRedirect}
+              disabled={submitting || verifyingRedirect || recoveringDeposit}
               className="w-full max-w-md btn-orange py-2.5 text-sm disabled:opacity-60"
             >
-              {verifyingRedirect
+              {verifyingRedirect || recoveringDeposit
                 ? 'Verifying payment...'
                 : submitting
                   ? 'Redirecting to Kora...'

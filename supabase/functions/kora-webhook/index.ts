@@ -121,7 +121,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('kora-webhook failed:', error);
-    return new Response(JSON.stringify({ ok: true, ignored: true }), {
+    const message = error instanceof Error ? error.message : 'Webhook failed';
+    return new Response(JSON.stringify({ ok: false, error: message }), {
+      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
