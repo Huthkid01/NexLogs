@@ -22,7 +22,7 @@ import { useModalLock } from '@/hooks/useModalLock';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { cn } from '@/lib/utils';
 import { matchesSmsCountrySearch } from '@/lib/sms-country-search';
-import { formatUsd, calculateSmsChargeNgn } from '@/lib/sms-pricing';
+import { calculateSmsChargeNgn } from '@/lib/sms-pricing';
 import { getDisplaySmsVerificationCode, isValidSmsVerificationCode } from '@/lib/sms-verification-code';
 import { getPurchaseErrorMessage, isInsufficientFundsError } from '@/lib/purchase-errors';
 import {
@@ -120,13 +120,6 @@ function getCopyablePhoneNumber(phone: string) {
   const trimmed = phone.trim();
   if (!trimmed) return '';
   return trimmed.startsWith('+') ? trimmed : `+${trimmed}`;
-}
-
-function formatReservedCostUsd(amount: number) {
-  const value = Number(amount);
-  if (!Number.isFinite(value)) return '— USD';
-  const trimmed = value.toFixed(4).replace(/\.?0+$/, '');
-  return `${trimmed} USD`;
 }
 
 function showReservedActions(order: SmsNumberOrder) {
@@ -1351,10 +1344,7 @@ export default function BuyNumbersPage() {
                           <p className="whitespace-nowrap">
                             <span className="mr-2">💰</span>
                             <strong>Price:</strong>{' '}
-                            {formatUsd(selectedPriceOption.cost_usd)}
-                            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                              ({formatDisplayAmount(selectedPriceOption.charged_ngn)})
-                            </span>
+                            {formatDisplayAmount(selectedPriceOption.charged_ngn)}
                           </p>
                           <p className="whitespace-nowrap">
                             <span className="mr-2">📦</span>
@@ -1422,9 +1412,6 @@ export default function BuyNumbersPage() {
                       <span className="mr-2">💰</span>
                       <strong>Cost:</strong>{' '}
                       {formatDisplayAmount(Number(activeOrder.charged_ngn))}
-                      <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                        ({formatReservedCostUsd(Number(activeOrder.cost_usd))})
-                      </span>
                     </p>
                     <p className="whitespace-nowrap">
                       <span className="mr-2">⏱️</span>
