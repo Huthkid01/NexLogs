@@ -730,6 +730,38 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-platform-improvement-notice',
+    name: 'Platform improvements (inbox-friendly)',
+    category: 'account',
+    description:
+      'Let all users know you are improving the site and adding more products. Plain layout for Primary inbox.',
+    defaultSubject: `We're improving ${APP_NAME} — more products coming soon`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'We are improving our services',
+      preheader: `${APP_NAME} is being updated with better service and more products. We will email you when everything is ready.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We wanted to let you know that we are <strong>currently working on ${APP_NAME}</strong> to improve our services and give you a better experience.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Our team is also <strong>adding more products</strong> to the marketplace and making updates across the platform. You may notice small changes while we work — thank you for your patience.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                <strong>Once everything is ready, we will send you another update</strong> so you can see what is new.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                You can still sign in, add funds to your wallet, and use the marketplace as usual. If you need help at any time, reply to this email or contact us on Telegram.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you for being with us,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Visit the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
     id: 'blank',
     name: 'Blank HTML',
     category: 'general',
