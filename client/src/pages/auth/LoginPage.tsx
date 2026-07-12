@@ -19,6 +19,7 @@ import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 import { consumeAuthRedirect, getPostLoginPath, storeAuthRedirect } from '@/lib/auth-redirect';
+import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -35,6 +36,7 @@ type LoginLocationState = {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { commitSession } = useAuth();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
@@ -51,9 +53,12 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
     try {
-      await authService.signIn(data.email, data.password);
+      const result = await authService.signIn(data.email, data.password);
       resetThemeForLogin();
       resetDisplayCurrencyForLogin();
+      if (result.session) {
+        await commitSession(result.session);
+      }
       const redirect = consumeAuthRedirect(
         getPostLoginPath((location.state as LoginLocationState)?.from, '/marketplace'),
       );

@@ -34,7 +34,7 @@ const adminDepartments = [
 export default function AdminLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, commitSession } = useAuth();
   const [loading, setLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<AdminLoginForm>({
     resolver: zodResolver(adminLoginSchema),
@@ -56,6 +56,10 @@ export default function AdminLoginPage() {
 
       if (!userId) {
         throw new Error('ADMIN_ACCOUNT_VERIFICATION_FAILED');
+      }
+
+      if (result.session) {
+        await commitSession(result.session);
       }
 
       const profile = await authService.getProfile(userId);

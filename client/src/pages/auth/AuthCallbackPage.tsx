@@ -1,19 +1,24 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { resetThemeForLogin } from '@/contexts/theme';
 import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
 import { consumeAuthRedirect } from '@/lib/auth-redirect';
+import { touchSessionActivity } from '@/lib/session-idle';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
+  const { commitSession } = useAuth();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user?.id) {
         resetThemeForLogin();
         resetDisplayCurrencyForLogin();
-        supabase
+        touchSessionActivity();
+        await commitSession(session);
+        void supabase
           .from('activity_logs')
           .insert({
             user_id: session.user.id,
@@ -22,12 +27,15 @@ export default function AuthCallbackPage() {
             metadata: { provider: session.user.app_metadata?.provider ?? null },
           } as never)
           .then(() => undefined, () => undefined);
+        navigate(consumeAuthRedirect('/marketplace'), { replace: true });
+        return;
       }
-      navigate(session ? consumeAuthRedirect('/marketplace') : '/login', { replace: true });
+
+      navigate('/login', { replace: true });
     }).catch(() => {
       navigate('/login', { replace: true });
     });
-  }, [navigate]);
+  }, [commitSession, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

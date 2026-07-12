@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { authService } from '@/services/auth.service';
 import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
@@ -14,6 +14,7 @@ interface AuthContextType {
   isAdmin: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  commitSession: (session: Session | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +31,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(p);
     }
   };
+
+  const commitSession = useCallback(async (sess: Session | null) => {
+    setSession(sess);
+    setUser(sess?.user ?? null);
+
+    if (sess?.user) {
+      touchSessionActivity();
+      try {
+        const p = await authService.getProfile(sess.user.id);
+        setProfile(p);
+      } catch {
+        setProfile(null);
+      }
+    } else {
+      setProfile(null);
+    }
+
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -56,6 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (finishLoading && mounted) {
         setLoading(false);
       }
+    };
+
+    const handleSignedIn = (sess: Session | null) => {
+      resetDisplayCurrencyForLogin();
+      touchSessionActivity();
+      if (sess?.user?.id) {
+        queueQuickTourForUser(sess.user.id);
+      }
+      void applySession(sess, true);
     };
 
     void authService.getSession().then((s) => {
@@ -86,12 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (event === 'SIGNED_IN') {
-        resetDisplayCurrencyForLogin();
-        touchSessionActivity();
-        if (sess?.user?.id) {
-          queueQuickTourForUser(sess.user.id);
-        }
-        void applySession(sess, true);
+        handleSignedIn(sess);
         return;
       }
 
@@ -106,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await authService.signOut();
+    clearSessionActivity();
     setUser(null);
     setProfile(null);
     setSession(null);
@@ -121,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: profile?.role === 'admin',
         signOut,
         refreshProfile,
+        commitSession,
       }}
     >
       {children}

@@ -21,11 +21,22 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
   const handlingIdleRef = useRef(false);
   const lastTouchRef = useRef(0);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasEnabledRef = useRef(false);
 
   onIdleRef.current = onIdle;
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      wasEnabledRef.current = false;
+      return;
+    }
+
+    const justAuthenticated = !wasEnabledRef.current;
+    wasEnabledRef.current = true;
+
+    if (justAuthenticated) {
+      touchSessionActivity();
+    }
 
     const hasStoredActivity = localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY) != null;
 
@@ -94,7 +105,7 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
       scheduleCheck();
     };
 
-    if (hasStoredActivity && isSessionIdle()) {
+    if (hasStoredActivity && isSessionIdle() && !justAuthenticated) {
       void handleIdle();
       return;
     }

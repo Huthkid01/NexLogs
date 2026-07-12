@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLoader } from '@/components/common/AppLoader';
+import { consumeAuthRedirect, getPostLoginPath } from '@/lib/auth-redirect';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -26,8 +27,15 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
 
 export function GuestRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+
   if (loading) return <AppLoader fullScreen />;
-  if (user) return <Navigate to="/marketplace" replace />;
+  if (user) {
+    const redirect = consumeAuthRedirect(
+      getPostLoginPath((location.state as { from?: { pathname?: string; search?: string } })?.from, '/marketplace'),
+    );
+    return <Navigate to={redirect} replace />;
+  }
   return <>{children}</>;
 }
 
