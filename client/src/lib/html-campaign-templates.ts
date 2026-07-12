@@ -346,6 +346,83 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-no-purchase-yet-inbox',
+    name: 'No purchase yet — inbox-friendly',
+    category: 'account',
+    description:
+      'Plain account note for users who signed up but have not bought anything yet. Invite them to reply if they need a product.',
+    defaultSubject: `A quick note about your ${APP_NAME} account`,
+    html: buildInboxFriendlyEmailHtml({
+      title: `Your ${APP_NAME} account`,
+      preheader: `We noticed you have not made a purchase on ${APP_NAME} yet. Reply if you need something we do not list.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We noticed that since you created your <strong>${APP_NAME}</strong> account, you have not made a purchase yet.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                If you are looking for verified accounts, RDP, SMS verification numbers, or other digital products, you can browse our marketplace anytime from your account.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                If you do not see the product you need listed on the site, <strong>reply to this email</strong> and tell us what you are looking for. We will do our best to help or add it for you.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Browse marketplace',
+      linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'account-wallet-sms-guide-inbox',
+    name: 'Add funds & SMS guide — inbox-friendly',
+    category: 'account',
+    description:
+      'How to add wallet funds (exact amount), Service 1 for verification, and Service 2 for WhatsApp. Plain layout for Primary inbox.',
+    defaultSubject: `How to add funds and use SMS verification on ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'Add funds and SMS verification',
+      preheader: `Add wallet funds on ${APP_NAME}, pay the exact amount shown, then use Service 1 or Service 2 for SMS codes.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Here is a short guide to adding funds and using our SMS verification services on <strong>${APP_NAME}</strong>.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>How to add funds</strong></p>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Sign in and open <strong>Add Funds</strong> from your account menu</li>
+                <li>Enter the amount you want to add</li>
+                <li>Complete payment and transfer the <strong>exact amount</strong> shown on the payment page — not more, not less</li>
+                <li>Wait for your wallet to be credited, then use your balance for purchases</li>
+              </ol>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Service 1 — SMS verification</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                Use <strong>Service 1</strong> on <strong>Buy Numbers</strong> for most SMS verification needs. Choose your country and app, pay from your wallet, then tap <strong>Get SMS Code</strong> when the message arrives.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Service 2 — WhatsApp and more</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                Use <strong>Service 2</strong> when you need <strong>WhatsApp</strong> verification or when Service 1 has no numbers for your country. It offers more countries and operators for apps like WhatsApp, Telegram, Google, and Facebook.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Quick steps</strong></p>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Add enough funds to your wallet first</li>
+                <li>Open <strong>Buy Numbers</strong> and pick <strong>Service 1</strong> or <strong>Service 2</strong></li>
+                <li>Select country and app (for WhatsApp, use Service 2)</li>
+                <li>Pay from your wallet and wait for the code on the page</li>
+              </ol>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                If one service is out of stock, try the other. You can also reply to this email if you need help.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open Add Funds',
+      linkUrl: `${appUrl}/add-funds`,
+    }),
+  },
+  {
     id: 'account-buy-numbers-announcement',
     name: 'Buy Numbers launch (inbox-friendly)',
     category: 'account',

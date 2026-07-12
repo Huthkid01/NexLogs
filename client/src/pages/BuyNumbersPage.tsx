@@ -21,6 +21,7 @@ import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { useModalLock } from '@/hooks/useModalLock';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { cn } from '@/lib/utils';
+import { matchesSmsCountrySearch } from '@/lib/sms-country-search';
 import { formatUsd, calculateSmsChargeNgn } from '@/lib/sms-pricing';
 import { getDisplaySmsVerificationCode, isValidSmsVerificationCode } from '@/lib/sms-verification-code';
 import { getPurchaseErrorMessage, isInsufficientFundsError } from '@/lib/purchase-errors';
@@ -480,12 +481,9 @@ export default function BuyNumbersPage() {
   }, [catalog?.countries]);
 
   const filteredCountries = useMemo(() => {
-    const query = countrySearch.trim().toLowerCase();
+    const query = countrySearch.trim();
     if (!query) return countries;
-    return countries.filter((country) =>
-      country.name.toLowerCase().includes(query) ||
-      (country.code?.toLowerCase().includes(query) ?? false),
-    );
+    return countries.filter((country) => matchesSmsCountrySearch(country, query));
   }, [countries, countrySearch]);
 
   const countrySuggestions = filteredCountries.slice(0, COUNTRIES_DROPDOWN_LIMIT);
