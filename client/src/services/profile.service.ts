@@ -34,6 +34,7 @@ export const profileService = {
       .from('wallet_transactions')
       .select('id, ref, created_at, updated_at, payment_method, amount, status', { count: 'exact' })
       .eq('user_id', userId)
+      .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .range(from, to);
     if (error) throw error;
