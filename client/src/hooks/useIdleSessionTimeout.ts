@@ -23,7 +23,9 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasEnabledRef = useRef(false);
 
-  onIdleRef.current = onIdle;
+  useEffect(() => {
+    onIdleRef.current = onIdle;
+  });
 
   useEffect(() => {
     if (!enabled) {

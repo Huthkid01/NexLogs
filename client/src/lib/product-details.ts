@@ -1,6 +1,6 @@
 export const PRODUCT_DETAIL_DELIMITER = '<<<ITEM>>>';
 
-const NUMBERED_LINE_PATTERN = /^\s*\d+[\.\)\]:\-]\s*/;
+const NUMBERED_LINE_PATTERN = /^\s*\d+[.):-]\s*/;
 
 function parseLegacyLines(value: string): string[] {
   return value

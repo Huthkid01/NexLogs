@@ -26,7 +26,6 @@ export function ProductDetailsModal({
   product,
   orderDate,
   logSeed,
-  orderId,
   deliveredDetails,
   fallbackTitle,
   fallbackDescription,
@@ -42,7 +41,7 @@ export function ProductDetailsModal({
   const isPendingRdp =
     product && isRdpProduct(product) && !deliveredDetails?.trim();
   const pendingMessage = isTelegram
-    ? getTelegramPendingDetailsMessage(orderId)
+    ? getTelegramPendingDetailsMessage()
     : isPendingRdp
       ? RDP_PENDING_DETAILS_MESSAGE
       : null;

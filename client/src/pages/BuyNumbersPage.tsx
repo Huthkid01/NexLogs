@@ -619,6 +619,8 @@ export default function BuyNumbersPage() {
 
   const visibleReservedOrders = useMemo(
     () => activeOrders.filter((order) => !isOrderPastExpiry(order)),
+    // expiryCountdownTick forces re-filter as reserved numbers expire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick is an intentional refresh signal
     [activeOrders, expiryCountdownTick],
   );
 
@@ -658,7 +660,7 @@ export default function BuyNumbersPage() {
     if (hasCode) {
       void refetchHistory();
     }
-  }, [queryClient, refetchHistory, user?.id]);
+  }, [queryClient, refetchHistory, smsProvider, user]);
 
   useEffect(() => {
     const needsTicker = activeOrders.some(

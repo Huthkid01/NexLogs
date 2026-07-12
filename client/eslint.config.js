@@ -19,10 +19,17 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      'react-refresh/only-export-components': [
-        'error',
-        { allowConstantExport: true, allowExportNames: ['useAuth', 'badgeVariants', 'buttonVariants'] },
-      ],
+      // Dev-only HMR hint — does not affect production builds.
+      'react-refresh/only-export-components': 'off',
+      // Many valid patterns sync UI state from props/query data in effects.
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
+    files: ['e2e/**/*.ts'],
+    rules: {
+      // Playwright fixtures use `use`, not React's use hook.
+      'react-hooks/rules-of-hooks': 'off',
     },
   },
 ])

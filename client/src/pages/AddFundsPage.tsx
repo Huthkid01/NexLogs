@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Info } from 'lucide-react';
@@ -44,7 +44,7 @@ export default function AddFundsPage() {
     return intents;
   };
 
-  const handleDepositCredited = async () => {
+  const handleDepositCredited = useCallback(async () => {
     if (!user?.id) return;
     await finalizeDepositSuccess(user.id, walletStats?.balance ?? 0, async () => {
       await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
@@ -52,7 +52,7 @@ export default function AddFundsPage() {
     });
     await refreshPendingIntents(user.id);
     toast.success('Payment successful. Funds added to your wallet.');
-  };
+  }, [queryClient, user?.id, walletStats?.balance]);
 
   useEffect(() => {
     if (!user?.id || redirectHandled.current || verifyingRedirect) return;
@@ -75,7 +75,7 @@ export default function AddFundsPage() {
         setVerifyingRedirect(false);
       }
     })();
-  }, [user?.id, searchParams, setSearchParams, queryClient, verifyingRedirect, walletStats?.balance]);
+  }, [user?.id, searchParams, setSearchParams, queryClient, verifyingRedirect, handleDepositCredited]);
 
   useEffect(() => {
     if (!user?.id || recoveryHandled.current || verifyingRedirect) return;
@@ -94,7 +94,7 @@ export default function AddFundsPage() {
         // Ignore background recovery errors; user can tap Verify payment.
       }
     })();
-  }, [user?.id, searchParams, verifyingRedirect, walletStats?.balance]);
+  }, [user?.id, searchParams, verifyingRedirect, handleDepositCredited]);
 
   const handleVerifyPendingIntent = async (intent: PendingWalletPaymentIntent) => {
     if (!user?.id) return;

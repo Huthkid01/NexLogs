@@ -52,7 +52,7 @@ export function isTelegramPendingDelivery(deliveredDetails?: string | null): boo
 export const TELEGRAM_BUYER_DETAILS_MESSAGE =
   'Copy your Order ID from My Purchases, then click the Telegram floating button on the marketplace to contact support with your Order ID and receive your order.';
 
-export function getTelegramPendingDetailsMessage(_orderId?: string): string {
+export function getTelegramPendingDetailsMessage(): string {
   return TELEGRAM_BUYER_DETAILS_MESSAGE;
 }
 
