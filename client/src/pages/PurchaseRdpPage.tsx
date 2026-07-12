@@ -17,6 +17,7 @@ import {
 import { buildLiveRdpCatalog } from '@/lib/rdp-live-catalog';
 import {
   getPurchaseErrorMessage,
+  isAuthError,
   isInsufficientFundsError,
 } from '@/lib/purchase-errors';
 import { cn } from '@/lib/utils';
@@ -64,12 +65,6 @@ export default function PurchaseRdpPage() {
     [catalog, locationId],
   );
 
-  const { data: stats } = useQuery({
-    queryKey: ['wallet-balance', user?.id],
-    queryFn: () => profileService.getStats(user!.id),
-    enabled: !!user?.id,
-  });
-
   const handlePurchase = async (plan: RdpPlan) => {
     if (!user) {
       navigate('/login');
@@ -86,8 +81,11 @@ export default function PurchaseRdpPage() {
     setPurchasingPlanId(plan.id);
 
     try {
-      const balance = stats?.balance ?? 0;
-      if (balance < priceNgn) {
+      const freshStats = await profileService.getStats(user.id);
+      void queryClient.setQueryData(['wallet-balance', user.id], freshStats);
+      void queryClient.setQueryData(['profile-stats', user.id], freshStats);
+
+      if (freshStats.balance < priceNgn) {
         toast.error('Insufficient wallet balance. Please add funds.');
         navigate('/add-funds');
         return;
@@ -106,6 +104,11 @@ export default function PurchaseRdpPage() {
       if (isInsufficientFundsError(error)) {
         toast.error('Insufficient wallet balance. Please add funds.');
         navigate('/add-funds');
+        return;
+      }
+      if (isAuthError(error)) {
+        toast.error('Your session expired. Please sign in again.');
+        navigate('/login', { state: { from: { pathname: '/purchase-rdp' } } });
         return;
       }
       toast.error(getPurchaseErrorMessage(error));

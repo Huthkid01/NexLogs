@@ -190,44 +190,6 @@ function buildWalletDepositTelegramMessage(
   ].filter(Boolean).join('\n');
 }
 
-function formatSignupLocation(profile: {
-  signup_ip: string | null;
-  signup_country: string | null;
-  signup_region: string | null;
-  signup_city: string | null;
-}) {
-  const parts = [profile.signup_city, profile.signup_region, profile.signup_country].filter(Boolean);
-  const location = parts.length > 0 ? parts.join(', ') : 'Unknown';
-  if (profile.signup_ip) {
-    return `${location} (${profile.signup_ip})`;
-  }
-  return location;
-}
-
-function buildSignupTelegramMessage(
-  profile: {
-    full_name: string;
-    email: string;
-    signup_ip: string | null;
-    signup_country: string | null;
-    signup_region: string | null;
-    signup_city: string | null;
-    created_at: string;
-  },
-  adminUsersUrl: string,
-) {
-  return [
-    '👤 <b>New verified signup</b>',
-    '',
-    `<b>Name:</b> ${escapeHtml(profile.full_name || 'Unknown')}`,
-    `<b>Email:</b> ${escapeHtml(profile.email)}`,
-    `<b>Location / IP:</b> ${escapeHtml(formatSignupLocation(profile))}`,
-    `<b>Joined:</b> ${escapeHtml(new Date(profile.created_at).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }))}`,
-    '',
-    `<a href="${adminUsersUrl}">Open Admin Users</a>`,
-  ].join('\n');
-}
-
 async function sendTelegramMessage(text: string) {
   const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const chatId = Deno.env.get('TELEGRAM_ADMIN_CHAT_ID');
@@ -302,7 +264,13 @@ Deno.serve(async (req) => {
     const userId = body.user_id?.trim();
     const idCount = [orderId, smsOrderId, walletTransactionId, userId].filter(Boolean).length;
     if (idCount !== 1) {
-      throw new Error('Provide exactly one of order_id, sms_order_id, wallet_transaction_id, or user_id');
+      throw new Error('Provide exactly one of order_id, sms_order_id, or wallet_transaction_id');
+    }
+
+    if (userId) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'signup_alerts_disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -317,24 +285,10 @@ Deno.serve(async (req) => {
     const adminOrdersUrl = appUrl ? `${appUrl}/admin/orders` : '/admin/orders';
     const adminSmsUrl = appUrl ? `${appUrl}/admin/sms-pricing/smspool` : '/admin/sms-pricing/smspool';
     const adminTransactionsUrl = appUrl ? `${appUrl}/admin/transactions` : '/admin/transactions';
-    const adminUsersUrl = appUrl ? `${appUrl}/admin/users` : '/admin/users';
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    if (userId) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('full_name, email, signup_ip, signup_country, signup_region, signup_city, created_at')
-        .eq('id', userId)
-        .single();
-
-      if (profileError || !profile) {
-        throw profileError ?? new Error('User profile not found');
-      }
-
-      const message = buildSignupTelegramMessage(profile, adminUsersUrl);
-      await sendTelegramMessage(message);
-    } else if (walletTransactionId) {
+    if (walletTransactionId) {
       const { data: walletTx, error: walletTxError } = await supabase
         .from('wallet_transactions')
         .select(`

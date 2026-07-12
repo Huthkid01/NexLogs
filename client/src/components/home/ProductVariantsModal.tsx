@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
@@ -11,6 +11,7 @@ import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { openErrorReport } from '@/lib/error-report';
 import {
   getPurchaseErrorMessage,
+  isAuthError,
   isInsufficientFundsError,
   isOutOfStockError,
 } from '@/lib/purchase-errors';
@@ -19,6 +20,7 @@ import { getProductVariants } from '@/lib/product-variants';
 import { isTelegramProduct, TELEGRAM_PRE_PURCHASE_INSTRUCTIONS } from '@/lib/telegram-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { orderService, productService, profileService } from '@/services';
 import type { Product } from '@/types';
 
@@ -40,6 +42,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const [deliveredDetails, setDeliveredDetails] = useState<string | null>(null);
   const [insufficientOpen, setInsufficientOpen] = useState(false);
   const [requiredAmount, setRequiredAmount] = useState(0);
+  const [currentBalance, setCurrentBalance] = useState(0);
   const [purchasing, setPurchasing] = useState(false);
   const [pendingReview, setPendingReview] = useState<{
     orderId: string;
@@ -66,36 +69,50 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     ? loginInstructions || TELEGRAM_PRE_PURCHASE_INSTRUCTIONS
     : loginInstructions;
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['profile-stats', user?.id],
-    queryFn: () => profileService.getStats(user!.id),
-    enabled: !!user,
-  });
+  const { data: walletStats, refetch: refetchWalletBalance } = useWalletBalance(user?.id);
 
-  const showInsufficientBalance = (price: number) => {
+  useEffect(() => {
+    if (open && user?.id) {
+      void refetchWalletBalance();
+    }
+  }, [open, user?.id, refetchWalletBalance]);
+
+  const showInsufficientBalance = (price: number, balance: number) => {
     setRequiredAmount(price);
+    setCurrentBalance(balance);
     setInsufficientOpen(true);
-    toast.error('Insufficient balance');
+    void queryClient.setQueryData(['profile-stats', user?.id], (current: typeof walletStats | undefined) => ({
+      balance,
+      total_purchases: current?.total_purchases ?? 0,
+      total_spent: current?.total_spent ?? 0,
+    }));
+    void queryClient.setQueryData(['wallet-balance', user?.id], {
+      balance,
+      total_purchases: walletStats?.total_purchases ?? 0,
+      total_spent: walletStats?.total_spent ?? 0,
+    });
+    toast.error('Insufficient balance. Add funds to continue.');
   };
 
   const handleBuy = async (variantId: string, price: number) => {
     if (!displayProduct) return;
     if (!user) {
       toast.error('Please login first');
-      navigate('/login');
+      navigate('/login', { state: { from: { pathname: '/marketplace' } } });
       return;
-    }
-
-    if (!statsLoading) {
-      const balance = stats?.balance ?? 0;
-      if (balance < price) {
-        showInsufficientBalance(price);
-        return;
-      }
     }
 
     setPurchasing(true);
     try {
+      const freshStats = await profileService.getStats(user.id);
+      void queryClient.setQueryData(['profile-stats', user.id], freshStats);
+      void queryClient.setQueryData(['wallet-balance', user.id], freshStats);
+
+      if (freshStats.balance < price) {
+        showInsufficientBalance(price, freshStats.balance);
+        return;
+      }
+
       const orderId = await orderService.purchaseWithWallet(displayProduct.id, 1);
       const order = await orderService.getOrderById(orderId);
       const purchasedItem = order?.order_items?.find((item) => item.product_id === displayProduct.id)
@@ -119,16 +136,24 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       toast.success('Purchase successful');
     } catch (err: unknown) {
       if (isInsufficientFundsError(err)) {
-        showInsufficientBalance(price);
+        const latest = await profileService.getStats(user.id).catch(() => null);
+        showInsufficientBalance(price, latest?.balance ?? walletStats?.balance ?? 0);
         return;
       }
 
-      const message = getPurchaseErrorMessage(err);
+      if (isAuthError(err)) {
+        toast.error('Your session expired. Please sign in again.');
+        onClose();
+        navigate('/login', { state: { from: { pathname: '/marketplace' } } });
+        return;
+      }
 
       if (isOutOfStockError(err)) {
         toast.error('This product is out of stock.');
         return;
       }
+
+      const message = getPurchaseErrorMessage(err);
 
       toast.error('We could not complete this purchase.');
       openErrorReport({
@@ -283,13 +308,33 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
           <div className="relative w-full max-w-md rounded-xl bg-white dark:bg-dm-surface p-6 shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Insufficient balance</h3>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Your wallet balance is not enough to buy this product. Add funds to continue.
+              Your wallet balance is not enough to buy this product. If support just added funds to your wallet,
+              close this message and try again.
             </p>
             <div className="mt-4 space-y-1 text-sm text-gray-700 dark:text-gray-200">
               <p>Required: <span className="font-semibold">{formatDisplayAmount(requiredAmount)}</span></p>
-              <p>Balance: <span className="font-semibold">{formatDisplayAmount(stats?.balance ?? 0)}</span></p>
+              <p>Balance: <span className="font-semibold">{formatDisplayAmount(currentBalance)}</span></p>
             </div>
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!user?.id) return;
+                  const latest = await profileService.getStats(user.id).catch(() => null);
+                  if (latest && latest.balance >= requiredAmount) {
+                    setInsufficientOpen(false);
+                    toast.success('Balance updated. You can buy now.');
+                    return;
+                  }
+                  if (latest) {
+                    setCurrentBalance(latest.balance);
+                  }
+                  toast.message('Balance refreshed. Add funds if the amount is still too low.');
+                }}
+                className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-dm-border dark:text-gray-100 dark:hover:bg-dm-product-row"
+              >
+                Refresh balance
+              </button>
               <button
                 type="button"
                 onClick={() => {
