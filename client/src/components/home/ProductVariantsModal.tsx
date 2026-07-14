@@ -197,13 +197,20 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       }
 
       const message = getPurchaseErrorMessage(err);
+      const friendly =
+        /loggsplug|supplier|reseller/i.test(message)
+          ? message
+          : message && message !== 'Purchase failed'
+            ? message
+            : 'We could not complete this purchase.';
 
-      toast.error('We could not complete this purchase.');
+      toast.error(friendly);
       openErrorReport({
         title: 'Error while purchasing',
-        message: 'We could not complete this purchase.',
+        message: friendly,
         source: 'checkout',
         errorMessage: message,
+        reasonOptions: ['Product purchase failed', 'Wallet payment problem', 'Insufficient funds', 'Other'],
       });
     } finally {
       setPurchasing(false);

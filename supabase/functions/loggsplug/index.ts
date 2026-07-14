@@ -18,7 +18,6 @@ import {
   corsHeaders,
   getAuthenticatedUser,
   getServiceRoleClient,
-  getServiceRoleClientAsUser,
   jsonResponse,
   requireAdmin,
 } from '../_shared/sms-number-handler.ts';
@@ -507,12 +506,12 @@ async function purchaseProduct(
   const markupPercent = resolveMarkupPercent(settings, product.markup_percent_override as number | null);
   const profitNgn = calculateProfitNgn(costNgn, markupPercent) * quantity;
 
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) throw new Error('Authentication required.');
-
-  const walletClient = getServiceRoleClientAsUser(authHeader);
+  // Use service-role client + explicit user id. Passing the buyer JWT makes PostgREST
+  // treat the caller as `authenticated`, which cannot EXECUTE these wallet RPCs.
+  const walletClient = getServiceRoleClient();
   const { data: walletTxId, error: debitError } = await walletClient.rpc('wallet_debit_for_supplier_purchase', {
     p_amount_ngn: totalCharge,
+    p_user_id: userId,
     p_metadata: {
       supplier: 'loggsplug',
       product_id: productId,
@@ -522,55 +521,45 @@ async function purchaseProduct(
   });
 
   if (debitError) {
-    throw new Error(debitError.message || 'Could not debit wallet.');
+    const message = debitError.message?.includes('INSUFFICIENT_FUNDS')
+      ? 'INSUFFICIENT_FUNDS'
+      : debitError.message || 'Could not debit wallet.';
+    throw new Error(message);
   }
+
+  const refundBuyer = async (reason: string) => {
+    await walletClient.rpc('wallet_refund_supplier_purchase', {
+      p_amount_ngn: totalCharge,
+      p_reason: reason,
+      p_user_id: userId,
+      p_metadata: {
+        supplier: 'loggsplug',
+        product_id: productId,
+        supplier_product_id: product.supplier_product_id,
+        quantity,
+      },
+    });
+  };
 
   let supplierResponse;
   try {
     supplierResponse = await placeLoggsplugOrder(Number(product.supplier_product_id), quantity);
   } catch (supplierError) {
     const message = supplierError instanceof Error ? supplierError.message : 'Supplier order failed.';
-    await walletClient.rpc('wallet_refund_supplier_purchase', {
-      p_amount_ngn: totalCharge,
-      p_reason: message,
-      p_metadata: {
-        supplier: 'loggsplug',
-        product_id: productId,
-        supplier_product_id: product.supplier_product_id,
-        quantity,
-      },
-    });
+    await refundBuyer(message);
     throw supplierError;
   }
 
   if (!supplierResponse?.success) {
     const message = supplierResponse?.message || 'Supplier order failed.';
-    await walletClient.rpc('wallet_refund_supplier_purchase', {
-      p_amount_ngn: totalCharge,
-      p_reason: message,
-      p_metadata: {
-        supplier: 'loggsplug',
-        product_id: productId,
-        supplier_product_id: product.supplier_product_id,
-        quantity,
-      },
-    });
+    await refundBuyer(message);
     throw new Error(message);
   }
 
   const delivered = Array.isArray(supplierResponse.delivered) ? supplierResponse.delivered : [];
   const deliveredDetails = formatDeliveredDetails(delivered);
   if (!deliveredDetails.trim()) {
-    await walletClient.rpc('wallet_refund_supplier_purchase', {
-      p_amount_ngn: totalCharge,
-      p_reason: 'Supplier returned no account details.',
-      p_metadata: {
-        supplier: 'loggsplug',
-        product_id: productId,
-        supplier_product_id: product.supplier_product_id,
-        quantity,
-      },
-    });
+    await refundBuyer('Supplier returned no account details.');
     throw new Error('Supplier returned no account details.');
   }
 
