@@ -62,6 +62,21 @@ export const marketingTrackingService = {
     return data as EmailMarketingSend;
   },
 
+  async markSendFailed(trackingToken: string, errorMessage: string): Promise<void> {
+    const { error } = await supabase
+      .from('email_marketing_sends')
+      .update({
+        send_status: 'failed',
+        send_error: errorMessage.slice(0, 500),
+      } as never)
+      .eq('tracking_token', trackingToken)
+      .eq('send_status', 'pending');
+
+    if (error) {
+      console.warn('[marketing-tracking] could not mark send failed', error.message);
+    }
+  },
+
   async getBatchOverview(limit = 12): Promise<MarketingBatchOverview[]> {
     const [{ data: broadcasts }, { data: campaigns }, { data: sends }] = await Promise.all([
       supabase

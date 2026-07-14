@@ -253,10 +253,16 @@ export default function AdminSenderPage() {
             recipient_email: recipient.email,
             recipient_user_id: recipient.userId,
           });
-          await sendBroadcast.mutateAsync({
-            ...payload,
-            tracking_token: sendRecord.tracking_token,
-          });
+          try {
+            await sendBroadcast.mutateAsync({
+              ...payload,
+              tracking_token: sendRecord.tracking_token,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Send failed';
+            await marketingTrackingService.markSendFailed(sendRecord.tracking_token, message);
+            throw error;
+          }
         },
         onProgress: (items, currentEmail) => {
           setSendProgress(items);
@@ -343,10 +349,16 @@ export default function AdminSenderPage() {
             recipient_email: recipient.email,
             recipient_user_id: recipient.userId,
           });
-          await sendHtmlCampaign.mutateAsync({
-            ...payload,
-            tracking_token: sendRecord.tracking_token,
-          });
+          try {
+            await sendHtmlCampaign.mutateAsync({
+              ...payload,
+              tracking_token: sendRecord.tracking_token,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Send failed';
+            await marketingTrackingService.markSendFailed(sendRecord.tracking_token, message);
+            throw error;
+          }
         },
         onProgress: (items, currentEmail) => {
           setHtmlSendProgress(items);
