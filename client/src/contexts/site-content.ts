@@ -3,7 +3,7 @@ import { APP_NAME } from '@/constants';
 import { normalizeWalletExchangeRates } from '@/lib/wallet-exchange-rates';
 import { DEFAULT_SMS_PRICING, normalizeSmsProviderPricing, type SmsProviderPricingBundle } from '@/lib/sms-pricing';
 import { DEFAULT_LOGGSPLUG_SETTINGS, normalizeLoggsplugSettings, type LoggsplugSettings } from '@/lib/loggsplug-pricing';
-import { normalizeTelegramUrl } from '@/lib/telegram-url';
+import { DEFAULT_TELEGRAM_SUPPORT_URL, normalizeTelegramUrl } from '@/lib/telegram-url';
 import { normalizeWhatsAppUrl } from '@/lib/social-links';
 import { DEFAULT_RDP_CATALOG, mergeRdpCatalog, type RdpCatalog } from '@/lib/rdp-catalog';
 
@@ -462,7 +462,7 @@ function normalizeSupportChannels(
     if (channel.title.toLowerCase() !== 'telegram') return channel;
     return {
       ...channel,
-      href: normalizeTelegramUrl(channel.href) ?? channel.href,
+      href: normalizeTelegramUrl(channel.href) ?? DEFAULT_TELEGRAM_SUPPORT_URL,
     };
   });
 }
@@ -484,7 +484,7 @@ function normalizeSocialLinks(
     normalized.push({
       ...telegram,
       label: 'Telegram',
-      href: normalizeTelegramUrl(telegram.href) ?? telegram.href,
+      href: normalizeTelegramUrl(telegram.href) ?? DEFAULT_TELEGRAM_SUPPORT_URL,
     });
   }
 

@@ -1,5 +1,5 @@
 import type { SiteContent } from '@/contexts/site-content';
-import { normalizeTelegramUrl } from '@/lib/telegram-url';
+import { DEFAULT_TELEGRAM_SUPPORT_URL, normalizeTelegramUrl } from '@/lib/telegram-url';
 
 const EMPTY_INSTAGRAM_URLS = new Set(['', '#', 'https://instagram.com/', 'http://instagram.com/', 'instagram.com/']);
 
@@ -140,7 +140,7 @@ export function getInstagramSupportUrl(
 
 export function resolveSocialLinkHref(label: string, href: string): string {
   if (label.toLowerCase() === 'telegram') {
-    return normalizeTelegramUrl(href) ?? href;
+    return normalizeTelegramUrl(href) ?? DEFAULT_TELEGRAM_SUPPORT_URL;
   }
   if (label.toLowerCase() === 'whatsapp') {
     return normalizeWhatsAppUrl(href) ?? href;

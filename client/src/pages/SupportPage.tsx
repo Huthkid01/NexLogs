@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Mail, Send } from 'lucide-react';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
-import { normalizeTelegramUrl } from '@/lib/telegram-url';
+import { DEFAULT_TELEGRAM_SUPPORT_URL, normalizeTelegramUrl } from '@/lib/telegram-url';
 
 const SUPPORT_CHANNELS = [
   {
@@ -52,7 +52,7 @@ export default function SupportPage() {
               const Icon = channelMeta?.icon ?? Mail;
               const href =
                 channel.title.toLowerCase() === 'telegram'
-                  ? normalizeTelegramUrl(channel.href) ?? channel.href
+                  ? normalizeTelegramUrl(channel.href) ?? DEFAULT_TELEGRAM_SUPPORT_URL
                   : channel.href;
               return (
                 <a

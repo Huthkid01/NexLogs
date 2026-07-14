@@ -1,8 +1,14 @@
 import type { SiteContent } from '@/contexts/site-content';
 
 const EMPTY_TELEGRAM_URLS = new Set(['', '#', 'https://t.me/', 'http://t.me/', 't.me/', 't.me']);
+const TELEGRAM_HOSTS = new Set(['t.me', 'www.t.me', 'telegram.me', 'www.telegram.me']);
+export const DEFAULT_TELEGRAM_SUPPORT_URL = 'https://t.me/nexlogs';
 
-/** Turn @nexlogs, nexlogs, or t.me/nexlogs into https://t.me/nexlogs */
+function isTelegramHost(hostname: string): boolean {
+  return TELEGRAM_HOSTS.has(hostname.toLowerCase());
+}
+
+/** Turn @nexlogs, nexlogs, or t.me/nexlogs into https://t.me/nexlogs (never http). */
 export function normalizeTelegramUrl(value?: string | null): string | null {
   if (!value) return null;
 
@@ -12,18 +18,19 @@ export function normalizeTelegramUrl(value?: string | null): string | null {
   if (/^https?:\/\//i.test(trimmed)) {
     try {
       const url = new URL(trimmed);
-      if (url.hostname === 't.me' || url.hostname === 'telegram.me') {
-        const username = url.pathname.replace(/^\//, '').split('/')[0]?.replace(/^@/, '');
-        return username ? `https://t.me/${username}` : null;
-      }
-      return trimmed;
+      if (!isTelegramHost(url.hostname)) return null;
+      const username = url.pathname.replace(/^\//, '').split('/')[0]?.replace(/^@/, '');
+      return username ? `https://t.me/${username}` : null;
     } catch {
       return null;
     }
   }
 
-  if (/^t\.me\//i.test(trimmed)) {
-    const username = trimmed.replace(/^t\.me\//i, '').split('/')[0]?.replace(/^@/, '');
+  if (/^(?:www\.)?t\.me\//i.test(trimmed) || /^(?:www\.)?telegram\.me\//i.test(trimmed)) {
+    const username = trimmed
+      .replace(/^(?:www\.)?(?:t\.me|telegram\.me)\//i, '')
+      .split('/')[0]
+      ?.replace(/^@/, '');
     return username ? `https://t.me/${username}` : null;
   }
 
@@ -37,13 +44,11 @@ export function normalizeTelegramUrl(value?: string | null): string | null {
 
 export function getTelegramSupportUrl(
   content: Pick<SiteContent, 'support' | 'footer'>,
-  fallback = 'https://t.me/nexlogs'
+  fallback = DEFAULT_TELEGRAM_SUPPORT_URL,
 ): string {
   const candidates = [
     content.support.channels.find((channel) => channel.title.toLowerCase() === 'telegram')?.href,
     content.footer.socialLinks.find((link) => link.label.toLowerCase() === 'telegram')?.href,
-    ...content.support.channels.map((channel) => channel.href),
-    ...content.footer.socialLinks.map((link) => link.href),
   ];
 
   for (const candidate of candidates) {
@@ -51,12 +56,5 @@ export function getTelegramSupportUrl(
     if (resolved) return resolved;
   }
 
-  return fallback;
-}
-
-export function resolveSocialLinkHref(label: string, href: string): string {
-  if (label.toLowerCase() === 'telegram') {
-    return normalizeTelegramUrl(href) ?? href;
-  }
-  return href;
+  return normalizeTelegramUrl(fallback) ?? DEFAULT_TELEGRAM_SUPPORT_URL;
 }
