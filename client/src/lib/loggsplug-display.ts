@@ -84,7 +84,7 @@ export function getLoggsplugPrePurchaseInstructions(
 }
 
 export function getLoggsplugInstructionsHeading(
-  product: Pick<Product, 'description' | 'login_instructions' | 'supplier' | 'supplier_product_id' | 'title'> | null | undefined,
+  product: Pick<Product, 'description' | 'login_instructions' | 'supplier' | 'supplier_product_id' | 'title' | 'niche'> | null | undefined,
 ): string {
   const text = getLoggsplugPrePurchaseInstructions(product);
   if (/telegram|proxy|how to use/i.test(text)) {
