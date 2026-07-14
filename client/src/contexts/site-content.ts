@@ -129,6 +129,16 @@ export const defaultSiteContent: SiteContent = {
       order: 0,
       active: true,
     },
+    {
+      id: 'slide-telegram-support',
+      imageUrl: '/images/hero-telegram-support.jpg',
+      title: '',
+      description: '',
+      ctaLabel: '',
+      linkUrl: 'https://telegram.me/nexlogs',
+      order: 1,
+      active: true,
+    },
   ],
   home: {
     subscriptionsTitle: 'Subscriptions & others',

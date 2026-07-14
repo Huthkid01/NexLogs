@@ -34,14 +34,17 @@ export function PlatformCarousel() {
   const safeCurrent = current % slides.length;
   const slide = slides[safeCurrent];
   const slideImageUrl = resolveSlideImageUrl(slide.imageUrl);
-  const hasOverlayContent = Boolean(slide.title || slide.description || (slide.ctaLabel && slide.linkUrl));
+  const hasTextOverlay = Boolean(slide.title?.trim() || slide.description?.trim());
+  const hasCta = Boolean(slide.ctaLabel?.trim() && slide.linkUrl?.trim());
+  const hasOverlayContent = hasTextOverlay || hasCta;
+  const isWholeSlideLink = Boolean(slide.linkUrl?.trim()) && !hasCta;
 
   const handleSlideAction = () => {
     const target = slide.linkUrl.trim();
     if (!target) return;
 
     if (/^https?:\/\//i.test(target)) {
-      window.location.assign(target);
+      window.open(target, '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -57,18 +60,27 @@ export function PlatformCarousel() {
 
   return (
     <div className="relative w-full">
-      <SlideBanner src={slideImageUrl} alt={slide.title || 'Homepage banner slide'} variant="live" priority={safeCurrent === 0}>
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent sm:from-black/70 sm:via-black/35" />
+      <SlideBanner
+        src={slideImageUrl}
+        alt={slide.title || 'Homepage banner slide'}
+        variant="live"
+        priority={safeCurrent === 0}
+        imagePosition="left"
+      >
+        {/* Only dim designed photos that also have text overlays — skip for full artwork banners */}
+        {hasOverlayContent && (
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent sm:from-black/70 sm:via-black/35" />
+        )}
 
         {hasOverlayContent && (
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex max-w-[85%] items-center px-3 sm:max-w-[80%] sm:px-7">
             <div className="space-y-3">
-              {slide.title && (
+              {slide.title?.trim() && (
                 <h2 className="max-w-md text-sm font-bold leading-tight text-white drop-shadow sm:text-2xl">
                   {slide.title}
                 </h2>
               )}
-              {slide.description && (
+              {slide.description?.trim() && (
                 <LinkifiedText
                   text={slide.description}
                   className="max-w-md text-[11px] leading-snug text-white/90 drop-shadow sm:text-sm"
@@ -76,7 +88,7 @@ export function PlatformCarousel() {
                   as="p"
                 />
               )}
-              {slide.ctaLabel && slide.linkUrl && (
+              {hasCta && (
                 <Button
                   type="button"
                   size="sm"
@@ -90,20 +102,29 @@ export function PlatformCarousel() {
           </div>
         )}
 
+        {isWholeSlideLink && (
+          <button
+            type="button"
+            aria-label={slide.title || 'Open slide link'}
+            onClick={handleSlideAction}
+            className="absolute inset-0 z-10 cursor-pointer"
+          />
+        )}
+
         {showNavigation && (
-          <div className="absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setCurrent(i)}
-              className={`h-1.5 w-1.5 rounded-full shadow-sm transition-colors ${
-                i === safeCurrent ? 'bg-white' : 'bg-white/40'
-              }`}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
-        </div>
+          <div className="absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setCurrent(i)}
+                className={`h-1.5 w-1.5 rounded-full shadow-sm transition-colors ${
+                  i === safeCurrent ? 'bg-white' : 'bg-white/40'
+                }`}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
+          </div>
         )}
       </SlideBanner>
     </div>

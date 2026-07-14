@@ -94,6 +94,27 @@ function formatServiceLabel(name: string) {
   return primary.split('(')[0]?.trim() ?? primary;
 }
 
+function isWhatsAppService(service?: Pick<SmsPoolService, 'name'> | null) {
+  if (!service?.name) return false;
+  return /\bwhatsapp\b/i.test(formatServiceLabel(service.name));
+}
+
+/** Prefer the higher-priced in-stock pool for Service 2 WhatsApp (better success rate). */
+function getRecommendedPriceOptionKey(
+  providerId: SmsProviderId | undefined,
+  service: SmsPoolService | null,
+  rows: SmsPoolPriceOptionRow[] | undefined,
+): string | null {
+  if (providerId !== 'service-2' || !isWhatsAppService(service) || !rows?.length) return null;
+
+  const candidates = rows.filter((row) => row.stock === null || row.stock > 0);
+  const pool = (candidates.length > 0 ? candidates : rows).reduce((best, row) =>
+    row.charged_ngn > best.charged_ngn ? row : best,
+  );
+
+  return `${pool.pool}-${pool.charged_ngn}`;
+}
+
 function formatOrderDate(value: string) {
   return new Date(value).toLocaleString(undefined, {
     month: 'numeric',
@@ -775,6 +796,11 @@ export default function BuyNumbersPage() {
     return priceOptions.rows.every((row) => row.stock === 0);
   }, [priceOptions, pricesError, pricesErrorMessage, pricesLoading, selectedCountry, selectedService]);
 
+  const recommendedPriceOptionKey = useMemo(
+    () => getRecommendedPriceOptionKey(providerId, selectedService, priceOptions?.rows),
+    [priceOptions?.rows, providerId, selectedService],
+  );
+
   useEffect(() => {
     setNoNumbersModalOpen(hasNoNumbersAvailable);
   }, [hasNoNumbersAvailable]);
@@ -1309,22 +1335,29 @@ export default function BuyNumbersPage() {
                     ) : (
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {priceOptions.rows.map((option) => {
+                          const optionKey = `${option.pool}-${option.charged_ngn}`;
                           const isSelected = selectedPriceOption?.pool === option.pool
                             && selectedPriceOption?.charged_ngn === option.charged_ngn;
                           const isOutOfStock = option.stock === 0 || option.stock === null;
+                          const isRecommended = recommendedPriceOptionKey === optionKey;
                           return (
                             <button
-                              key={`${option.pool}-${option.charged_ngn}`}
+                              key={optionKey}
                               type="button"
                               disabled={Boolean(orderingPool) || isOutOfStock}
                               onClick={() => handleSelectPrice(option)}
                               className={cn(
-                                'rounded-lg border px-5 py-5 text-left shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                                'relative rounded-lg border px-5 py-5 text-left shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                                 isSelected
                                   ? 'border-[#f26522] bg-[#fff7f2] ring-1 ring-[#f26522] dark:bg-[#f26522]/10'
                                   : 'border-gray-200 bg-white hover:border-[#f26522]/60 dark:border-dm-border dark:bg-dm-surface',
                               )}
                             >
+                              {isRecommended && (
+                                <span className="absolute right-3 top-3 rounded-full bg-[#f5c518] px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-black shadow-sm">
+                                  Recommended
+                                </span>
+                              )}
                               <div className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-100">
                                 <Banknote className="h-4 w-4 text-[#f26522]" />
                                 {formatDisplayAmount(option.charged_ngn)}

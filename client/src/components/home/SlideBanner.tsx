@@ -10,19 +10,21 @@ interface SlideBannerProps {
   children?: ReactNode;
   className?: string;
   priority?: boolean;
+  /** Prefer left text / CTA for designed banners (default). */
+  imagePosition?: 'left' | 'center';
 }
 
 const variantClass: Record<SlideBannerVariant, string> = {
-  live: 'h-[165px] w-full sm:h-[190px] lg:aspect-[1920/400] lg:h-auto',
-  'mobile-preview': 'h-[165px] w-full',
+  // ~2.4:1 — fits designed promo banners on phone + desktop without crushing CTAs
+  live: 'aspect-[12/5] w-full max-h-[200px] sm:max-h-[260px] md:max-h-[320px] lg:max-h-[400px]',
+  'mobile-preview': 'aspect-[12/5] w-full',
   'desktop-preview': 'w-full',
 };
 
-const imageClass: Record<SlideBannerVariant, string> = {
-  live: 'absolute inset-0 h-full w-full object-cover object-[left_center] lg:object-center',
-  'mobile-preview': 'absolute inset-0 h-full w-full object-cover object-[left_center]',
-  'desktop-preview': 'absolute inset-0 h-full w-full object-cover object-center',
-};
+const imagePositionClass = {
+  left: 'object-[left_center]',
+  center: 'object-center',
+} as const;
 
 export function SlideBanner({
   src,
@@ -31,8 +33,16 @@ export function SlideBanner({
   children,
   className = '',
   priority = false,
+  imagePosition = 'left',
 }: SlideBannerProps) {
   const aspectStyle = variant === 'desktop-preview' ? { aspectRatio: SLIDE_BANNER_ASPECT } : undefined;
+  const position = imagePositionClass[imagePosition];
+
+  const imageClass: Record<SlideBannerVariant, string> = {
+    live: `absolute inset-0 h-full w-full object-cover ${position} lg:object-center`,
+    'mobile-preview': `absolute inset-0 h-full w-full object-cover ${position}`,
+    'desktop-preview': `absolute inset-0 h-full w-full object-cover object-center`,
+  };
 
   return (
     <div
