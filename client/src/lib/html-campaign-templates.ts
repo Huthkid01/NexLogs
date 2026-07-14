@@ -22,7 +22,7 @@ export const HTML_CAMPAIGN_TEMPLATE_CATEGORIES: {
 
 const appUrl = APP_URL.replace(/\/$/, '');
 const siteHost = appUrl.replace(/^https?:\/\//, '');
-const telegramSupportUrl = 'https://t.me/nexlogs';
+const telegramSupportUrl = 'https://telegram.me/nexlogs';
 
 function buildTextLink(url: string, label: string) {
   return `<p style="margin:20px 0 0;font-size:15px;line-height:1.7;">

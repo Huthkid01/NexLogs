@@ -9,7 +9,7 @@ const SUPPORT_CHANNELS = [
     id: 'telegram',
     title: 'Telegram',
     description: 'Reach us via Telegram',
-    href: 'https://t.me/',
+    href: 'https://telegram.me/',
     iconBg: 'bg-[#229ED9]',
     icon: Send,
   },

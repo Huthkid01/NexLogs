@@ -187,7 +187,7 @@ export const defaultSiteContent: SiteContent = {
       {
         title: 'Telegram',
         description: 'Reach us via Telegram',
-        href: 'https://t.me/nexlogs',
+        href: 'https://telegram.me/nexlogs',
       },
       {
         title: 'Email',
@@ -372,7 +372,7 @@ export const defaultSiteContent: SiteContent = {
     telegramPromoTitle: 'Telegram channel/support',
     telegramPromoDescription: 'Daily updates on high-follower and monetized accounts.',
     socialLinks: [
-      { label: 'Telegram', href: 'https://t.me/nexlogs' },
+      { label: 'Telegram', href: 'https://telegram.me/nexlogs' },
       { label: 'WhatsApp', href: 'https://wa.me/15855938030' },
     ],
   },

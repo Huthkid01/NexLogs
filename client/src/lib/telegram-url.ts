@@ -1,14 +1,31 @@
 import type { SiteContent } from '@/contexts/site-content';
 
-const EMPTY_TELEGRAM_URLS = new Set(['', '#', 'https://t.me/', 'http://t.me/', 't.me/', 't.me']);
+const EMPTY_TELEGRAM_URLS = new Set([
+  '',
+  '#',
+  'https://t.me/',
+  'http://t.me/',
+  't.me/',
+  't.me',
+  'https://telegram.me/',
+  'http://telegram.me/',
+  'telegram.me/',
+  'telegram.me',
+]);
 const TELEGRAM_HOSTS = new Set(['t.me', 'www.t.me', 'telegram.me', 'www.telegram.me']);
-export const DEFAULT_TELEGRAM_SUPPORT_URL = 'https://t.me/nexlogs';
+
+/** Prefer telegram.me — some ISP DNS resolvers NXDOMAIN t.me while telegram.me still works. */
+export const DEFAULT_TELEGRAM_SUPPORT_URL = 'https://telegram.me/nexlogs';
 
 function isTelegramHost(hostname: string): boolean {
   return TELEGRAM_HOSTS.has(hostname.toLowerCase());
 }
 
-/** Turn @nexlogs, nexlogs, or t.me/nexlogs into https://t.me/nexlogs (never http). */
+function toTelegramHttpsUrl(username: string): string {
+  return `https://telegram.me/${username}`;
+}
+
+/** Turn @nexlogs, nexlogs, or t.me/nexlogs into https://telegram.me/nexlogs (never http). */
 export function normalizeTelegramUrl(value?: string | null): string | null {
   if (!value) return null;
 
@@ -20,7 +37,7 @@ export function normalizeTelegramUrl(value?: string | null): string | null {
       const url = new URL(trimmed);
       if (!isTelegramHost(url.hostname)) return null;
       const username = url.pathname.replace(/^\//, '').split('/')[0]?.replace(/^@/, '');
-      return username ? `https://t.me/${username}` : null;
+      return username ? toTelegramHttpsUrl(username) : null;
     } catch {
       return null;
     }
@@ -31,12 +48,12 @@ export function normalizeTelegramUrl(value?: string | null): string | null {
       .replace(/^(?:www\.)?(?:t\.me|telegram\.me)\//i, '')
       .split('/')[0]
       ?.replace(/^@/, '');
-    return username ? `https://t.me/${username}` : null;
+    return username ? toTelegramHttpsUrl(username) : null;
   }
 
   const username = trimmed.replace(/^@/, '').replace(/\/$/, '');
   if (/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(username)) {
-    return `https://t.me/${username}`;
+    return toTelegramHttpsUrl(username);
   }
 
   return null;

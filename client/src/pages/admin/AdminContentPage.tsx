@@ -245,7 +245,7 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
               <Input
                 id="footer-telegram-url"
                 value={draft.footer.socialLinks.find((link) => link.label.toLowerCase() === 'telegram')?.href ?? ''}
-                placeholder="https://t.me/nexlogs or @nexlogs"
+                placeholder="https://telegram.me/nexlogs or @nexlogs"
                 onChange={(e) => {
                   const whatsapp = draft.footer.socialLinks.find((link) => link.label.toLowerCase() === 'whatsapp');
                   setDraft({
@@ -274,7 +274,7 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
                     footer: {
                       ...draft.footer,
                       socialLinks: [
-                        ...(telegram ? [telegram] : [{ label: 'Telegram', href: 'https://t.me/nexlogs' }]),
+                        ...(telegram ? [telegram] : [{ label: 'Telegram', href: 'https://telegram.me/nexlogs' }]),
                         { label: 'WhatsApp', href: e.target.value },
                       ],
                     },
