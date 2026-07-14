@@ -120,22 +120,22 @@ const LEGACY_DEFAULT_SLIDE_CTA = 'Shop Now';
 export const defaultSiteContent: SiteContent = {
   slides: [
     {
+      id: 'slide-telegram-support',
+      imageUrl: '/images/hero-telegram-support.jpg',
+      title: 'Experiencing Any Issues?',
+      description: "Contact our support team anytime — we're here to help.",
+      ctaLabel: 'Join Our Telegram',
+      linkUrl: 'https://telegram.me/nexlogs',
+      order: 0,
+      active: true,
+    },
+    {
       id: 'default-slide-1',
       imageUrl: '/images/hero-banner.png',
       title: DEFAULT_SLIDE_TITLE,
       description: DEFAULT_SLIDE_DESCRIPTION,
       ctaLabel: '',
       linkUrl: '/marketplace',
-      order: 0,
-      active: true,
-    },
-    {
-      id: 'slide-telegram-support',
-      imageUrl: '/images/hero-telegram-support.jpg',
-      title: '',
-      description: '',
-      ctaLabel: '',
-      linkUrl: 'https://telegram.me/nexlogs',
       order: 1,
       active: true,
     },
