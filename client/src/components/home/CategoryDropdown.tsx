@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { PlatformLogo } from '@/components/common/platform-logos';
-import { SHOP_CATEGORIES, SHOP_CATEGORY_ICON_PATHS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
+import { buildShopCategoryOptions, type ShopCategoryOption } from '@/lib/shop-category-options';
+import { categoryService } from '@/services';
 import { cn } from '@/lib/utils';
 
 interface CategoryDropdownProps {
@@ -9,11 +11,33 @@ interface CategoryDropdownProps {
   onChange: (slug: string) => void;
 }
 
+function renderCategoryIcon(option: ShopCategoryOption) {
+  if (option.imageUrl) {
+    return <img src={option.imageUrl} alt="" className="h-5 w-5 shrink-0 rounded object-contain" />;
+  }
+
+  if (option.platform) {
+    return <PlatformLogo platform={option.platform} className="h-5 w-5" />;
+  }
+
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-gray-100 text-[10px] font-bold uppercase text-gray-500 dark:bg-dm-input dark:text-gray-300">
+      {option.label.slice(0, 2)}
+    </span>
+  );
+}
+
 export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selected = SHOP_CATEGORIES.find((option) => option.slug === value);
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: categoryService.getAll,
+  });
+
+  const options = useMemo(() => buildShopCategoryOptions(categories), [categories]);
+  const selected = options.find((option) => option.slug === value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -26,18 +50,6 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const renderIcon = (slug: ShopCategorySlug) => {
-    const customIcon = SHOP_CATEGORY_ICON_PATHS[slug];
-    if (customIcon) {
-      return <img src={customIcon} alt="" className="h-5 w-5 shrink-0 object-contain" />;
-    }
-
-    const platform = SHOP_CATEGORY_PLATFORMS[slug];
-    if (!platform) return null;
-
-    return <PlatformLogo platform={platform} className="h-5 w-5" />;
-  };
-
   return (
     <div ref={containerRef} className="relative w-full max-w-[280px]">
       <button
@@ -45,7 +57,7 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
           'w-full flex items-center justify-between gap-2 bg-white dark:bg-dm-surface rounded-md px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-dm-input-border focus:outline-none focus:ring-0 focus:border-gray-300 dark:focus:border-dm-input-border',
-          open && 'border-gray-300 dark:border-dm-input-border'
+          open && 'border-gray-300 dark:border-dm-input-border',
         )}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -53,7 +65,7 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
         <span className="flex items-center gap-2.5 min-w-0">
           {selected ? (
             <>
-              {renderIcon(selected.slug)}
+              {renderCategoryIcon(selected)}
               <span className="truncate font-medium tracking-wide">{selected.label}</span>
             </>
           ) : (
@@ -67,10 +79,10 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
 
       {open && (
         <ul
-          className="absolute z-30 mt-1 w-full bg-white dark:bg-dm-surface border border-gray-200 dark:border-dm-border rounded-md shadow-lg py-1"
+          className="absolute z-30 mt-1 max-h-80 w-full overflow-y-auto bg-white dark:bg-dm-surface border border-gray-200 dark:border-dm-border rounded-md shadow-lg py-1"
           role="listbox"
         >
-          {SHOP_CATEGORIES.map((option) => (
+          {options.map((option) => (
             <li key={option.slug} role="option" aria-selected={value === option.slug}>
               <button
                 type="button"
@@ -80,10 +92,10 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
                 }}
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dm-input',
-                  value === option.slug && 'bg-gray-50 dark:bg-dm-input'
+                  value === option.slug && 'bg-gray-50 dark:bg-dm-input',
                 )}
               >
-                {renderIcon(option.slug)}
+                {renderCategoryIcon(option)}
                 <span className="font-medium tracking-wide">{option.label}</span>
               </button>
             </li>

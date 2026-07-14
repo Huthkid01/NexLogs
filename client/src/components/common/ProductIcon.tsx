@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import type { Category, PlatformType, Product, ProductImage } from '@/types';
 
 interface ProductIconProps {
-  product: Pick<Product, 'slug' | 'platform'> & {
+  product: Pick<Product, 'slug' | 'platform' | 'supplier' | 'supplier_product_id' | 'preview_url'> & {
     category?: Category | null;
     product_images?: ProductImage[];
   };

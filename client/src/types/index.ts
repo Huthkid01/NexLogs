@@ -71,6 +71,10 @@ export interface Product {
   category?: Category;
   product_images?: ProductImage[];
   reviews?: Review[];
+  supplier?: string | null;
+  supplier_product_id?: number | null;
+  supplier_cost_ngn?: number | null;
+  markup_percent_override?: number | null;
 }
 
 export interface ProductImage {

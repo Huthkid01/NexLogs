@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, Monitor, Mail, Wallet, Smartphone, Star,
+  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, Monitor, Mail, Wallet, Smartphone, Star, Plug,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,10 +13,17 @@ import { APP_NAME } from '@/constants';
 import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { EmailSenderStateProvider } from '@/contexts/EmailSenderStateContext';
 
-const navItems = [
+const navItemsBeforeProducts = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/products', label: 'Products', icon: Package },
+];
+
+const productNavItems = [
+  { href: '/admin/products', label: 'My Products', icon: Package },
+  { href: '/admin/products/loggsplug', label: 'LOGGSPLUG Products', icon: Plug },
+];
+
+const navItems = [
   { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/admin/reviews', label: 'Reviews', icon: Star },
   { href: '/admin/transactions', label: 'Wallet Transactions', icon: Wallet },
@@ -27,6 +34,7 @@ const navItems = [
   { href: '/admin/activity', label: 'Activity Logs', icon: Activity },
   { href: '/admin/slides', label: 'Slide Management', icon: Images },
   { href: '/admin/rdp', label: 'RDP Plans', icon: Monitor },
+  { href: '/admin/supplier/loggsplug', label: 'LOGGSPLUG Sync', icon: Plug },
 ];
 
 const navItemsAfterSmsPricing = [
@@ -54,6 +62,7 @@ export function AdminLayout() {
   const [hoverTooltip, setHoverTooltip] = useState<{ label: string; top: number; showStateIcon?: boolean } | null>(null);
   const [contentFlyoutTop, setContentFlyoutTop] = useState<number | null>(null);
   const [smsPricingFlyoutTop, setSmsPricingFlyoutTop] = useState<number | null>(null);
+  const [productsFlyoutTop, setProductsFlyoutTop] = useState<number | null>(null);
   const { profile, signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -63,6 +72,9 @@ export function AdminLayout() {
   const [contentMenuOpen, setContentMenuOpen] = useState(contentMenuActive);
   const smsPricingMenuActive = location.pathname.startsWith('/admin/sms-pricing');
   const [smsPricingMenuOpen, setSmsPricingMenuOpen] = useState(smsPricingMenuActive);
+  const productsMenuActive = location.pathname === '/admin/products'
+    || location.pathname.startsWith('/admin/products/');
+  const [productsMenuOpen, setProductsMenuOpen] = useState(productsMenuActive);
 
   useScrollLock(mobileSidebarOpen);
 
@@ -106,7 +118,28 @@ export function AdminLayout() {
     setSmsPricingFlyoutTop(nextTop);
   };
 
-  const renderNavLink = (item: (typeof navItems)[number]) => {
+  const updateProductsFlyoutPosition = (event: React.MouseEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const estimatedFlyoutHeight = 120;
+    const viewportPadding = 16;
+    const nextTop = Math.max(
+      viewportPadding,
+      Math.min(rect.top, window.innerHeight - estimatedFlyoutHeight - viewportPadding)
+    );
+    setProductsFlyoutTop(nextTop);
+  };
+
+  const closeAllFlyouts = () => {
+    setContentMenuOpen(false);
+    setContentFlyoutTop(null);
+    setSmsPricingMenuOpen(false);
+    setSmsPricingFlyoutTop(null);
+    setProductsMenuOpen(false);
+    setProductsFlyoutTop(null);
+    hideCollapsedTooltip();
+  };
+
+  const renderNavLink = (item: (typeof navItems)[number] | (typeof navItemsBeforeProducts)[number]) => {
     const Icon = item.icon;
     const active = item.href === '/admin'
       ? location.pathname === item.href
@@ -117,11 +150,7 @@ export function AdminLayout() {
         to={item.href}
         onClick={() => {
           setMobileSidebarOpen(false);
-          hideCollapsedTooltip();
-          setContentMenuOpen(false);
-          setContentFlyoutTop(null);
-          setSmsPricingMenuOpen(false);
-          setSmsPricingFlyoutTop(null);
+          closeAllFlyouts();
         }}
         onMouseEnter={(event) => showCollapsedTooltip(event, item.label)}
         onMouseLeave={hideCollapsedTooltip}
@@ -208,6 +237,83 @@ export function AdminLayout() {
             <p className={cn('px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]', isDark ? 'text-slate-500' : 'text-slate-500', desktopSidebarCollapsed && 'lg:hidden')}>
               Overview
             </p>
+            {navItemsBeforeProducts.map((item) => renderNavLink(item))}
+            <div className="relative space-y-1">
+              <button
+                type="button"
+                onClick={(event) => {
+                  if (desktopSidebarCollapsed) {
+                    updateProductsFlyoutPosition(event);
+                  } else {
+                    setProductsFlyoutTop(null);
+                  }
+                  setProductsMenuOpen((current) => !current);
+                  setContentMenuOpen(false);
+                  setContentFlyoutTop(null);
+                  setSmsPricingMenuOpen(false);
+                  setSmsPricingFlyoutTop(null);
+                  hideCollapsedTooltip();
+                }}
+                onMouseEnter={(event) => showCollapsedTooltip(event, 'Products', { showStateIcon: true })}
+                onMouseLeave={hideCollapsedTooltip}
+                className={cn(
+                  'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                  desktopSidebarCollapsed && 'lg:justify-center lg:px-0',
+                  productsMenuActive
+                    ? isDark
+                      ? 'bg-[#2d1a0f] text-orange-100 shadow-[inset_0_0_0_1px_rgba(242,101,34,0.25)]'
+                      : 'bg-[#fff3eb] text-[#f26522] shadow-[inset_0_0_0_1px_rgba(242,101,34,0.22)]'
+                    : isDark
+                      ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                      : 'text-slate-600 hover:bg-[#fff3eb] hover:text-[#f26522]'
+                )}
+                title={desktopSidebarCollapsed ? 'Products' : undefined}
+              >
+                <Package className="h-4 w-4" />
+                <span className={cn('truncate', desktopSidebarCollapsed && 'lg:hidden')}>Products</span>
+                {productsMenuOpen ? (
+                  <ChevronUp className={cn('ml-auto h-4 w-4', desktopSidebarCollapsed && 'lg:hidden')} />
+                ) : (
+                  <ChevronDown className={cn('ml-auto h-4 w-4', desktopSidebarCollapsed && 'lg:hidden')} />
+                )}
+              </button>
+              {productsMenuOpen && !desktopSidebarCollapsed && (
+                <div
+                  className={cn(
+                    'ml-3 space-y-1 rounded-2xl border px-2 py-2',
+                    isDark ? 'border-[#18263b] bg-[#081321]' : 'border-[#fde4d4] bg-[#fffaf7]'
+                  )}
+                >
+                  {productNavItems.map((item) => {
+                    const active = location.pathname === item.href;
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => {
+                          setMobileSidebarOpen(false);
+                          setProductsFlyoutTop(null);
+                        }}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                          active
+                            ? isDark
+                              ? 'bg-[#2d1a0f] text-orange-100'
+                              : 'bg-[#ffe8d9] text-[#c44d10]'
+                            : isDark
+                              ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                              : 'text-slate-700 hover:bg-[#fff3eb] hover:text-[#f26522]'
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             {navItems.map((item) => renderNavLink(item))}
             <div className="relative space-y-1">
               <button
@@ -221,6 +327,8 @@ export function AdminLayout() {
                   setSmsPricingMenuOpen((current) => !current);
                   setContentMenuOpen(false);
                   setContentFlyoutTop(null);
+                  setProductsMenuOpen(false);
+                  setProductsFlyoutTop(null);
                   hideCollapsedTooltip();
                 }}
                 onMouseEnter={(event) => showCollapsedTooltip(event, 'SMS Pricing', { showStateIcon: true })}
@@ -296,6 +404,8 @@ export function AdminLayout() {
                   setContentMenuOpen((current) => !current);
                   setSmsPricingMenuOpen(false);
                   setSmsPricingFlyoutTop(null);
+                  setProductsMenuOpen(false);
+                  setProductsFlyoutTop(null);
                   hideCollapsedTooltip();
                 }}
                 onMouseEnter={(event) => showCollapsedTooltip(event, 'Site Content', { showStateIcon: true })}
@@ -399,6 +509,50 @@ export function AdminLayout() {
           {hoverTooltip.showStateIcon ? (
             contentMenuOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />
           ) : null}
+        </div>
+      )}
+
+      {productsMenuOpen && desktopSidebarCollapsed && productsFlyoutTop !== null && (
+        <div
+          className={cn(
+            'fixed left-[92px] z-[85] hidden min-w-[240px] overflow-y-auto rounded-xl border p-2 shadow-xl lg:block',
+            isDark ? 'border-[#22324a] bg-[#081624] text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+          )}
+          style={{ top: productsFlyoutTop }}
+        >
+          <p className={cn('px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]', isDark ? 'text-slate-500' : 'text-slate-500')}>
+            Products
+          </p>
+          <div className="space-y-1">
+            {productNavItems.map((item) => {
+              const active = location.pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => {
+                    setMobileSidebarOpen(false);
+                    setProductsMenuOpen(false);
+                    setProductsFlyoutTop(null);
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                    active
+                      ? isDark
+                        ? 'bg-[#2d1a0f] text-orange-100'
+                        : 'bg-[#fff3eb] text-[#f26522]'
+                      : isDark
+                        ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                        : 'text-slate-600 hover:bg-[#fff3eb] hover:text-[#f26522]'
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 

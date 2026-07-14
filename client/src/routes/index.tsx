@@ -42,6 +42,7 @@ const AdminRdpPage = lazyPage(() => import('@/pages/admin/AdminRdpPage'));
 const AdminSenderPage = lazyPage(() => import('@/pages/admin/AdminSenderPage'));
 const AdminTransactionsPage = lazyPage(() => import('@/pages/admin/AdminTransactionsPage'));
 const AdminSmsPricingPage = lazyPage(() => import('@/pages/admin/AdminSmsPricingPage'));
+const AdminLoggsplugPage = lazyPage(() => import('@/pages/admin/AdminLoggsplugPage'));
 const AdminReviewsPage = lazyPage(() => import('@/pages/admin/AdminReviewsPage'));
 const UnsubscribePage = lazyPage(() => import('@/pages/UnsubscribePage'));
 const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'));
@@ -92,6 +93,7 @@ const router = createBrowserRouter([
       { index: true, element: <AdminDashboardPage /> },
       { path: 'users', element: <AdminUsersPage /> },
       { path: 'products', element: <AdminProductsPage /> },
+      { path: 'products/loggsplug', element: <AdminProductsPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },
       { path: 'reviews', element: <AdminReviewsPage /> },
       { path: 'transactions', element: <AdminTransactionsPage /> },
@@ -101,6 +103,7 @@ const router = createBrowserRouter([
       { path: 'activity', element: <AdminActivityLogsPage /> },
       { path: 'slides', element: <AdminSlidesPage /> },
       { path: 'rdp', element: <AdminRdpPage /> },
+      { path: 'supplier/loggsplug', element: <AdminLoggsplugPage /> },
       { path: 'sms-pricing', element: <Navigate to="/admin/sms-pricing/smspool" replace /> },
       { path: 'sms-pricing/:provider', element: <AdminSmsPricingPage /> },
       { path: 'sender', element: <AdminSenderPage /> },

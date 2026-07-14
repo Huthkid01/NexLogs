@@ -730,6 +730,81 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-service-restored-marketplace-notice',
+    name: 'Services restored + more products (inbox-friendly)',
+    category: 'account',
+    description:
+      'Tell users services are back, more products were added, shop the marketplace, and contact support if anything fails.',
+    defaultSubject: `${APP_NAME} is restored — more products are live on the marketplace`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'Services restored',
+      preheader: `${APP_NAME} is fully restored with more products. Visit the marketplace to place your order, or contact support if you hit an error.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Good news — <strong>${APP_NAME} services have been restored</strong>. Thank you for your patience while we investigated and improved the platform.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We have also <strong>added more products</strong> to the marketplace. You can sign in now and place your order whenever you are ready.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>What to do next</strong></p>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Open the <strong>marketplace</strong></li>
+                <li>Choose the product you need</li>
+                <li>Complete checkout from your wallet</li>
+              </ol>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                If you run into any error while ordering or using your account, please <strong>chat with support</strong> and we will help you right away.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                Telegram support:
+                <a href="${telegramSupportUrl}" style="color:#111827;text-decoration:underline;">@nexlogs</a>
+                &nbsp;·&nbsp;
+                Email:
+                <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a>
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you for staying with us,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Go to the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'account-service-investigation-notice',
+    name: 'Service investigation notice (inbox-friendly)',
+    category: 'account',
+    description:
+      'Notify all users that you are investigating an issue and improving services. Promise a follow-up when restored.',
+    defaultSubject: `We are investigating an issue and improving ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'Service update',
+      preheader: `We are investigating a reported issue and improving ${APP_NAME}. We will email you again once everything is restored.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We are writing to let you know that our team is currently <strong>investigating a reported issue</strong> and actively <strong>improving our services</strong> on ${APP_NAME}.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Some features may not work as expected while this work is underway. Thank you for your patience and understanding.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                <strong>Once everything is fully restored, we will send you another update</strong> so you know services are back to normal.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                If you need help with an order or your wallet in the meantime, reply to this email or contact us on Telegram at
+                <a href="${telegramSupportUrl}" style="color:#111827;text-decoration:underline;">@nexlogs</a>.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you for being with us,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open support',
+      linkUrl: `${appUrl}/support`,
+    }),
+  },
+  {
     id: 'account-platform-improvement-notice',
     name: 'Platform improvements (inbox-friendly)',
     category: 'account',

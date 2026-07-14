@@ -1,3 +1,4 @@
+import { getLoggsplugProductIconUrl, isLoggsplugProduct } from '@/lib/loggsplug-utils';
 import type { PlatformType, Product } from '@/types';
 import { isRdpProduct } from '@/lib/rdp-utils';
 
@@ -22,16 +23,36 @@ export function resolveCategoryIconUrl(category?: {
 export function resolveProductIconUrl(input: {
   slug: string;
   platform: PlatformType;
+  supplier?: string | null;
+  supplier_product_id?: number | null;
   category?: { name?: string | null; slug?: string | null; image_url?: string | null } | null;
   product_images?: { image_url: string; sort_order?: number }[] | null;
+  preview_url?: string | null;
 }) {
-  const categoryIcon = resolveCategoryIconUrl(input.category);
-  if (categoryIcon) return categoryIcon;
+  const isSupplierProduct = isLoggsplugProduct({
+    supplier: input.supplier,
+    supplier_product_id: input.supplier_product_id,
+  });
+
+  if (isSupplierProduct) {
+    const loggsplugIcon = getLoggsplugProductIconUrl({
+      supplier: input.supplier,
+      supplier_product_id: input.supplier_product_id,
+      product_images: input.product_images,
+      preview_url: input.preview_url,
+    });
+    if (loggsplugIcon) return loggsplugIcon;
+  }
 
   const storedImage =
     input.product_images?.find((image) => image.sort_order === 0) ?? input.product_images?.[0];
   const storedIconUrl = normalizeIconUrl(storedImage?.image_url);
   if (storedIconUrl) return storedIconUrl;
+
+  if (!isSupplierProduct) {
+    const categoryIcon = resolveCategoryIconUrl(input.category);
+    if (categoryIcon) return categoryIcon;
+  }
 
   if (normalizeValue(input.slug).includes('telegram') || input.category?.slug === 'telegram') {
     return TELEGRAM_ICON_PATH;

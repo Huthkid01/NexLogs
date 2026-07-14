@@ -2,6 +2,7 @@ import { createContext } from 'react';
 import { APP_NAME } from '@/constants';
 import { normalizeWalletExchangeRates } from '@/lib/wallet-exchange-rates';
 import { DEFAULT_SMS_PRICING, normalizeSmsProviderPricing, type SmsProviderPricingBundle } from '@/lib/sms-pricing';
+import { DEFAULT_LOGGSPLUG_SETTINGS, normalizeLoggsplugSettings, type LoggsplugSettings } from '@/lib/loggsplug-pricing';
 import { normalizeTelegramUrl } from '@/lib/telegram-url';
 import { normalizeWhatsAppUrl } from '@/lib/social-links';
 import { DEFAULT_RDP_CATALOG, mergeRdpCatalog, type RdpCatalog } from '@/lib/rdp-catalog';
@@ -104,6 +105,7 @@ export interface SiteContent {
     exchangeRates: Record<string, number>;
   };
   smsPricing: SmsProviderPricingBundle;
+  loggsplug: LoggsplugSettings;
   rdp: RdpCatalog;
 }
 
@@ -397,6 +399,7 @@ export const defaultSiteContent: SiteContent = {
       markupPercent: DEFAULT_SMS_PRICING.markupPercent,
     },
   },
+  loggsplug: DEFAULT_LOGGSPLUG_SETTINGS,
   rdp: DEFAULT_RDP_CATALOG,
 };
 
@@ -584,6 +587,7 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
       exchangeRates: normalizeWalletExchangeRates(content?.wallet?.exchangeRates),
     },
     smsPricing: normalizeSmsProviderPricing(content?.smsPricing),
+    loggsplug: normalizeLoggsplugSettings(content?.loggsplug),
     rdp: mergeRdpCatalog(content?.rdp),
   };
 }

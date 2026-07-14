@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { Product, ProductFilters, PaginatedResponse } from '@/types';
 
 const PUBLIC_PRODUCT_COLUMNS =
-  'id, title, slug, description, platform, price, stock, followers, following, account_age, country, niche, verified, featured, category_id, is_active, created_at, updated_at, sort_order, preview_url, login_instructions';
+  'id, title, slug, description, platform, price, stock, followers, following, account_age, country, niche, verified, featured, category_id, is_active, created_at, updated_at, sort_order, preview_url, login_instructions, supplier, supplier_product_id';
 
 const PUBLIC_PRODUCT_SELECT = `${PUBLIC_PRODUCT_COLUMNS}, category:categories(*), product_images(*)`;
 

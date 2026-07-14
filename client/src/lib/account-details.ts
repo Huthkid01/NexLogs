@@ -1,3 +1,4 @@
+import { isLoggsplugProduct } from '@/lib/loggsplug-utils';
 import { isRdpProduct, RDP_PENDING_DETAILS_MESSAGE } from '@/lib/rdp-utils';
 import {
   getTelegramPendingDetailsMessage,
@@ -26,16 +27,23 @@ export function getProductLog(
   _seed: string,
   deliveredDetails?: string | null,
 ): string {
-  if (isTelegramProduct(product)) {
-    return getTelegramPendingDetailsMessage();
-  }
-
   const purchasedDetails = deliveredDetails?.trim();
-  if (purchasedDetails && !isTelegramPendingDelivery(purchasedDetails)) {
+
+  // LOGGSPLUG (and any purchased inventory) credentials always win — even if the title
+  // includes "TELEGRAM", which would otherwise trigger the manual Telegram pathway.
+  if (
+    purchasedDetails
+    && purchasedDetails !== TELEGRAM_MANUAL_FULFILLMENT_MARKER
+    && !isTelegramPendingDelivery(purchasedDetails)
+  ) {
     return purchasedDetails;
   }
 
-  if (purchasedDetails === TELEGRAM_MANUAL_FULFILLMENT_MARKER) {
+  if (isLoggsplugProduct(product)) {
+    return NO_DETAILS_MESSAGE;
+  }
+
+  if (isTelegramProduct(product) || purchasedDetails === TELEGRAM_MANUAL_FULFILLMENT_MARKER) {
     return getTelegramPendingDetailsMessage();
   }
 

@@ -2,8 +2,15 @@ import { X } from 'lucide-react';
 import { useModalLock } from '@/hooks/useModalLock';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
+import { LoggsplugDescriptionView } from '@/components/home/LoggsplugDescriptionView';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { isTelegramProduct, TELEGRAM_PRE_PURCHASE_INSTRUCTIONS } from '@/lib/telegram-utils';
+import {
+  getLoggsplugDisplayDescription,
+  getLoggsplugInstructionsHeading,
+  getLoggsplugPrePurchaseInstructions,
+} from '@/lib/loggsplug-display';
+import { isLoggsplugProduct } from '@/lib/loggsplug-utils';
 import type { Product } from '@/types';
 
 interface ProductInstructionsModalProps {
@@ -26,11 +33,20 @@ export function ProductInstructionsModal({
   if (!open || !product) return null;
 
   const instructions = product.login_instructions?.trim();
+  const displayDescription = getLoggsplugDisplayDescription(product);
   const isTelegram = isTelegramProduct(product);
+  const isLoggsplug = isLoggsplugProduct(product);
   const displayInstructions = isTelegram
     ? instructions || TELEGRAM_PRE_PURCHASE_INSTRUCTIONS
-    : instructions;
+    : isLoggsplug
+      ? getLoggsplugPrePurchaseInstructions(product)
+      : instructions;
   const hasInstructions = Boolean(displayInstructions);
+  const instructionsHeading = isTelegram
+    ? 'How to receive your order'
+    : isLoggsplug
+      ? getLoggsplugInstructionsHeading(product)
+      : 'Login instructions';
 
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
@@ -75,34 +91,42 @@ export function ProductInstructionsModal({
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 text-sm text-gray-800 dark:text-gray-200">
           <section>
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              About this product
+              {isLoggsplug ? 'Description' : 'About this product'}
             </h3>
-            <LinkifiedText
-              text={product.description}
-              className="leading-relaxed break-words whitespace-pre-wrap"
-              as="p"
-            />
-          </section>
-
-          <section>
-            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              {isTelegram ? 'How to receive your order' : 'Login instructions'}
-            </h3>
-            {hasInstructions ? (
+            {isLoggsplug ? (
               <div className="rounded-lg border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row p-4">
-              <LinkifiedText
-                text={displayInstructions ?? ''}
-                className="text-sm leading-relaxed whitespace-pre-wrap break-words"
-                as="div"
-              />
+                <LoggsplugDescriptionView text={displayDescription} emphasize />
               </div>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
-                Login instructions for this product have not been added yet. After purchase, your account details
-                will appear in My Purchases.
-              </p>
+              <LinkifiedText
+                text={displayDescription}
+                className="leading-relaxed break-words whitespace-pre-wrap"
+                as="p"
+              />
             )}
           </section>
+
+          {!isLoggsplug ? (
+            <section>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                {instructionsHeading}
+              </h3>
+              {hasInstructions ? (
+                <div className="rounded-lg border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row p-4">
+                  <LinkifiedText
+                    text={displayInstructions ?? ''}
+                    className="text-sm leading-relaxed whitespace-pre-wrap break-words"
+                    as="div"
+                  />
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Login instructions for this product have not been added yet. After purchase, your account details
+                  will appear in My Purchases.
+                </p>
+              )}
+            </section>
+          ) : null}
         </div>
 
         <div className="shrink-0 flex flex-wrap justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-dm-border">

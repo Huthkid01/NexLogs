@@ -32,7 +32,9 @@ export function PurchaseCard({ order, existingReview, onReviewSubmitted }: Purch
   const orderId = getDisplayOrderId(order.order_number);
   const pendingRdpDetails =
     product && isRdpProduct(product) && !orderItem?.delivered_details?.trim();
-  const isTelegram = Boolean(product && isTelegramProduct(product));
+  const isTelegram = Boolean(
+    product && isTelegramProduct(product) && product.supplier !== 'loggsplug',
+  );
 
   const handleCopyOrderId = async () => {
     try {

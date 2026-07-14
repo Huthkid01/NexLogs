@@ -17,6 +17,7 @@ export { broadcastEmailService } from './broadcast-email.service';
 export { htmlCampaignService } from './html-campaign.service';
 export { marketingTrackingService } from './marketing-tracking.service';
 export { smsNumberService } from './sms-number.service';
+export { loggsplugService } from './loggsplug.service';
 export { reviewService } from './review.service';
 export { getMarketingUnsubscribedUserIds, processMarketingUnsubscribe } from './marketing-unsubscribe.service';
 export type { SiteSession, SitePageView, SiteVisitorStats } from './site-visit.service';

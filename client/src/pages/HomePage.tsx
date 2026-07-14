@@ -9,13 +9,15 @@ import { ProductListRow } from '@/components/home/ProductListRow';
 import { ProductVariantsModal } from '@/components/home/ProductVariantsModal';
 import { RequestProductsEmptyState } from '@/components/home/RequestProductsEmptyState';
 import { AppLoader } from '@/components/common/AppLoader';
-import { SHOP_CATEGORIES, SHOP_CATEGORY_LINKS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
+import { findShopCategoryOption } from '@/lib/shop-category-options';
+import { SHOP_CATEGORY_LINKS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useSiteVisitTracking } from '@/hooks/useSiteVisitTracking';
 import { productService, categoryService } from '@/services';
 import { SORT_OPTIONS } from '@/constants';
+import { buildShopCategoryOptions } from '@/lib/shop-category-options';
 import { isRdpProduct } from '@/lib/rdp-utils';
 import type { Product } from '@/types';
 
@@ -68,7 +70,8 @@ export default function HomePage() {
     enabled: !!user,
   });
 
-  const selectedCategory = SHOP_CATEGORIES.find((category) => category.slug === categorySlug);
+  const categoryOptions = buildShopCategoryOptions(categories ?? []);
+  const selectedCategory = findShopCategoryOption(categoryOptions, categorySlug);
   const sectionTitle = selectedCategory?.label ?? content.home.catalogTitle;
 
   const handleCategoryChange = (slug: string) => {

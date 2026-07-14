@@ -1,6 +1,14 @@
 import { supabase } from '@/lib/supabase';
 import { ORDER_PRODUCT_SELECT } from '@/services/product.service';
+import { loggsplugService } from '@/services/loggsplug.service';
 import type { Order, Coupon } from '@/types';
+
+export interface LoggsplugWalletPurchaseResult {
+  orderId: string;
+  orderNumber?: string;
+  createdAt?: string;
+  deliveredDetails?: string;
+}
 
 export const orderService = {
   async purchaseWithWallet(productId: string, quantity = 1): Promise<string> {
@@ -10,6 +18,19 @@ export const orderService = {
     } as never);
     if (error) throw error;
     return data as string;
+  },
+
+  async purchaseLoggsplugWithWallet(
+    productId: string,
+    quantity = 1,
+  ): Promise<LoggsplugWalletPurchaseResult> {
+    const result = await loggsplugService.purchaseWithWallet(productId, quantity);
+    return {
+      orderId: result.order_id,
+      orderNumber: result.order_number,
+      createdAt: result.created_at,
+      deliveredDetails: result.delivered_details,
+    };
   },
 
   async purchaseRdpWithWallet(productId: string, quantity = 1): Promise<string> {

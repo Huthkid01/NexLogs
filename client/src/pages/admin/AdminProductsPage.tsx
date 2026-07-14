@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
@@ -17,6 +18,11 @@ import { supabase } from '@/lib/supabase';
 import { applyRdpProductToCatalog, removeRdpProductFromCatalog } from '@/lib/rdp-live-catalog';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { getPlatformFromCategory, resolveCategoryIconUrl, resolveProductIconUrl } from '@/lib/platform-icons';
+import {
+  calculateLoggsplugRetailPrice,
+  resolveLoggsplugMarkup,
+} from '@/lib/loggsplug-pricing';
+import { isLoggsplugProduct } from '@/lib/loggsplug-utils';
 import { isRdpProduct, isRdpFormProduct } from '@/lib/rdp-utils';
 import {
   buildTelegramPlaceholderInventory,
@@ -55,6 +61,7 @@ interface ProductFormState {
   platform: PlatformType;
   category_id: string;
   price: string;
+  markup_percent_override: string;
   stock: string;
   country: string;
   niche: string;
@@ -85,6 +92,7 @@ function createEmptyForm(categoryId = ''): ProductFormState {
     platform: 'instagram',
     category_id: categoryId,
     price: '',
+    markup_percent_override: '',
     stock: '',
     country: '',
     niche: '',
@@ -116,6 +124,8 @@ function createFormFromProduct(product: Product): ProductFormState {
     platform: product.platform,
     category_id: product.category_id,
     price: String(product.price),
+    markup_percent_override:
+      product.markup_percent_override != null ? String(product.markup_percent_override) : '',
     stock: String(product.stock),
     country: product.country ?? '',
     niche: product.niche ?? '',
@@ -144,13 +154,14 @@ function productSkipsBuyerCopyLines(
 ) {
   if (isRdpFormProduct(input) || isTelegramFormProduct(input)) return true;
   if (!editingProduct) return false;
-  return isRdpProduct(editingProduct) || isTelegramProduct(editingProduct);
+  return isRdpProduct(editingProduct) || isTelegramProduct(editingProduct) || isLoggsplugProduct(editingProduct);
 }
 
 function buildProductPayload(
   form: ProductFormState,
   categorySlug?: string | null,
   editingProduct?: Product | null,
+  defaultLoggsplugMarkup = 15,
 ) {
   const skipsBuyerCopyLines = productSkipsBuyerCopyLines(
     { slug: form.slug, title: form.title, niche: form.niche, categorySlug },
@@ -164,15 +175,16 @@ function buildProductPayload(
   }) || Boolean(editingProduct && isTelegramProduct(editingProduct));
   const isRdp = isRdpFormProduct({ slug: form.slug, niche: form.niche, categorySlug })
     || Boolean(editingProduct && isRdpProduct(editingProduct));
+  const isLoggsplug = Boolean(editingProduct && isLoggsplugProduct(editingProduct));
   const detailLineCount = skipsBuyerCopyLines ? 0 : countProductDetailLines(form.product_details);
-  const stockValue = isRdp || isTelegram || detailLineCount === 0 ? Number(form.stock) : detailLineCount;
+  const stockValue = isRdp || isTelegram || isLoggsplug || detailLineCount === 0 ? Number(form.stock) : detailLineCount;
   const productDetails = isTelegram
     ? stockValue > 0
       ? buildTelegramPlaceholderInventory(stockValue)
       : ''
     : normalizeProductDetailsStorage(form.product_details);
 
-  return {
+  const basePayload = {
     title: form.title.trim(),
     slug: slugify(form.slug || form.title),
     platform: form.platform,
@@ -192,6 +204,24 @@ function buildProductPayload(
     verified: form.verified,
     is_active: form.is_active,
   };
+
+  if (!isLoggsplug || !editingProduct) {
+    return basePayload;
+  }
+
+  const overrideRaw = form.markup_percent_override.trim();
+  const markupOverride = overrideRaw === '' ? null : Number(overrideRaw);
+  const costNgn = Number(editingProduct.supplier_cost_ngn ?? 0);
+  const effectiveMarkup = resolveLoggsplugMarkup(
+    { enabled: true, defaultMarkupPercent: defaultLoggsplugMarkup, lastSyncedAt: null },
+    markupOverride,
+  );
+
+  return {
+    ...basePayload,
+    markup_percent_override: markupOverride,
+    price: calculateLoggsplugRetailPrice(costNgn, effectiveMarkup),
+  };
 }
 
 const PRODUCT_TABLE_GRID =
@@ -199,14 +229,23 @@ const PRODUCT_TABLE_GRID =
 
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const { theme } = useTheme();
   const { content, setContent } = useSiteContent();
   const isDark = theme === 'dark';
+  const isLoggsplugCatalog = location.pathname.includes('/products/loggsplug');
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productPendingDelete, setProductPendingDelete] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(() => createEmptyForm());
+
+  useEffect(() => {
+    setSearch('');
+    setIsModalOpen(false);
+    setEditingProduct(null);
+    setProductPendingDelete(null);
+  }, [isLoggsplugCatalog]);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -230,6 +269,7 @@ export default function AdminProductsPage() {
     niche: form.niche,
     categorySlug: selectedCategory?.slug,
   }) || Boolean(editingProduct && isTelegramProduct(editingProduct));
+  const isLoggsplugForm = Boolean(editingProduct && isLoggsplugProduct(editingProduct));
   const skipsBuyerCopyLines = productSkipsBuyerCopyLines(
     {
       slug: form.slug,
@@ -244,18 +284,24 @@ export default function AdminProductsPage() {
     resolveCategoryIconUrl(selectedCategory) ||
     resolveProductIconUrl({ slug: form.slug, platform: form.platform, category: selectedCategory });
 
+  const scopedProducts = useMemo(() => {
+    return (products ?? []).filter((product) =>
+      isLoggsplugCatalog ? isLoggsplugProduct(product) : !isLoggsplugProduct(product),
+    );
+  }, [products, isLoggsplugCatalog]);
+
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return products ?? [];
+    if (!term) return scopedProducts;
 
-    return (products ?? []).filter((product) => {
+    return scopedProducts.filter((product) => {
       const categoryName = product.category?.name ?? '';
       return [product.title, product.slug, product.platform, categoryName]
         .join(' ')
         .toLowerCase()
         .includes(term);
     });
-  }, [products, search]);
+  }, [scopedProducts, search]);
 
   const saveProduct = useMutation({
     mutationFn: async ({ payload }: { payload: ReturnType<typeof buildProductPayload> }) => {
@@ -350,7 +396,7 @@ export default function AdminProductsPage() {
     }
 
     saveProduct.mutate({
-      payload: buildProductPayload(form, selectedCategory?.slug, editingProduct),
+      payload: buildProductPayload(form, selectedCategory?.slug, editingProduct, content.loggsplug.defaultMarkupPercent),
     });
   };
 
@@ -367,13 +413,25 @@ export default function AdminProductsPage() {
       <div className={cn('space-y-6', adminPageClass(isDark))}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">Product management</h1>
-            <p className="admin-muted text-sm">Add new products, edit listing details, and keep your catalog organized from one screen.</p>
+            <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">
+              {isLoggsplugCatalog ? 'LOGGSPLUG products' : 'My products'}
+            </h1>
+            <p className="admin-muted text-sm">
+              {isLoggsplugCatalog
+                ? 'Products synced from LOGGSPLUG. Edit markup and visibility here; sync catalog from LOGGSPLUG Sync.'
+                : 'Products you upload manually. Add, edit, and organize your own catalog here.'}
+            </p>
           </div>
-          <Button className="w-full bg-[#f26522] hover:bg-[#d94e0f] sm:w-auto" onClick={openCreateModal}>
-            <Plus className="h-4 w-4" />
-            Add Product
-          </Button>
+          {isLoggsplugCatalog ? (
+            <Button asChild className="w-full bg-[#f26522] hover:bg-[#d94e0f] sm:w-auto">
+              <Link to="/admin/supplier/loggsplug">Open LOGGSPLUG Sync</Link>
+            </Button>
+          ) : (
+            <Button className="w-full bg-[#f26522] hover:bg-[#d94e0f] sm:w-auto" onClick={openCreateModal}>
+              <Plus className="h-4 w-4" />
+              Add Product
+            </Button>
+          )}
         </div>
 
         <Card className={adminMainCardClass(isDark)}>
@@ -382,7 +440,11 @@ export default function AdminProductsPage() {
               <div>
                 <p className={cn('text-xs font-semibold uppercase tracking-[0.18em]', adminSubtleTextClass(isDark))}>Catalog</p>
                 <p className={cn('mt-2 text-2xl font-semibold', adminStrongTextClass(isDark))}>{filteredProducts.length}</p>
-                <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>Products currently visible in this admin list.</p>
+                <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>
+                  {isLoggsplugCatalog
+                    ? 'LOGGSPLUG synced products in this list.'
+                    : 'Your own uploaded products in this list.'}
+                </p>
               </div>
               <div className="flex items-end">
                 <Input
@@ -403,7 +465,11 @@ export default function AdminProductsPage() {
                   <div className="px-5 py-12 text-center">
                     <Package2 className={cn('mx-auto h-10 w-10', isDark ? 'text-slate-600' : 'text-slate-400')} />
                     <p className={cn('mt-4 text-lg font-medium', adminStrongTextClass(isDark))}>No products found</p>
-                    <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>Try a different search or add a new product.</p>
+                    <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>
+                      {isLoggsplugCatalog
+                        ? 'Try a different search, or sync products from Admin → Products → LOGGSPLUG Sync.'
+                        : 'Try a different search or add a new product.'}
+                    </p>
                   </div>
                 ) : null
               }
@@ -419,7 +485,7 @@ export default function AdminProductsPage() {
                       <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>{product.slug}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Badge variant="outline" className={isDark ? 'border-[#26354c] bg-[#0d1b2d] text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}>
-                          {isRdpProduct(product) ? 'RDP' : product.platform}
+                          {isRdpProduct(product) ? 'RDP' : isLoggsplugProduct(product) ? 'LOGGSPLUG' : product.platform}
                         </Badge>
                         {product.featured && (
                           <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">
@@ -614,19 +680,60 @@ export default function AdminProductsPage() {
                         label="Price (NGN)"
                         isDark={isDark}
                       />
+                      {isLoggsplugForm && editingProduct ? (
+                        <div className="mt-4 space-y-4 rounded-xl border border-dashed p-4 border-slate-300 dark:border-[#22324a]">
+                          <p className={cn('text-sm', adminMutedTextClass(isDark))}>
+                            Synced from LOGGSPLUG. Supplier cost:{' '}
+                            <span className={adminStrongTextClass(isDark)}>
+                              {formatPrice(Number(editingProduct.supplier_cost_ngn ?? 0))}
+                            </span>
+                          </p>
+                          <div>
+                            <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>
+                              Profit markup override (%)
+                            </label>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={form.markup_percent_override}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                  const markup = value === '' ? content.loggsplug.defaultMarkupPercent : Number(value);
+                                  const cost = Number(editingProduct.supplier_cost_ngn ?? 0);
+                                  setForm((current) => ({
+                                    ...current,
+                                    markup_percent_override: value,
+                                    price: String(calculateLoggsplugRetailPrice(cost, markup)),
+                                  }));
+                                }
+                              }}
+                              className={adminInputClass(isDark)}
+                              placeholder={`Default: ${content.loggsplug.defaultMarkupPercent}%`}
+                            />
+                            <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
+                              Leave empty to use the default markup from Admin → LOGGSPLUG. Retail price updates from supplier cost.
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                     <div>
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Stock</label>
                       <Input
                         type="number"
                         min="0"
-                        value={isTelegramForm || detailLineCount === 0 ? form.stock : String(detailLineCount)}
+                        value={isTelegramForm || isLoggsplugForm || detailLineCount === 0 ? form.stock : String(detailLineCount)}
                         onChange={(event) => setForm((current) => ({ ...current, stock: event.target.value }))}
                         className="admin-input"
                         placeholder={isTelegramForm ? '100' : '12'}
-                        readOnly={!isTelegramForm && detailLineCount > 0}
+                        readOnly={isLoggsplugForm || (!isTelegramForm && detailLineCount > 0)}
                       />
-                      {isTelegramForm ? (
+                      {isLoggsplugForm ? (
+                        <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
+                          Stock is synced from LOGGSPLUG. Use Admin → LOGGSPLUG → Sync catalog to refresh.
+                        </p>
+                      ) : isTelegramForm ? (
                         <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>
                           Available units for sale. Account details are pasted in Admin → Orders after each purchase.
                         </p>

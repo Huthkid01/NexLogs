@@ -8,6 +8,7 @@ import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
 import { PurchaseReviewModal } from '@/components/purchases/PurchaseReviewModal';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
+import { LoggsplugDescriptionView } from '@/components/home/LoggsplugDescriptionView';
 import { openErrorReport } from '@/lib/error-report';
 import {
   getPurchaseErrorMessage,
@@ -17,6 +18,13 @@ import {
 } from '@/lib/purchase-errors';
 import { getDisplayOrderId } from '@/lib/purchase-utils';
 import { getProductVariants } from '@/lib/product-variants';
+import { isLoggsplugProduct, isLoggsplugProductImageUrl } from '@/lib/loggsplug-utils';
+import {
+  getLoggsplugDisplayDescription,
+  getLoggsplugInstructionsHeading,
+  getLoggsplugPrePurchaseInstructions,
+  shouldShowLoggsplugInstructionsSection,
+} from '@/lib/loggsplug-display';
 import { isTelegramProduct, TELEGRAM_PRE_PURCHASE_INSTRUCTIONS } from '@/lib/telegram-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
@@ -64,10 +72,28 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const variants = displayProduct ? getProductVariants(displayProduct) : [];
   const previewUrl = displayProduct?.preview_url?.trim() ?? '';
   const isTelegram = displayProduct ? isTelegramProduct(displayProduct) : false;
+  const isLoggsplug = displayProduct ? isLoggsplugProduct(displayProduct) : false;
+  const showProductPreview = Boolean(
+    previewUrl && !(isLoggsplug && isLoggsplugProductImageUrl(previewUrl)),
+  );
+  const displayDescription = displayProduct ? getLoggsplugDisplayDescription(displayProduct) : '';
   const loginInstructions = displayProduct?.login_instructions?.trim();
+  const loggsplugInstructions = displayProduct ? getLoggsplugPrePurchaseInstructions(displayProduct) : '';
   const displayInstructions = isTelegram
     ? loginInstructions || TELEGRAM_PRE_PURCHASE_INSTRUCTIONS
-    : loginInstructions;
+    : isLoggsplug
+      ? loggsplugInstructions
+      : loginInstructions;
+  const showInstructionsSection = isTelegram
+    ? Boolean(displayInstructions)
+    : isLoggsplug
+      ? shouldShowLoggsplugInstructionsSection(displayProduct)
+      : Boolean(displayInstructions);
+  const instructionsHeading = isTelegram
+    ? 'How to receive your order'
+    : isLoggsplug
+      ? getLoggsplugInstructionsHeading(displayProduct)
+      : 'Login instructions';
 
   const { data: walletStats, refetch: refetchWalletBalance } = useWalletBalance(user?.id);
 
@@ -113,20 +139,37 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
         return;
       }
 
-      const orderId = await orderService.purchaseWithWallet(displayProduct.id, 1);
-      const order = await orderService.getOrderById(orderId);
-      const purchasedItem = order?.order_items?.find((item) => item.product_id === displayProduct.id)
-        ?? order?.order_items?.[0];
-      const purchasedDetails = purchasedItem?.delivered_details ?? null;
+      let purchasedDetails: string | null = null;
+      let purchaseCreatedAt = new Date().toISOString();
+      let purchaseOrderNumber = '';
+      let reviewOrderId = '';
+
+      if (isLoggsplug) {
+        const result = await orderService.purchaseLoggsplugWithWallet(displayProduct.id, 1);
+        purchasedDetails = result.deliveredDetails ?? null;
+        purchaseCreatedAt = result.createdAt ?? purchaseCreatedAt;
+        purchaseOrderNumber = result.orderNumber ? getDisplayOrderId(result.orderNumber) : '';
+        reviewOrderId = result.orderId;
+      } else {
+        const orderId = await orderService.purchaseWithWallet(displayProduct.id, 1);
+        const order = await orderService.getOrderById(orderId);
+        const purchasedItem = order?.order_items?.find((item) => item.product_id === displayProduct.id)
+          ?? order?.order_items?.[0];
+        purchasedDetails = purchasedItem?.delivered_details ?? null;
+        purchaseCreatedAt = order?.created_at ?? purchaseCreatedAt;
+        purchaseOrderNumber = order?.order_number ? getDisplayOrderId(order.order_number) : '';
+        reviewOrderId = order?.id ?? orderId;
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       setLogSeed(variantId);
-      setPurchaseDate(order?.created_at ?? new Date().toISOString());
-      setPurchaseOrderId(order?.order_number ? getDisplayOrderId(order.order_number) : '');
+      setPurchaseDate(purchaseCreatedAt);
+      setPurchaseOrderId(purchaseOrderNumber);
       setDeliveredDetails(purchasedDetails);
-      if (order?.id) {
+      if (reviewOrderId) {
         setPendingReview({
-          orderId: order.id,
+          orderId: reviewOrderId,
           productId: displayProduct.id,
           productTitle: displayProduct.title,
         });
@@ -230,10 +273,14 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                   <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
                     Description
                   </p>
-                  <LinkifiedText
-                    text={displayProduct.description}
-                    className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-relaxed"
-                  />
+                  {isLoggsplug ? (
+                    <LoggsplugDescriptionView text={displayDescription} emphasize />
+                  ) : (
+                    <LinkifiedText
+                      text={displayDescription}
+                      className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-relaxed whitespace-pre-wrap"
+                    />
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                     {displayProduct.stock} pcs available
                   </p>
@@ -241,16 +288,20 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
               </div>
             </div>
 
-            {displayInstructions ? (
+            {showInstructionsSection && displayInstructions ? (
               <div className="rounded-lg border border-gray-200 dark:border-dm-border dark:bg-dm-product-row p-4 mb-4">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-                  {isTelegram ? 'How to receive your order' : 'Login instructions'}
+                  {instructionsHeading}
                 </p>
-                <LinkifiedText
-                  text={displayInstructions}
-                  className="text-sm leading-relaxed break-words whitespace-pre-wrap text-gray-800 dark:text-gray-200"
-                  as="div"
-                />
+                {isLoggsplug ? (
+                  <LoggsplugDescriptionView text={displayInstructions} />
+                ) : (
+                  <LinkifiedText
+                    text={displayInstructions}
+                    className="text-sm leading-relaxed break-words whitespace-pre-wrap text-gray-800 dark:text-gray-200"
+                    as="div"
+                  />
+                )}
               </div>
             ) : null}
 
@@ -276,7 +327,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
                         >
                           Buy
                         </button>
-                        {previewUrl ? (
+                        {showProductPreview ? (
                           <button
                             type="button"
                             onClick={handlePreview}
