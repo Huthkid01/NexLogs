@@ -1,4 +1,5 @@
 import { APP_NAME, APP_URL } from '@/constants';
+import { COMMUNITY_LINKS } from '@/lib/community-promo';
 
 export type HtmlCampaignTemplateCategory = 'general' | 'marketing' | 'account';
 
@@ -23,6 +24,9 @@ export const HTML_CAMPAIGN_TEMPLATE_CATEGORIES: {
 const appUrl = APP_URL.replace(/\/$/, '');
 const siteHost = appUrl.replace(/^https?:\/\//, '');
 const telegramSupportUrl = 'https://telegram.me/nexlogs';
+const whatsappCommunityUrl = COMMUNITY_LINKS.whatsapp;
+const tiktokUrl = COMMUNITY_LINKS.tiktok;
+const instagramUrl = COMMUNITY_LINKS.instagram;
 
 function buildTextLink(url: string, label: string) {
   return `<p style="margin:20px 0 0;font-size:15px;line-height:1.7;">
@@ -769,6 +773,47 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               </p>`,
       linkLabel: 'Go to the marketplace',
       linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'marketing-join-community-inbox',
+    name: 'Join community — WhatsApp, TikTok, Instagram (inbox-friendly)',
+    category: 'marketing',
+    description:
+      'Plain Primary-inbox notice inviting users to join the WhatsApp community and follow Nexlogs on TikTok and Instagram.',
+    defaultSubject: `Join the ${APP_NAME} community on WhatsApp`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'Join our community',
+      preheader: `Join the ${APP_NAME} WhatsApp community and follow us on TikTok and Instagram for updates and support.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We want you closer to updates, deals, and support. Join the <strong>${APP_NAME} WhatsApp community</strong> and follow us on <strong>TikTok</strong> and <strong>Instagram</strong>.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Join and follow here</strong></p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.9;color:#374151;">
+                <li>
+                  WhatsApp community:
+                  <a href="${whatsappCommunityUrl}" style="color:#111827;text-decoration:underline;">Join the group</a>
+                </li>
+                <li>
+                  TikTok:
+                  <a href="${tiktokUrl}" style="color:#111827;text-decoration:underline;">@nexlogs</a>
+                </li>
+                <li>
+                  Instagram:
+                  <a href="${instagramUrl}" style="color:#111827;text-decoration:underline;">@nexlogs</a>
+                </li>
+              </ul>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                You can keep using the marketplace as usual. These channels are the best way to hear news first and reach us quickly when you need help.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you for being with us,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Join WhatsApp community',
+      linkUrl: whatsappCommunityUrl,
     }),
   },
   {

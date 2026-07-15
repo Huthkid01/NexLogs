@@ -8,6 +8,7 @@ import { SideMenu } from '@/components/layout/SideMenu';
 import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
 import { FloatingActions } from '@/components/layout/FloatingActions';
 import { useQuickTour } from '@/hooks/useQuickTour';
+import { useCommunityPromo } from '@/hooks/useCommunityPromo';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
 import { resolveSocialLinkHref } from '@/lib/social-links';
@@ -18,12 +19,20 @@ const QuickTour = lazy(() =>
   })),
 );
 
+const CommunityPromoModal = lazy(() =>
+  import('@/components/layout/CommunityPromoModal').then((module) => ({
+    default: module.CommunityPromoModal,
+  })),
+);
+
 export function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
   const { content } = useSiteContent();
   const location = useLocation();
   const { open: quickTourOpen, completeTour, dismissTour } = useQuickTour();
+  const { open: communityPromoOpen, dismiss: dismissCommunityPromo, markJoined: markCommunityJoined } =
+    useCommunityPromo();
   useMarketplaceRealtime({ userId: user?.id ?? null });
   const authPages = ['/login', '/register', '/forgot-password', '/reset-password'];
   const isAuthPage = authPages.includes(location.pathname);
@@ -133,6 +142,15 @@ export function MainLayout() {
         </footer>
       </div>
       {!hideFloatingActions ? <FloatingActions /> : null}
+      {communityPromoOpen ? (
+        <Suspense fallback={null}>
+          <CommunityPromoModal
+            open={communityPromoOpen}
+            onClose={dismissCommunityPromo}
+            onJoined={markCommunityJoined}
+          />
+        </Suspense>
+      ) : null}
       {quickTourOpen ? (
         <Suspense fallback={null}>
           <QuickTour open={quickTourOpen} onClose={dismissTour} onComplete={completeTour} />

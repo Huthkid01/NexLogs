@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Public routes', () => {
+  test.beforeEach(async ({ page }) => {
+    // Guest community promo is additive UI; keep smoke/regression free of the overlay.
+    await page.addInitScript(() => {
+      localStorage.setItem('nexlogs-community-promo-joined', '1');
+    });
+  });
+
   test('home page loads', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL('/');
