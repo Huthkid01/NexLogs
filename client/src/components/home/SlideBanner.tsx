@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { SLIDE_BANNER_ASPECT } from '@/lib/slide-banner';
 
 export type SlideBannerVariant = 'live' | 'mobile-preview' | 'desktop-preview';
 
@@ -15,10 +14,10 @@ interface SlideBannerProps {
 }
 
 const variantClass: Record<SlideBannerVariant, string> = {
-  // ~2.4:1 — fits designed promo banners on phone + desktop without crushing CTAs
-  live: 'aspect-[12/5] w-full max-h-[200px] sm:max-h-[260px] md:max-h-[320px] lg:max-h-[400px]',
-  'mobile-preview': 'aspect-[12/5] w-full',
-  'desktop-preview': 'w-full',
+  // Match AffordableLogs ImageSlider: h-40 mobile, md:h-64 desktop.
+  live: 'h-40 w-full md:h-64',
+  'mobile-preview': 'h-40 w-full',
+  'desktop-preview': 'h-64 w-full',
 };
 
 const imagePositionClass = {
@@ -35,7 +34,6 @@ export function SlideBanner({
   priority = false,
   imagePosition = 'left',
 }: SlideBannerProps) {
-  const aspectStyle = variant === 'desktop-preview' ? { aspectRatio: SLIDE_BANNER_ASPECT } : undefined;
   const position = imagePositionClass[imagePosition];
 
   const imageClass: Record<SlideBannerVariant, string> = {
@@ -47,7 +45,6 @@ export function SlideBanner({
   return (
     <div
       className={`relative overflow-hidden rounded-2xl bg-black/5 ${variantClass[variant]} ${className}`}
-      style={aspectStyle}
     >
       <img
         src={src}

@@ -1,6 +1,6 @@
-/** Standard homepage slide size — keeps banners consistent on mobile and desktop. */
+/** Standard homepage slide size — wide strip matching desktop h-64 (256px) display. */
 export const SLIDE_BANNER_WIDTH = 1920;
-export const SLIDE_BANNER_HEIGHT = 800;
+export const SLIDE_BANNER_HEIGHT = 640;
 export const SLIDE_BANNER_ASPECT = SLIDE_BANNER_WIDTH / SLIDE_BANNER_HEIGHT;
 
 export const SLIDE_BANNER_GUIDE = `Upload any image — we crop and resize it to ${SLIDE_BANNER_WIDTH}×${SLIDE_BANNER_HEIGHT}px so it fills the banner on phone and desktop. Keep important text and buttons on the left half.`;
