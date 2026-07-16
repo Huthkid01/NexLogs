@@ -15,7 +15,7 @@ const MENU_ITEMS = [
   { label: 'Marketplace', emoji: '🏠', href: '/marketplace', auth: true },
   { label: 'Purchase RDP', emoji: '🖥️', href: '/purchase-rdp', auth: true },
   { label: 'My Purchases', emoji: '🛒', href: '/purchases', auth: true },
-  { label: 'Buy Numbers', emoji: '📱', href: '/buy-numbers', auth: true },
+  { label: 'Buy Numbers for SMS Verification', emoji: '📱', href: '/buy-numbers', auth: true },
   { label: 'FAQ', emoji: '❓', href: '/faq', auth: false },
   { label: 'Need help?', emoji: '👨‍💻', href: '/support', auth: false },
 ] as const;

@@ -36,7 +36,7 @@ export const QUICK_TOUR_STEPS: QuickTourStep[] = [
     target: '[data-tour="main-menu"]',
     title: 'Main menu',
     body:
-      'Tap the menu icon (☰) on the left to open Marketplace, Buy Numbers, Purchase RDP, My Purchases, FAQ, and Support.',
+      'Tap the menu icon (☰) on the top left to open Marketplace, Buy Numbers for SMS Verification, Purchase RDP, My Purchases, FAQ, and Support.',
   },
   {
     id: 'wallet',
@@ -66,9 +66,9 @@ export const QUICK_TOUR_STEPS: QuickTourStep[] = [
     id: 'numbers',
     placement: 'demo',
     demoScreen: 'buy-numbers-flow',
-    title: 'SMS verification (Buy Numbers)',
+    title: 'Buy Numbers for SMS Verification',
     body:
-      'Buy Numbers offers Service 1 and Service 2. Pick country and app (e.g. WhatsApp), reserve a number, pay from your wallet, then wait for the code on the page.',
+      'Buy Numbers for SMS Verification offers Service 1 and Service 2. Pick country and app (e.g. WhatsApp), reserve a number, pay from your wallet, then wait for the code on the page.',
   },
   {
     id: 'help',

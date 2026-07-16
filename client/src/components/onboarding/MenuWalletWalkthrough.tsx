@@ -44,7 +44,7 @@ const PHASES: WalkthroughPhase[] = [
     screen: 'menu',
     menuOpen: true,
     activeMenuIndex: 0,
-    caption: 'Open Marketplace, Purchase RDP, Buy Numbers, FAQ, and Support from here.',
+    caption: 'Open Marketplace, Purchase RDP, Buy Numbers for SMS Verification, FAQ, and Support from here.',
   },
   {
     duration: 3500,
@@ -85,7 +85,7 @@ const PHASES: WalkthroughPhase[] = [
     duration: 4000,
     screen: 'buy-numbers-provider',
     highlightProviderService: 0,
-    caption: 'Buy Numbers offers Service 1 and Service 2 for SMS verification.',
+    caption: 'Buy Numbers for SMS Verification offers Service 1 and Service 2.',
   },
   {
     duration: 4500,
@@ -153,7 +153,7 @@ function MenuWalletWalkthroughComponent({ active = true }: MenuWalletWalkthrough
             How to use Nexlogs
           </h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Full walkthrough — menu, wallet, marketplace, RDP, and Buy Numbers.
+            Full walkthrough — menu, wallet, marketplace, RDP, and SMS verification numbers.
           </p>
         </div>
         <div className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">

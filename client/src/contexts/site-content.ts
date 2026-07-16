@@ -148,7 +148,7 @@ export const defaultSiteContent: SiteContent = {
   home: {
     subscriptionsTitle: 'Subscriptions & others',
     purchaseRdpLabel: 'Purchase RDP',
-    buyNumbersLabel: 'Buy Numbers',
+    buyNumbersLabel: 'Buy Numbers for SMS Verification',
     categoriesLabel: 'Shop by Categories',
     catalogTitle: 'Buy Logs',
     loginPromptLabel: 'Log in to view products',
@@ -174,7 +174,7 @@ export const defaultSiteContent: SiteContent = {
       {
         question: 'Where is the main menu and wallet?',
         answer:
-          'Use the menu icon (☰) on the top left for Marketplace, Buy Numbers, My Purchases, and Support. Your wallet balance is in the orange button on the top right — open it to add funds, view your profile, or sign out. Watch the walkthrough above for a 30-second visual guide.',
+          'Use the menu icon (☰) on the top left for Marketplace, Buy Numbers for SMS Verification, My Purchases, and Support. Your wallet balance is in the orange button on the top right — open it to add funds, view your profile, or sign out. Watch the walkthrough above for a 30-second visual guide.',
       },
       {
         question: 'How fast are orders delivered?',
@@ -466,12 +466,17 @@ function normalizeHomeContent(
     home?.requestOnWhatsAppLabel ??
     home?.requestOnInstagramLabel ??
     defaultSiteContent.home.requestOnWhatsAppLabel;
+  const buyNumbersLabel =
+    !home?.buyNumbersLabel || home.buyNumbersLabel === 'Buy Numbers'
+      ? defaultSiteContent.home.buyNumbersLabel
+      : home.buyNumbersLabel;
 
   return {
     ...defaultSiteContent.home,
     ...home,
     purchaseRdpLabel,
     requestOnWhatsAppLabel,
+    buyNumbersLabel,
   };
 }
 

@@ -23,7 +23,7 @@ const MENU_ITEMS = [
   { label: 'Marketplace', emoji: '🏠' },
   { label: 'Purchase RDP', emoji: '🖥️' },
   { label: 'My Purchases', emoji: '🛒' },
-  { label: 'Buy Numbers', emoji: '📱' },
+  { label: 'Buy Numbers for SMS Verification', emoji: '📱' },
   { label: 'FAQ', emoji: '❓' },
   { label: 'Need help?', emoji: '👨‍💻' },
 ] as const;
@@ -162,7 +162,7 @@ export const MarketplaceScreen = memo(function MarketplaceScreen({ highlightProd
 
       <div className="flex justify-center gap-2 px-3 py-2">
         <span className="btn-orange min-w-[88px] px-2 py-1.5 text-center text-[9px]">Purchase RDP</span>
-        <span className="btn-green min-w-[88px] px-2 py-1.5 text-center text-[9px]">Buy Numbers</span>
+        <span className="btn-green min-w-[88px] px-2 py-1.5 text-center text-[9px]">SMS Numbers</span>
       </div>
 
       <div className="px-3">
@@ -264,7 +264,7 @@ export const RdpScreen = memo(function RdpScreen({ highlightPurchase }: { highli
 export const BuyNumbersProviderScreen = memo(function BuyNumbersProviderScreen({ highlightService }: { highlightService?: number }) {
   return (
     <div className="absolute inset-x-0 top-11 bottom-0 overflow-y-auto bg-[#f3f4f6] px-3 py-4 dark:bg-dm-bg">
-      <h2 className="text-[11px] font-bold text-gray-900 dark:text-gray-100">Buy Numbers</h2>
+      <h2 className="text-[11px] font-bold text-gray-900 dark:text-gray-100">Buy Numbers for SMS Verification</h2>
       <p className="mt-1 text-[8px] text-gray-500 dark:text-gray-400">Choose a service to continue</p>
       <div className="mt-3 space-y-2">
         {['Service 1', 'Service 2'].map((label, index) => (

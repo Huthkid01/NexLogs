@@ -109,7 +109,7 @@ function AdminContentEditor({ content, currentSection, setContent, resetContent 
             <Input id="home-purchase-rdp" value={draft.home.purchaseRdpLabel} onChange={(e) => setDraft({ ...draft, home: { ...draft.home, purchaseRdpLabel: e.target.value } })} />
           </div>
           <div>
-            <Label htmlFor="home-buy-numbers">Buy Numbers Button</Label>
+            <Label htmlFor="home-buy-numbers">SMS Verification Numbers Button</Label>
             <Input id="home-buy-numbers" value={draft.home.buyNumbersLabel} onChange={(e) => setDraft({ ...draft, home: { ...draft.home, buyNumbersLabel: e.target.value } })} />
           </div>
           <div>
