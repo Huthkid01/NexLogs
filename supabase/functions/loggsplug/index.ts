@@ -527,6 +527,9 @@ async function purchaseProduct(
     throw new Error(message);
   }
 
+  const SUPPORT_PURCHASE_ERROR =
+    'We could not complete this purchase right now. Please contact support and we will help you.';
+
   const refundBuyer = async (reason: string) => {
     await walletClient.rpc('wallet_refund_supplier_purchase', {
       p_amount_ngn: totalCharge,
@@ -537,6 +540,7 @@ async function purchaseProduct(
         product_id: productId,
         supplier_product_id: product.supplier_product_id,
         quantity,
+        supplier_error: reason,
       },
     });
   };
@@ -546,21 +550,24 @@ async function purchaseProduct(
     supplierResponse = await placeLoggsplugOrder(Number(product.supplier_product_id), quantity);
   } catch (supplierError) {
     const message = supplierError instanceof Error ? supplierError.message : 'Supplier order failed.';
+    console.error(`[loggsplug] supplier order failed for product ${productId}: ${message}`);
     await refundBuyer(message);
-    throw supplierError;
+    throw new Error(SUPPORT_PURCHASE_ERROR);
   }
 
   if (!supplierResponse?.success) {
     const message = supplierResponse?.message || 'Supplier order failed.';
+    console.error(`[loggsplug] supplier rejected order for product ${productId}: ${message}`);
     await refundBuyer(message);
-    throw new Error(message);
+    throw new Error(SUPPORT_PURCHASE_ERROR);
   }
 
   const delivered = Array.isArray(supplierResponse.delivered) ? supplierResponse.delivered : [];
   const deliveredDetails = formatDeliveredDetails(delivered);
   if (!deliveredDetails.trim()) {
+    console.error(`[loggsplug] supplier returned empty delivery for product ${productId}`);
     await refundBuyer('Supplier returned no account details.');
-    throw new Error('Supplier returned no account details.');
+    throw new Error(SUPPORT_PURCHASE_ERROR);
   }
 
   const { data: order, error: orderError } = await admin

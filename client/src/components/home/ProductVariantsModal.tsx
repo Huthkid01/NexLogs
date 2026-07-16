@@ -197,8 +197,9 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       }
 
       const message = getPurchaseErrorMessage(err);
-      const friendly =
-        /loggsplug|supplier|reseller/i.test(message)
+      const friendly = isLoggsplug
+        ? 'We could not complete this purchase right now. Please contact support and we will help you.'
+        : /loggsplug|supplier|reseller/i.test(message)
           ? message
           : message && message !== 'Purchase failed'
             ? message

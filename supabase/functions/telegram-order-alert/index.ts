@@ -373,9 +373,7 @@ Deno.serve(async (req) => {
       );
       await sendTelegramMessage(message);
     } else {
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .select(`
+      const orderSelect = `
           id,
           user_id,
           total_amount,
@@ -388,9 +386,27 @@ Deno.serve(async (req) => {
             delivered_details,
             product:products(title, slug, niche, platform)
           )
-        `)
-        .eq('id', orderId)
-        .single();
+        `;
+
+      // LOGGSPLUG (and similar) insert the order first, then items. Retry briefly if items are not ready yet.
+      let order: OrderRow | null = null;
+      let orderError: { message?: string } | null = null;
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const result = await supabase
+          .from('orders')
+          .select(orderSelect)
+          .eq('id', orderId)
+          .single();
+
+        orderError = result.error;
+        order = (result.data as OrderRow | null) ?? null;
+
+        if (orderError || !order) break;
+        if ((order.order_items ?? []).length > 0) break;
+        if (attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 700));
+        }
+      }
 
       if (orderError || !order) {
         throw orderError ?? new Error('Order not found');

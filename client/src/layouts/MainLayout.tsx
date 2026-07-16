@@ -9,6 +9,7 @@ import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
 import { FloatingActions } from '@/components/layout/FloatingActions';
 import { useQuickTour } from '@/hooks/useQuickTour';
 import { useCommunityPromo } from '@/hooks/useCommunityPromo';
+import { useMaintenanceNotice } from '@/hooks/useMaintenanceNotice';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
 import { resolveSocialLinkHref } from '@/lib/social-links';
@@ -25,6 +26,12 @@ const CommunityPromoModal = lazy(() =>
   })),
 );
 
+const MaintenanceModal = lazy(() =>
+  import('@/components/layout/MaintenanceModal').then((module) => ({
+    default: module.MaintenanceModal,
+  })),
+);
+
 export function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
@@ -33,6 +40,12 @@ export function MainLayout() {
   const { open: quickTourOpen, completeTour, dismissTour } = useQuickTour();
   const { open: communityPromoOpen, dismiss: dismissCommunityPromo, markJoined: markCommunityJoined } =
     useCommunityPromo();
+  const {
+    open: maintenanceOpen,
+    title: maintenanceTitle,
+    message: maintenanceMessage,
+    dismiss: dismissMaintenance,
+  } = useMaintenanceNotice();
   useMarketplaceRealtime({ userId: user?.id ?? null });
   const authPages = ['/login', '/register', '/forgot-password', '/reset-password'];
   const isAuthPage = authPages.includes(location.pathname);
@@ -142,7 +155,17 @@ export function MainLayout() {
         </footer>
       </div>
       {!hideFloatingActions ? <FloatingActions /> : null}
-      {communityPromoOpen ? (
+      {maintenanceOpen ? (
+        <Suspense fallback={null}>
+          <MaintenanceModal
+            open={maintenanceOpen}
+            title={maintenanceTitle}
+            message={maintenanceMessage}
+            onClose={dismissMaintenance}
+          />
+        </Suspense>
+      ) : null}
+      {!maintenanceOpen && communityPromoOpen ? (
         <Suspense fallback={null}>
           <CommunityPromoModal
             open={communityPromoOpen}
@@ -151,7 +174,7 @@ export function MainLayout() {
           />
         </Suspense>
       ) : null}
-      {quickTourOpen ? (
+      {!maintenanceOpen && quickTourOpen ? (
         <Suspense fallback={null}>
           <QuickTour open={quickTourOpen} onClose={dismissTour} onComplete={completeTour} />
         </Suspense>

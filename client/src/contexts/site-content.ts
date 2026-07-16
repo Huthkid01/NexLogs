@@ -107,6 +107,11 @@ export interface SiteContent {
   smsPricing: SmsProviderPricingBundle;
   loggsplug: LoggsplugSettings;
   rdp: RdpCatalog;
+  maintenance: {
+    enabled: boolean;
+    title: string;
+    message: string;
+  };
 }
 
 export const STORAGE_KEY = 'nexlogs-site-content';
@@ -411,6 +416,12 @@ export const defaultSiteContent: SiteContent = {
   },
   loggsplug: DEFAULT_LOGGSPLUG_SETTINGS,
   rdp: DEFAULT_RDP_CATALOG,
+  maintenance: {
+    enabled: false,
+    title: 'Scheduled maintenance',
+    message:
+      'Nexlogs is undergoing scheduled maintenance. Some features may be temporarily unavailable. Please check back shortly — thank you for your patience.',
+  },
 };
 
 export interface SiteContentContextType {
@@ -599,5 +610,12 @@ export function mergeSiteContent(content?: Partial<SiteContent> | null): SiteCon
     smsPricing: normalizeSmsProviderPricing(content?.smsPricing),
     loggsplug: normalizeLoggsplugSettings(content?.loggsplug),
     rdp: mergeRdpCatalog(content?.rdp),
+    maintenance: {
+      ...defaultSiteContent.maintenance,
+      ...content?.maintenance,
+      enabled: Boolean(content?.maintenance?.enabled),
+      title: content?.maintenance?.title?.trim() || defaultSiteContent.maintenance.title,
+      message: content?.maintenance?.message?.trim() || defaultSiteContent.maintenance.message,
+    },
   };
 }
