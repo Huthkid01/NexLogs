@@ -44,7 +44,6 @@ export function MainLayout() {
     open: maintenanceOpen,
     title: maintenanceTitle,
     message: maintenanceMessage,
-    dismiss: dismissMaintenance,
   } = useMaintenanceNotice();
   useMarketplaceRealtime({ userId: user?.id ?? null });
   const authPages = ['/login', '/register', '/forgot-password', '/reset-password'];
@@ -161,7 +160,6 @@ export function MainLayout() {
             open={maintenanceOpen}
             title={maintenanceTitle}
             message={maintenanceMessage}
-            onClose={dismissMaintenance}
           />
         </Suspense>
       ) : null}

@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, Monitor, Mail, Wallet, Smartphone, Star, Plug,
+  LayoutDashboard, Users, Package, ShoppingBag, Tag, BarChart3, LogOut, Menu, Moon, Sun, Settings, X, ChevronLeft, ChevronRight, LifeBuoy, Activity, ChevronDown, ChevronUp, House, PanelsTopLeft, Info, CircleHelp, FileText, RotateCcw, Images, Monitor, Mail, Wallet, Smartphone, Star, Plug, Wrench,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +35,7 @@ const navItems = [
   { href: '/admin/slides', label: 'Slide Management', icon: Images },
   { href: '/admin/rdp', label: 'RDP Plans', icon: Monitor },
   { href: '/admin/supplier/loggsplug', label: 'LOGGSPLUG Sync', icon: Plug },
+  { href: '/admin/maintenance', label: 'Maintenance', icon: Wrench },
 ];
 
 const navItemsAfterSmsPricing = [
