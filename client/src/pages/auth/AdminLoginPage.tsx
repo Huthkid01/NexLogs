@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,7 @@ import { authService } from '@/services/auth.service';
 import { resetThemeForLogin } from '@/contexts/theme';
 import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { getAdminLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
+import { consumeSessionExpiredNotice, SESSION_EXPIRED_MESSAGE } from '@/lib/session-expired';
 import { Input } from '@/components/ui/input';
 import { openErrorReport } from '@/lib/error-report';
 
@@ -20,6 +21,10 @@ const adminLoginSchema = z.object({
 });
 
 type AdminLoginForm = z.infer<typeof adminLoginSchema>;
+
+type AdminLoginLocationState = {
+  from?: { pathname?: string };
+};
 
 const adminDepartments = [
   'IT Department',
@@ -40,8 +45,14 @@ export default function AdminLoginPage() {
     resolver: zodResolver(adminLoginSchema),
   });
 
+  useEffect(() => {
+    if (consumeSessionExpiredNotice()) {
+      toast.message(SESSION_EXPIRED_MESSAGE);
+    }
+  }, [location.state]);
+
   if (isAdmin) {
-    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+    const from = (location.state as AdminLoginLocationState)?.from?.pathname;
     return <Navigate to={from?.startsWith('/admin') ? from : '/admin'} replace />;
   }
 

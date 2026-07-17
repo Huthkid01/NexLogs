@@ -95,16 +95,63 @@ function getFunctionName(provider: SmsNumberProvider) {
   return provider === 'fivesim' ? 'fivesim' : 'smspool';
 }
 
+function getSafeSmsErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes('authentication required')
+    || normalized.includes('jwt')
+    || normalized.includes('session expired')
+    || normalized.includes('not authenticated')
+  ) {
+    return 'Your session expired. Please log in again and retry.';
+  }
+
+  if (
+    normalized.includes('failed to send a request')
+    || normalized.includes('failed to fetch')
+    || normalized.includes('network')
+    || normalized.includes('timeout')
+  ) {
+    return 'The SMS service is temporarily unavailable. Please retry shortly.';
+  }
+
+  if (
+    normalized.includes('insufficient funds')
+    || normalized.includes('insufficient balance')
+  ) {
+    return 'Insufficient wallet balance. Please add funds and retry.';
+  }
+
+  if (
+    normalized.includes('no numbers')
+    || normalized.includes('no free phones')
+    || normalized.includes('out of stock')
+  ) {
+    return 'No numbers are available for this selection right now. Try another option.';
+  }
+
+  if (normalized.includes('order not found')) {
+    return 'This SMS order could not be found. Refresh the page and retry.';
+  }
+
+  if (normalized.includes('can no longer be cancelled') || normalized.includes('not cancellable')) {
+    return 'This SMS order can no longer be cancelled.';
+  }
+
+  return 'The SMS request could not be completed. Please retry or contact support.';
+}
+
 async function readFunctionErrorMessage(error: unknown, data: unknown) {
   if (data && typeof data === 'object' && 'error' in data && data.error) {
-    return String((data as { error: string }).error);
+    return getSafeSmsErrorMessage(String((data as { error: string }).error));
   }
 
   if (error instanceof FunctionsHttpError) {
     try {
       const payload = await error.context.json();
       if (payload && typeof payload === 'object' && 'error' in payload && payload.error) {
-        return String(payload.error);
+        return getSafeSmsErrorMessage(String(payload.error));
       }
     } catch {
       // Fall through.
@@ -112,10 +159,10 @@ async function readFunctionErrorMessage(error: unknown, data: unknown) {
   }
 
   if (error instanceof Error && error.message) {
-    return error.message;
+    return getSafeSmsErrorMessage(error.message);
   }
 
-  return 'SMS number request failed';
+  return 'The SMS request could not be completed. Please retry or contact support.';
 }
 
 async function invokeSmsProvider<T>(

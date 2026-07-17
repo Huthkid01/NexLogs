@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
+import { getFriendlyErrorMessage } from '@/lib/purchase-errors';
 import {
   getDepositChargeNgn,
   MIN_WALLET_DEPOSIT_NGN,
@@ -68,8 +69,7 @@ export default function AddFundsPage() {
         await handleDepositCredited();
         setSearchParams({}, { replace: true });
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Payment verification failed';
-        toast.error(message);
+        toast.error(getFriendlyErrorMessage(err, 'We could not verify your payment. If money left your account, contact support.'));
         setSearchParams({}, { replace: true });
       } finally {
         setVerifyingRedirect(false);
@@ -104,8 +104,7 @@ export default function AddFundsPage() {
       await verifyWalletDepositReference(intent.reference, user.id, intent.payment_method);
       await handleDepositCredited();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Payment verification failed';
-      toast.error(message);
+      toast.error(getFriendlyErrorMessage(err, 'We could not verify your payment. If money left your account, contact support.'));
       await refreshPendingIntents(user.id);
     } finally {
       setRecoveringDeposit(false);
@@ -172,7 +171,7 @@ export default function AddFundsPage() {
     setSubmitting(true);
     try {
       if (!hasSupabaseConfig()) {
-        toast.error('Wallet deposits require Supabase. Add your Supabase keys and redeploy.');
+        toast.error('Wallet deposits are temporarily unavailable. Please try again later or contact support.');
         return;
       }
 
@@ -197,7 +196,7 @@ export default function AddFundsPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Payment failed';
       if (message !== 'Payment cancelled') {
-        toast.error(message);
+        toast.error(getFriendlyErrorMessage(err, 'We could not start your payment. Please try again or contact support.'));
       }
     } finally {
       setSubmitting(false);

@@ -129,11 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await authService.signOut();
-    clearSessionActivity();
-    setUser(null);
-    setProfile(null);
-    setSession(null);
+    try {
+      await authService.signOut();
+    } finally {
+      clearSessionActivity();
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+    }
   };
 
   return (

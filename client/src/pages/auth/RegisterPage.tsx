@@ -13,7 +13,7 @@ import { completeGoogleAuth } from '@/lib/google-sign-in';
 import { APP_NAME } from '@/constants';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
-import { getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
+import { getSignUpVerificationToast, getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 
 const registerSchema = z.object({
@@ -24,6 +24,8 @@ const registerSchema = z.object({
 }).refine((d) => d.password === d.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] });
 
 type RegisterForm = z.infer<typeof registerSchema>;
+
+const SIGNUP_TOAST_DURATION_MS = 15_000;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -37,16 +39,21 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await authService.signUp(data.email, data.password, data.name);
-      toast.success('Account created! Check your email to verify your account.');
+      const notice = getSignUpVerificationToast(data.email);
+      toast.success(notice.title, {
+        description: notice.description,
+        duration: SIGNUP_TOAST_DURATION_MS,
+      });
       navigate('/login');
     } catch (err: unknown) {
-      const message = getUserSignUpMessage(normalizeAuthErrorMessage(err));
+      const rawMessage = normalizeAuthErrorMessage(err);
+      const message = getUserSignUpMessage(rawMessage);
       toast.error(message);
       openErrorReport({
         title: 'Error while creating account',
         message: 'We could not create your account.',
         source: 'login',
-        errorMessage: message,
+        errorMessage: rawMessage,
       });
     } finally {
       setLoading(false);
@@ -105,7 +112,7 @@ export default function RegisterPage() {
               onCredential={completeGoogleSignIn}
               onError={(error) => {
                 if (error.message === 'Google sign-in was cancelled') return;
-                toast.error(error.message);
+                toast.error('Google sign-up could not be completed. Please try again or use the registration form.');
               }}
             />
           ) : (

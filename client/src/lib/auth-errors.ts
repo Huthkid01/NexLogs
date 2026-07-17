@@ -47,10 +47,10 @@ export function getUserSignUpMessage(message: string) {
   }
 
   if (normalized.includes('email')) {
-    return message;
+    return 'Please enter a valid email address and try again.';
   }
 
-  return message || 'We could not create your account.';
+  return 'We could not create your account. Please try again or contact support.';
 }
 
 export function getUserLoginMessage(message: string) {
@@ -96,4 +96,25 @@ export function getAdminLoginMessage(message: string) {
   }
 
   return 'We could not sign you in to the admin dashboard.';
+}
+
+/** Mask an email for user-facing notices, e.g. o********@gmail.com */
+export function maskEmailAddress(email: string) {
+  const trimmed = email.trim();
+  const at = trimmed.lastIndexOf('@');
+  if (at <= 0 || at === trimmed.length - 1) return trimmed;
+
+  const local = trimmed.slice(0, at);
+  const domain = trimmed.slice(at + 1);
+  const visible = local.slice(0, 1);
+  const hiddenCount = Math.max(local.length - 1, 8);
+  return `${visible}${'*'.repeat(hiddenCount)}@${domain}`;
+}
+
+export function getSignUpVerificationToast(email: string) {
+  const masked = maskEmailAddress(email);
+  return {
+    title: 'Account created',
+    description: `We sent a verification email to ${masked}. If it doesn’t appear within a few minutes, check your spam/junk folder.`,
+  };
 }

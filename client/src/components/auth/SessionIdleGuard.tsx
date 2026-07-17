@@ -1,6 +1,11 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useIdleSessionTimeout } from '@/hooks/useIdleSessionTimeout';
 import { clearSessionActivity } from '@/lib/session-idle';
+import {
+  getCurrentReturnPath,
+  markSessionExpired,
+  resolveLoginPath,
+} from '@/lib/session-expired';
 
 export function SessionIdleGuard() {
   const { user, signOut } = useAuth();
@@ -8,11 +13,16 @@ export function SessionIdleGuard() {
   useIdleSessionTimeout({
     enabled: Boolean(user),
     onIdle: async () => {
-      const loginPath = window.location.pathname.startsWith('/admin') ? '/admin/login' : '/login';
-
+      markSessionExpired(getCurrentReturnPath());
       clearSessionActivity();
-      await signOut();
-      window.location.assign(loginPath);
+
+      try {
+        await signOut();
+      } catch {
+        // Continue to login even if sign-out fails.
+      }
+
+      window.location.assign(resolveLoginPath());
     },
   });
 

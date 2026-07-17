@@ -24,7 +24,8 @@ import { cn } from '@/lib/utils';
 import { matchesSmsCountrySearch } from '@/lib/sms-country-search';
 import { calculateSmsChargeNgn } from '@/lib/sms-pricing';
 import { getDisplaySmsVerificationCode, isValidSmsVerificationCode } from '@/lib/sms-verification-code';
-import { getPurchaseErrorMessage, isInsufficientFundsError } from '@/lib/purchase-errors';
+import { getPurchaseErrorMessage, isAuthError, isInsufficientFundsError } from '@/lib/purchase-errors';
+import { useHandleSessionExpired } from '@/hooks/useHandleSessionExpired';
 import {
   smsNumberService,
   type SmsNumberOrder,
@@ -407,6 +408,7 @@ export default function BuyNumbersPage() {
   const { providerId } = useParams<{ providerId?: SmsProviderId }>();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const handleSessionExpired = useHandleSessionExpired();
   const { formatDisplayAmount } = useFormatDisplayPrice();
   const { data: walletStats, isLoading: walletLoading } = useWalletBalance(user?.id);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
@@ -451,6 +453,12 @@ export default function BuyNumbersPage() {
     queryFn: () => smsNumberService.getHistory(smsProvider),
     enabled: Boolean(user?.id && isBuyFlow),
   });
+
+  useEffect(() => {
+    if (historyError && isAuthError(historyError)) {
+      void handleSessionExpired();
+    }
+  }, [historyError, handleSessionExpired]);
 
   const {
     data: priceOptions,
@@ -939,6 +947,10 @@ export default function BuyNumbersPage() {
         navigate('/add-funds');
         return;
       }
+      if (isAuthError(error)) {
+        await handleSessionExpired();
+        return;
+      }
       toast.error(getPurchaseErrorMessage(error));
     } finally {
       setOrderingPool(null);
@@ -973,6 +985,10 @@ export default function BuyNumbersPage() {
       }
     } catch (error) {
       clearWaitingForCode(orderId);
+      if (isAuthError(error)) {
+        await handleSessionExpired();
+        return;
+      }
       toast.error(error instanceof Error ? error.message : 'Could not fetch SMS code.');
     } finally {
       setFetchingCodeOrderId(null);
@@ -1011,6 +1027,10 @@ export default function BuyNumbersPage() {
       await refetchHistory();
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user?.id] });
     } catch (error) {
+      if (isAuthError(error)) {
+        await handleSessionExpired();
+        return;
+      }
       toast.error(error instanceof Error ? error.message : 'Could not resend SMS.');
     } finally {
       setResendingOrderId(null);
@@ -1054,6 +1074,10 @@ export default function BuyNumbersPage() {
           dismissedOrderIdsRef.current,
           pinnedOrderIdsRef.current,
         ));
+      }
+      if (isAuthError(error)) {
+        await handleSessionExpired();
+        return;
       }
       const message = error instanceof Error ? error.message : 'Could not cancel order.';
       await refetchHistory();
@@ -1100,6 +1124,10 @@ export default function BuyNumbersPage() {
           dismissedOrderIdsRef.current,
           pinnedOrderIdsRef.current,
         ));
+      }
+      if (isAuthError(error)) {
+        await handleSessionExpired();
+        return;
       }
       const message = error instanceof Error ? error.message : 'Could not report this number.';
       await refetchHistory();
@@ -1602,19 +1630,27 @@ export default function BuyNumbersPage() {
                   ) : historyError ? (
                     <tr>
                       <td colSpan={7} className="border border-gray-300 px-4 py-10 text-gray-600 dark:border-dm-border dark:text-gray-300">
-                        <p className="text-sm text-red-600 dark:text-red-400">
-                          {historyError instanceof Error ? historyError.message : 'Could not load history.'}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-3"
-                          onClick={() => void refetchHistory()}
-                        >
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Retry
-                        </Button>
+                        {isAuthError(historyError) ? (
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            Your session expired. Redirecting you to log in again...
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-red-600 dark:text-red-400">
+                              {historyError instanceof Error ? historyError.message : 'Could not load history.'}
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-3"
+                              onClick={() => void refetchHistory()}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Retry
+                            </Button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ) : !user ? (

@@ -19,6 +19,7 @@ import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { openErrorReport } from '@/lib/error-report';
 import { consumeAuthRedirect, getPostLoginPath, storeAuthRedirect } from '@/lib/auth-redirect';
+import { consumeSessionExpiredNotice, SESSION_EXPIRED_MESSAGE } from '@/lib/session-expired';
 import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
@@ -44,9 +45,14 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    const from = (location.state as LoginLocationState)?.from;
+    const state = location.state as LoginLocationState | null;
+    const from = state?.from;
     if (from) {
       storeAuthRedirect(getPostLoginPath(from, '/marketplace'));
+    }
+
+    if (consumeSessionExpiredNotice()) {
+      toast.message(SESSION_EXPIRED_MESSAGE);
     }
   }, [location.state]);
 
@@ -83,7 +89,7 @@ export default function LoginPage() {
   const completeGoogleSignIn = async (idToken: string) => {
     const configError = getSupabaseConfigError();
     if (configError) {
-      toast.error(configError);
+      toast.error('Sign in is temporarily unavailable. Please try again later or contact support.');
       return;
     }
 
@@ -94,7 +100,7 @@ export default function LoginPage() {
       setGoogleLoading(false);
       const message = normalizeAuthErrorMessage(err);
       if (message.includes('origin_mismatch') || message.includes('Origin')) {
-        toast.error('Google origin mismatch. Add this site URL in Google Cloud → Authorized JavaScript origins.');
+        toast.error('Google sign-in is temporarily unavailable. Please use your email and password.');
         return;
       }
       toast.error('We could not sign you in with Google.');
@@ -141,9 +147,7 @@ export default function LoginPage() {
               onCredential={completeGoogleSignIn}
               onError={(error) => {
                 if (error.message === 'Google sign-in was cancelled') return;
-                toast.error(error.message.includes('GOOGLE_SIGNIN_NOT_CONFIGURED')
-                  ? 'Add VITE_GOOGLE_CLIENT_ID in Vercel.'
-                  : error.message);
+                toast.error('Google sign-in could not be completed. Please try again or use your email and password.');
               }}
             />
           ) : (

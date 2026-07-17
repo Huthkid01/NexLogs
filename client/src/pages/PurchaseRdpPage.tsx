@@ -16,11 +16,12 @@ import {
 } from '@/lib/rdp-catalog';
 import { buildLiveRdpCatalog } from '@/lib/rdp-live-catalog';
 import {
-  getPurchaseErrorMessage,
+  getFriendlyErrorMessage,
   isAuthError,
   isInsufficientFundsError,
 } from '@/lib/purchase-errors';
 import { cn } from '@/lib/utils';
+import { useHandleSessionExpired } from '@/hooks/useHandleSessionExpired';
 import { orderService, productService, profileService } from '@/services';
 
 const ORANGE_LIGHT = 'bg-[#fff4ef] text-[#c2410c] border-[#f26522] dark:bg-[#f26522]/10 dark:text-orange-200 dark:border-[#f26522]';
@@ -29,6 +30,7 @@ export default function PurchaseRdpPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const handleSessionExpired = useHandleSessionExpired();
   const { content } = useSiteContent();
   const baseCatalog = content.rdp;
 
@@ -107,11 +109,10 @@ export default function PurchaseRdpPage() {
         return;
       }
       if (isAuthError(error)) {
-        toast.error('Your session expired. Please sign in again.');
-        navigate('/login', { state: { from: { pathname: '/purchase-rdp' } } });
+        await handleSessionExpired();
         return;
       }
-      toast.error(getPurchaseErrorMessage(error));
+      toast.error(getFriendlyErrorMessage(error, 'We could not complete your RDP purchase. Please try again or contact support.'));
     } finally {
       setPurchasingPlanId(null);
     }

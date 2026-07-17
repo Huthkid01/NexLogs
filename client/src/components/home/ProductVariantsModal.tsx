@@ -11,6 +11,7 @@ import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { LoggsplugDescriptionView } from '@/components/home/LoggsplugDescriptionView';
 import { openErrorReport } from '@/lib/error-report';
 import {
+  getFriendlyErrorMessage,
   getPurchaseErrorMessage,
   isAuthError,
   isInsufficientFundsError,
@@ -28,6 +29,7 @@ import {
 import { isTelegramProduct, TELEGRAM_PRE_PURCHASE_INSTRUCTIONS } from '@/lib/telegram-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
+import { useHandleSessionExpired } from '@/hooks/useHandleSessionExpired';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { orderService, productService, profileService } from '@/services';
 import type { Product } from '@/types';
@@ -42,6 +44,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const handleSessionExpired = useHandleSessionExpired();
   const { formatProductPrice, formatDisplayAmount } = useFormatDisplayPrice();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState('');
@@ -185,9 +188,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       }
 
       if (isAuthError(err)) {
-        toast.error('Your session expired. Please sign in again.');
         onClose();
-        navigate('/login', { state: { from: { pathname: '/marketplace' } } });
+        await handleSessionExpired();
         return;
       }
 
@@ -199,11 +201,10 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       const message = getPurchaseErrorMessage(err);
       const friendly = isLoggsplug
         ? 'We could not complete this purchase right now. Please contact support and we will help you.'
-        : /loggsplug|supplier|reseller/i.test(message)
-          ? message
-          : message && message !== 'Purchase failed'
-            ? message
-            : 'We could not complete this purchase.';
+        : getFriendlyErrorMessage(
+            err,
+            'We could not complete this purchase. Please try again or contact support.',
+          );
 
       toast.error(friendly);
       openErrorReport({
