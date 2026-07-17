@@ -14,6 +14,15 @@ test.describe('Public routes', () => {
     await expect(page.locator('#quick-actions')).toBeVisible();
   });
 
+  test('guest sees a verified purchase notification', async ({ page }) => {
+    await page.goto('/');
+
+    const purchaseWidget = page.locator('aside[aria-live="polite"]');
+    await expect(purchaseWidget).toBeVisible({ timeout: 15_000 });
+    await expect(purchaseWidget.getByText('A customer purchased')).toBeVisible();
+    await expect(purchaseWidget.getByText('Verified purchase')).toBeVisible();
+  });
+
   test('login page shows sign-in form', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible();
