@@ -547,30 +547,30 @@ export default function AdminProductsPage() {
 
       {isModalOpen && (
         <div className={adminModalOverlayClass(isDark)}>
-          <div className={cn(adminModalClass(isDark), 'max-h-[85vh] overflow-y-auto')}>
-            <div className={cn('flex items-start justify-between gap-4 border-b px-6 py-5', isDark ? 'border-[#18263b]' : 'border-slate-200')}>
-              <div>
+          <div className={cn(adminModalClass(isDark), 'max-h-[85vh] overflow-x-hidden overflow-y-auto')}>
+            <div className={cn('flex min-w-0 items-start justify-between gap-4 border-b px-6 py-5', isDark ? 'border-[#18263b]' : 'border-slate-200')}>
+              <div className="min-w-0">
                 <h2 className="admin-heading text-3xl font-semibold">{editingProduct ? 'Edit product' : 'Add product'}</h2>
                 <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>Manage title, pricing, platform, and listing details from this modal.</p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className={adminIconButtonClass(isDark)}
+                className={cn(adminIconButtonClass(isDark), 'shrink-0')}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={submitProduct}>
-              <div className="space-y-5 px-6 py-6">
+            <form onSubmit={submitProduct} className="min-w-0">
+              <div className="min-w-0 space-y-5 px-6 py-6">
                 <section className={adminModalSectionClass(isDark)}>
                   <h3 className={cn('text-sm font-semibold', adminStrongTextClass(isDark))}>Basic information</h3>
                   <div className="mt-4">
                     <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Product icon</label>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
                       <div className={cn(
-                        'flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border',
+                        'flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border',
                         isDark ? 'border-[#22324a] bg-[#06101d]' : 'border-slate-200 bg-slate-50',
                       )}>
                         {productIconUrl ? (
@@ -586,7 +586,7 @@ export default function AdminProductsPage() {
                         )}
                       </div>
                       <div className={cn(
-                        'rounded-2xl border px-4 py-3 text-sm',
+                        'min-w-0 flex-1 rounded-2xl border px-4 py-3 text-sm',
                         isDark ? 'border-[#22324a] bg-[#06101d] text-slate-300' : 'border-slate-200 bg-white text-slate-600',
                       )}>
                         {selectedCategory
@@ -600,8 +600,8 @@ export default function AdminProductsPage() {
                       The product icon follows the selected category. Platform is synced automatically.
                     </p>
                   </div>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div className="md:col-span-2">
+                  <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
+                    <div className="min-w-0 md:col-span-2">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Product title</label>
                       <Input
                         value={form.title}
@@ -610,7 +610,7 @@ export default function AdminProductsPage() {
                         placeholder="Premium TikTok Creator Account"
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Slug</label>
                       <Input
                         value={form.slug}
@@ -619,7 +619,7 @@ export default function AdminProductsPage() {
                         placeholder="premium-tiktok-creator-account"
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Category</label>
                       <select
                         value={form.category_id}
@@ -659,7 +659,7 @@ export default function AdminProductsPage() {
                         </p>
                       ) : null}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Platform</label>
                       <select
                         value={form.platform}
@@ -673,7 +673,7 @@ export default function AdminProductsPage() {
                         ))}
                       </select>
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="min-w-0 md:col-span-2">
                       <AdminDualCurrencyPriceInput
                         ngnAmount={Number(form.price) || 0}
                         onNgnChange={(price) => setForm((current) => ({ ...current, price: String(price) }))}
@@ -718,7 +718,7 @@ export default function AdminProductsPage() {
                         </div>
                       ) : null}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Stock</label>
                       <Input
                         type="number"
@@ -743,7 +743,7 @@ export default function AdminProductsPage() {
                         </p>
                       ) : null}
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="min-w-0 md:col-span-2">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Description</label>
                       <Textarea
                         value={form.description}
@@ -825,8 +825,8 @@ export default function AdminProductsPage() {
 
                 <section className={adminModalSectionClass(isDark)}>
                   <h3 className={cn('text-sm font-semibold', adminStrongTextClass(isDark))}>Additional details</h3>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div>
+                  <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Country</label>
                       <Input
                         value={form.country}
@@ -835,7 +835,7 @@ export default function AdminProductsPage() {
                         placeholder="United States"
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Niche</label>
                       <Input
                         value={form.niche}
@@ -844,7 +844,7 @@ export default function AdminProductsPage() {
                         placeholder="Business"
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Account age</label>
                       <Input
                         value={form.account_age}
@@ -853,7 +853,7 @@ export default function AdminProductsPage() {
                         placeholder="2 years"
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className={cn('mb-2 block text-sm', adminMutedTextClass(isDark))}>Followers</label>
                       <Input
                         type="number"

@@ -7,10 +7,10 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, error, ...props }, ref) => (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       <textarea
         className={cn(
-          'flex min-h-[80px] w-full rounded-lg border border-input bg-white px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none sm:text-sm dark:bg-dm-surface dark:text-gray-100 dark:placeholder:text-gray-400 dark:border-dm-input-border',
+          'flex min-h-[80px] w-full min-w-0 max-w-full rounded-lg border border-input bg-white px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none sm:text-sm dark:bg-dm-surface dark:text-gray-100 dark:placeholder:text-gray-400 dark:border-dm-input-border',
           error && 'border-destructive',
           className
         )}

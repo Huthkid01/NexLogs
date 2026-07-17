@@ -13,6 +13,7 @@ const PrivacyPage = lazyPage(() => import('@/pages/PrivacyPage'));
 const RefundPage = lazyPage(() => import('@/pages/RefundPage'));
 const TermsPage = lazyPage(() => import('@/pages/TermsPage'));
 const SuspendedPage = lazyPage(() => import('@/pages/SuspendedPage'));
+const SessionExpiredPage = lazyPage(() => import('@/pages/SessionExpiredPage'));
 
 const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage'));
 const AdminLoginPage = lazyPage(() => import('@/pages/auth/AdminLoginPage'));
@@ -51,6 +52,7 @@ const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'));
 const router = createBrowserRouter([
   { path: '/unsubscribe/:token', element: <UnsubscribePage />, errorElement: <RouterErrorPage /> },
   { path: '/unsubscribe', element: <UnsubscribePage />, errorElement: <RouterErrorPage /> },
+  { path: '/session-expired', element: <SessionExpiredPage />, errorElement: <RouterErrorPage /> },
   {
     path: '/',
     element: <AdminRedirectGate><MainLayout /></AdminRedirectGate>,

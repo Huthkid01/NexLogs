@@ -1632,7 +1632,7 @@ export default function BuyNumbersPage() {
                       <td colSpan={7} className="border border-gray-300 px-4 py-10 text-gray-600 dark:border-dm-border dark:text-gray-300">
                         {isAuthError(historyError) ? (
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            Your session expired. Redirecting you to log in again...
+                            Your session expired. Taking you to sign in again...
                           </p>
                         ) : (
                           <>

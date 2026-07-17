@@ -264,6 +264,9 @@ textarea {
 .admin-select,
 .admin-textarea {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border-radius: 0.75rem;
   border: 1px solid #cbd5e1;
   background: #ffffff;

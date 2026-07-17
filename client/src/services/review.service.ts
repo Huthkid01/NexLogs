@@ -18,6 +18,15 @@ export interface AdminReview extends Omit<Review, 'profile' | 'product'> {
   } | null;
 }
 
+export interface PublicReviewFomo {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  profile: { full_name: string } | null;
+  product: { title: string } | null;
+}
+
 export const reviewService = {
   async getByOrderId(orderId: string): Promise<Review | null> {
     const { data, error } = await supabase
@@ -48,6 +57,37 @@ export const reviewService = {
       }
     }
     return map;
+  },
+
+  async getApprovedFomoReviews(): Promise<PublicReviewFomo[]> {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`
+        id,
+        rating,
+        comment,
+        created_at,
+        profile:profiles(full_name),
+        product:products(title)
+      `)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false })
+      .limit(12);
+
+    if (error) throw error;
+
+    return (data ?? []).map((row) => {
+      const review = row as Omit<PublicReviewFomo, 'profile' | 'product'> & {
+        profile?: PublicReviewFomo['profile'] | PublicReviewFomo['profile'][];
+        product?: PublicReviewFomo['product'] | PublicReviewFomo['product'][];
+      };
+
+      return {
+        ...review,
+        profile: Array.isArray(review.profile) ? review.profile[0] ?? null : review.profile ?? null,
+        product: Array.isArray(review.product) ? review.product[0] ?? null : review.product ?? null,
+      };
+    });
   },
 
   async submitReview(input: {

@@ -7,6 +7,7 @@ import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { SideMenu } from '@/components/layout/SideMenu';
 import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
 import { FloatingActions } from '@/components/layout/FloatingActions';
+import { ReviewFomoWidget } from '@/components/layout/ReviewFomoWidget';
 import { useQuickTour } from '@/hooks/useQuickTour';
 import { useCommunityPromo } from '@/hooks/useCommunityPromo';
 import { useMaintenanceNotice } from '@/hooks/useMaintenanceNotice';
@@ -154,6 +155,9 @@ export function MainLayout() {
         </footer>
       </div>
       {!hideFloatingActions ? <FloatingActions /> : null}
+      {!isAuthPage && !maintenanceOpen && !communityPromoOpen && !quickTourOpen ? (
+        <ReviewFomoWidget />
+      ) : null}
       {maintenanceOpen ? (
         <Suspense fallback={null}>
           <MaintenanceModal

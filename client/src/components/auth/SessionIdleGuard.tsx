@@ -4,7 +4,7 @@ import { clearSessionActivity } from '@/lib/session-idle';
 import {
   getCurrentReturnPath,
   markSessionExpired,
-  resolveLoginPath,
+  SESSION_EXPIRED_PATH,
 } from '@/lib/session-expired';
 
 export function SessionIdleGuard() {
@@ -19,10 +19,10 @@ export function SessionIdleGuard() {
       try {
         await signOut();
       } catch {
-        // Continue to login even if sign-out fails.
+        // Continue to session-expired page even if sign-out fails.
       }
 
-      window.location.assign(resolveLoginPath());
+      window.location.assign(SESSION_EXPIRED_PATH);
     },
   });
 

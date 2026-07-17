@@ -13,12 +13,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const inputType = isPassword && showPassword ? 'text' : type;
 
     return (
-      <div className="w-full">
-        <div className="relative">
+      <div className="w-full min-w-0">
+        <div className="relative min-w-0">
           <input
             type={inputType}
             className={cn(
-              'flex h-10 w-full rounded-lg border border-input bg-white px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors sm:text-sm dark:bg-dm-surface dark:text-gray-100 dark:placeholder:text-gray-400 dark:border-dm-input-border',
+              'flex h-10 w-full min-w-0 max-w-full rounded-lg border border-input bg-white px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors sm:text-sm dark:bg-dm-surface dark:text-gray-100 dark:placeholder:text-gray-400 dark:border-dm-input-border',
               error && 'border-destructive focus-visible:ring-destructive',
               isPassword && 'pr-10',
               className

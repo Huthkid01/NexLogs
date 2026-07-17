@@ -82,7 +82,7 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
   const nextItemNumber = items.length + 1;
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label className={cn('block text-sm', adminMutedTextClass(isDark))}>
           Product details for buyer copy
@@ -95,14 +95,14 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
         </span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[240px_1fr]">
-        <div className="space-y-2">
+      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-2">
           <label className={cn('block text-xs font-medium uppercase tracking-wide', adminSubtleTextClass(isDark))}>
             Saved items
           </label>
 
           <div className={cn(
-            'max-h-[280px] space-y-2 overflow-y-auto rounded-xl border p-2',
+            'max-h-[280px] space-y-2 overflow-y-auto overflow-x-hidden rounded-xl border p-2',
             isDark ? 'border-[#18263b] bg-[#081624]' : 'border-slate-200 bg-slate-50',
           )}>
             {items.length === 0 ? (
@@ -114,7 +114,7 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
                 <div
                   key={index}
                   className={cn(
-                    'rounded-lg border px-3 py-2',
+                    'min-w-0 rounded-lg border px-3 py-2',
                     editIndex === index
                       ? isDark
                         ? 'border-[#f26522] bg-[#10213a]'
@@ -124,7 +124,7 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
                         : 'border-slate-200 bg-white',
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => startEditing(index)}
@@ -133,7 +133,7 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
                       <p className={cn('text-xs font-semibold', adminStrongTextClass(isDark))}>
                         Item {index + 1}
                       </p>
-                      <p className={cn('mt-1 line-clamp-2 text-xs', adminMutedTextClass(isDark))}>
+                      <p className={cn('mt-1 line-clamp-2 break-words text-xs', adminMutedTextClass(isDark))}>
                         {item.trim()}
                       </p>
                     </button>
@@ -165,14 +165,14 @@ export function ProductBuyerDetailsEditor({ value, onChange, isDark }: ProductBu
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <label className={cn('mb-2 block text-xs font-medium uppercase tracking-wide', adminSubtleTextClass(isDark))}>
             {isEditing ? `Edit item ${editIndex + 1}` : `Add item ${nextItemNumber}`}
           </label>
           <Textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            className="admin-textarea min-h-[220px] text-sm leading-6"
+            className="admin-textarea min-h-[220px] min-w-0 text-sm leading-6"
             placeholder={'Username: john\nPassword: secret123\nEmail: john@mail.com\n\nEnter details for one buyer, then click Add item.'}
           />
           <p className={cn('mt-2 text-xs', adminSubtleTextClass(isDark))}>

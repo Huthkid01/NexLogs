@@ -42,7 +42,7 @@ export function AdminDualCurrencyPriceInput({
   };
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('min-w-0', className)}>
       <Label>{label}</Label>
       <Input
         type="number"

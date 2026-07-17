@@ -49,13 +49,13 @@ export function adminModalOverlayClass(isDark: boolean, zIndexClass = 'z-[70]') 
 
 export function adminModalClass(isDark: boolean) {
   return cn(
-    'admin-panel w-full max-w-4xl rounded-[1.75rem]',
+    'admin-panel w-full min-w-0 max-w-4xl overflow-x-hidden rounded-[1.75rem]',
     isDark ? 'border-[#1f2e46] bg-[#081324] text-slate-100' : 'border-slate-200 bg-white text-slate-900 shadow-xl',
   );
 }
 
 export function adminModalSectionClass(isDark: boolean) {
-  return cn('rounded-2xl border p-5', isDark ? 'border-[#18263b] bg-[#06111f]' : 'border-slate-200 bg-slate-50');
+  return cn('min-w-0 rounded-2xl border p-5', isDark ? 'border-[#18263b] bg-[#06111f]' : 'border-slate-200 bg-slate-50');
 }
 
 export function adminIconButtonClass(isDark: boolean) {

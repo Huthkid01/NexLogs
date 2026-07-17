@@ -4,12 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   getCurrentReturnPath,
   markSessionExpired,
-  resolveLoginPath,
+  SESSION_EXPIRED_PATH,
 } from '@/lib/session-expired';
 
 /**
- * Signs the user out and sends them to login with a clear "session expired" notice.
- * Use this instead of showing auth/error pages when the session is no longer valid.
+ * Signs the user out and sends them to the session-expired page
+ * (with a login button), instead of a generic crash/error screen.
  */
 export function useHandleSessionExpired() {
   const { signOut } = useAuth();
@@ -23,14 +23,9 @@ export function useHandleSessionExpired() {
     try {
       await signOut();
     } catch {
-      // Still send them to login even if sign-out fails.
+      // Still send them to session-expired even if sign-out fails.
     }
 
-    navigate(resolveLoginPath(location.pathname), {
-      replace: true,
-      state: {
-        from: { pathname: location.pathname, search: location.search },
-      },
-    });
+    navigate(SESSION_EXPIRED_PATH, { replace: true });
   }, [signOut, navigate, location.pathname, location.search]);
 }
