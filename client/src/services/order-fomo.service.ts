@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 export interface PublicOrderFomo {
   event_key: string;
   product_title: string;
+  masked_name: string;
 }
 
 export const orderFomoService = {

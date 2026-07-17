@@ -27,7 +27,7 @@ test.describe('Authentication', () => {
 
     const purchaseWidget = page.locator('aside[aria-live="polite"]');
     await expect(purchaseWidget).toBeVisible({ timeout: 15_000 });
-    await expect(purchaseWidget.getByText('A customer purchased')).toBeVisible();
+    await expect(purchaseWidget.getByText(/purchased$/i)).toBeVisible();
     await expect(purchaseWidget.getByText('Verified purchase')).toBeVisible();
   });
 });

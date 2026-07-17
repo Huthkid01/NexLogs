@@ -65,7 +65,7 @@ export function ReviewFomoWidget() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
-              A customer purchased
+              {purchase.masked_name || 'Customer'} purchased
             </p>
             <p className="mt-0.5 truncate text-[11px] text-slate-600 dark:text-slate-300">
               {purchase.product_title}
