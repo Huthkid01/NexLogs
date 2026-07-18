@@ -72,7 +72,7 @@ export default function AdminSenderPage() {
   const [sendFlowOpen, setSendFlowOpen] = useState(false);
   const [sendPhase, setSendPhase] = useState<BroadcastSendPhase>('confirm');
   const [sendError, setSendError] = useState('');
-  const [sendResult, setSendResult] = useState({ sentCount: 0, failedCount: 0 });
+  const [sendResult, setSendResult] = useState({ sentCount: 0, failedCount: 0, cancelled: false });
   const [sendProgress, setSendProgress] = useState<MarketingSendProgressItem[]>([]);
   const [currentSendEmail, setCurrentSendEmail] = useState<string | null>(null);
   const [sendInfo, setSendInfo] = useState<SequentialSendProgressInfo | null>(null);
@@ -81,7 +81,7 @@ export default function AdminSenderPage() {
   const [htmlSendFlowOpen, setHtmlSendFlowOpen] = useState(false);
   const [htmlSendPhase, setHtmlSendPhase] = useState<BroadcastSendPhase>('confirm');
   const [htmlSendError, setHtmlSendError] = useState('');
-  const [htmlSendResult, setHtmlSendResult] = useState({ sentCount: 0, failedCount: 0 });
+  const [htmlSendResult, setHtmlSendResult] = useState({ sentCount: 0, failedCount: 0, cancelled: false });
   const [htmlSendProgress, setHtmlSendProgress] = useState<MarketingSendProgressItem[]>([]);
   const [htmlCurrentSendEmail, setHtmlCurrentSendEmail] = useState<string | null>(null);
   const [htmlSendInfo, setHtmlSendInfo] = useState<SequentialSendProgressInfo | null>(null);
@@ -90,6 +90,8 @@ export default function AdminSenderPage() {
   const [htmlRecipientCount, setHtmlRecipientCount] = useState(0);
   const broadcastSendSelectionRef = useRef<BroadcastRecipientSelection | null>(null);
   const htmlSendSelectionRef = useRef<BroadcastRecipientSelection | null>(null);
+  const broadcastAbortRef = useRef<AbortController | null>(null);
+  const htmlAbortRef = useRef<AbortController | null>(null);
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -156,7 +158,7 @@ export default function AdminSenderPage() {
 
   const openSendFlow = () => {
     setSendError('');
-    setSendResult({ sentCount: 0, failedCount: 0 });
+    setSendResult({ sentCount: 0, failedCount: 0, cancelled: false });
     setSendProgress([]);
     setCurrentSendEmail(null);
     setSendInfo(null);
@@ -172,9 +174,13 @@ export default function AdminSenderPage() {
     setSendInfo(null);
   };
 
+  const cancelBroadcastSend = () => {
+    broadcastAbortRef.current?.abort();
+  };
+
   const openHtmlSendFlow = () => {
     setHtmlSendError('');
-    setHtmlSendResult({ sentCount: 0, failedCount: 0 });
+    setHtmlSendResult({ sentCount: 0, failedCount: 0, cancelled: false });
     setHtmlSendProgress([]);
     setHtmlCurrentSendEmail(null);
     setHtmlSendInfo(null);
@@ -188,6 +194,10 @@ export default function AdminSenderPage() {
     setHtmlSendPhase('confirm');
     setHtmlSendError('');
     setHtmlSendInfo(null);
+  };
+
+  const cancelHtmlSend = () => {
+    htmlAbortRef.current?.abort();
   };
 
   const buildSingleRecipientPayload = (recipient: MarketingSendRecipient) => {
@@ -208,6 +218,8 @@ export default function AdminSenderPage() {
 
   const handleConfirmSend = async () => {
     setSendPhase('sending');
+    const abortController = new AbortController();
+    broadcastAbortRef.current = abortController;
     try {
       const selection = broadcastSendSelectionRef.current;
       const userIds = selection?.userIds ?? selectedRecipientIds;
@@ -245,6 +257,7 @@ export default function AdminSenderPage() {
 
       const result = await runSequentialEmailSend({
         recipients,
+        signal: abortController.signal,
         buildPayload: (recipient) => ({
           product_ids: selectedProductIds,
           subject,
@@ -288,9 +301,12 @@ export default function AdminSenderPage() {
       setSendResult({
         sentCount: result.sentCount,
         failedCount: result.failedCount,
+        cancelled: result.cancelled,
       });
       setSendPhase('success');
-      if (result.failedCount > 0) {
+      if (result.cancelled) {
+        toast.message(`Sending cancelled. ${result.sentCount} email(s) already sent.`);
+      } else if (result.failedCount > 0) {
         toast.warning(`Sent ${result.sentCount} emails. ${result.failedCount} failed.`);
       }
     } catch (error) {
@@ -299,6 +315,7 @@ export default function AdminSenderPage() {
       setSendPhase('error');
       toast.error(message);
     } finally {
+      broadcastAbortRef.current = null;
       setCurrentSendEmail(null);
       setSendInfo(null);
     }
@@ -306,6 +323,8 @@ export default function AdminSenderPage() {
 
   const handleConfirmHtmlSend = async () => {
     setHtmlSendPhase('sending');
+    const abortController = new AbortController();
+    htmlAbortRef.current = abortController;
     try {
       const selection = htmlSendSelectionRef.current;
       const userIds = selection?.userIds ?? htmlRecipientIds;
@@ -343,6 +362,7 @@ export default function AdminSenderPage() {
 
       const result = await runSequentialEmailSend({
         recipients,
+        signal: abortController.signal,
         buildPayload: (recipient) => ({
           subject,
           html_body: sanitizedHtmlBody,
@@ -386,9 +406,12 @@ export default function AdminSenderPage() {
       setHtmlSendResult({
         sentCount: result.sentCount,
         failedCount: result.failedCount,
+        cancelled: result.cancelled,
       });
       setHtmlSendPhase('success');
-      if (result.failedCount > 0) {
+      if (result.cancelled) {
+        toast.message(`Sending cancelled. ${result.sentCount} email(s) already sent.`);
+      } else if (result.failedCount > 0) {
         toast.warning(`Sent ${result.sentCount} emails. ${result.failedCount} failed.`);
       }
     } catch (error) {
@@ -397,6 +420,7 @@ export default function AdminSenderPage() {
       setHtmlSendPhase('error');
       toast.error(message);
     } finally {
+      htmlAbortRef.current = null;
       setHtmlCurrentSendEmail(null);
       setHtmlSendInfo(null);
     }
@@ -619,11 +643,13 @@ export default function AdminSenderPage() {
         productCount={selectedProductIds.length}
         sentCount={sendResult.sentCount}
         failedCount={sendResult.failedCount}
+        cancelled={sendResult.cancelled}
         errorMessage={sendError}
         sendProgress={sendProgress}
         currentSendEmail={currentSendEmail}
         sendInfo={sendInfo}
         onConfirmSend={() => void handleConfirmSend()}
+        onCancelSend={cancelBroadcastSend}
         onClose={closeSendFlow}
       />
 
@@ -633,12 +659,14 @@ export default function AdminSenderPage() {
         sendCount={Math.max(htmlSendCount, effectiveHtmlRecipientCount, htmlSendProgress.length)}
         sentCount={htmlSendResult.sentCount}
         failedCount={htmlSendResult.failedCount}
+        cancelled={htmlSendResult.cancelled}
         errorMessage={htmlSendError}
         sendProgress={htmlSendProgress}
         currentSendEmail={htmlCurrentSendEmail}
         sendInfo={htmlSendInfo}
         confirmTitle="Send HTML campaign?"
         onConfirmSend={() => void handleConfirmHtmlSend()}
+        onCancelSend={cancelHtmlSend}
         onClose={closeHtmlSendFlow}
       />
     </div>

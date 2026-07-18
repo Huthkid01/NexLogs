@@ -26,7 +26,9 @@ interface BroadcastSendFlowModalProps {
   sendProgress?: MarketingSendProgressItem[];
   currentSendEmail?: string | null;
   sendInfo?: SequentialSendProgressInfo | null;
+  cancelled?: boolean;
   onConfirmSend: () => void;
+  onCancelSend?: () => void;
   onClose: () => void;
 }
 
@@ -43,7 +45,9 @@ export function BroadcastSendFlowModal({
   sendProgress = [],
   currentSendEmail = null,
   sendInfo = null,
+  cancelled = false,
   onConfirmSend,
+  onCancelSend,
   onClose,
 }: BroadcastSendFlowModalProps) {
   const { theme } = useTheme();
@@ -211,6 +215,19 @@ export function BroadcastSendFlowModal({
                 ))}
               </ul>
             )}
+
+            {onCancelSend && (
+              <div className="mt-5 flex justify-center border-t pt-4 dark:border-[#18263b]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn(adminOutlineButtonClass(isDark), 'border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-950/30')}
+                  onClick={onCancelSend}
+                >
+                  Cancel sending
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -219,11 +236,17 @@ export function BroadcastSendFlowModal({
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
               <Check className="h-8 w-8 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
             </div>
-            <p className="text-xl font-semibold text-emerald-700 dark:text-emerald-300">Send done</p>
+            <p className="text-xl font-semibold text-emerald-700 dark:text-emerald-300">
+              {cancelled ? 'Sending cancelled' : 'Send done'}
+            </p>
             <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>
-              {failedCount > 0
-                ? `Sent ${sentCount} of ${sendCount} emails. ${failedCount} failed.`
-                : `Announcement sent to ${sentCount} contact${sentCount === 1 ? '' : 's'}.`}
+              {cancelled
+                ? `Stopped early. Sent ${sentCount} of ${sendCount} email${sendCount === 1 ? '' : 's'}${
+                    failedCount > 0 ? ` (${failedCount} failed)` : ''
+                  }. Remaining contacts were not emailed.`
+                : failedCount > 0
+                  ? `Sent ${sentCount} of ${sendCount} emails. ${failedCount} failed.`
+                  : `Announcement sent to ${sentCount} contact${sentCount === 1 ? '' : 's'}.`}
             </p>
             <p className={cn('mt-3 text-xs', adminMutedTextClass(isDark))}>
               This window stays open until you click Done.
