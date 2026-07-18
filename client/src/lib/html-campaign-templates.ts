@@ -273,6 +273,38 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-instagram-marketplace-announcement',
+    name: 'Instagram marketplace (inbox-friendly)',
+    category: 'account',
+    description:
+      'Plain account note that Instagram is live. Soft stock reminder without promo banners — best chance for Primary inbox.',
+    defaultSubject: `Instagram is now available on ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `Instagram is now on the ${APP_NAME} marketplace. Stock is limited, so check while it is available.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Just a quick note from your <strong>${APP_NAME}</strong> account: <strong>Instagram</strong> is now available on the marketplace.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                You can open the marketplace, choose the <strong>Instagram</strong> category, and pay from your wallet as usual.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Current stock is limited. If you need Instagram for your next order, it is best to get it while it is still available.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                After purchase, your details will appear under <strong>My Purchases</strong>. If you need help, reply to this email or message support on Telegram.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
     id: 'marketing-buy-numbers-sms',
     name: 'Buy Numbers — SMS verification',
     category: 'marketing',
