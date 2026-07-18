@@ -16,6 +16,8 @@ export { siteVisitService, SITE_ACTIVE_WINDOW_MINUTES } from './site-visit.servi
 export { broadcastEmailService } from './broadcast-email.service';
 export { htmlCampaignService } from './html-campaign.service';
 export { marketingTrackingService } from './marketing-tracking.service';
+export { marketingSmtpService, DEFAULT_MARKETING_SMTP_ID } from './marketing-smtp.service';
+export type { MarketingSmtpAccount, MarketingSmtpInput } from './marketing-smtp.service';
 export { smsNumberService } from './sms-number.service';
 export { loggsplugService } from './loggsplug.service';
 export { reviewService } from './review.service';

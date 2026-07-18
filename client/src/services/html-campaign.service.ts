@@ -10,6 +10,7 @@ export interface HtmlCampaignPayload {
   send_to_all?: boolean;
   skip_history?: boolean;
   tracking_token?: string;
+  smtp_account_id?: string | null;
 }
 
 export interface HtmlCampaignResult {

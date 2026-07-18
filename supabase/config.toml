@@ -19,7 +19,7 @@ verify_jwt = false
 [functions.send-admin-broadcast-email]
 verify_jwt = false
 
-[functions.send-admin-html-campaign]
+[functions.manage-marketing-smtp]
 verify_jwt = false
 
 [functions.process-marketing-unsubscribe]

@@ -15,6 +15,11 @@ import {
   markMarketingSendResult,
 } from '../_shared/marketing-email-tracking.ts';
 import {
+  resolveMarketingSmtpConfig,
+  sendViaMarketingSmtp,
+  type MarketingSmtpConfig,
+} from '../_shared/marketing-smtp.ts';
+import {
   buildDeliverabilityHeaders,
   sanitizeBroadcastMessage,
   sanitizeBroadcastSubject,
@@ -39,87 +44,20 @@ interface BroadcastRequest {
   send_to_all?: boolean;
   skip_history?: boolean;
   tracking_token?: string;
+  smtp_account_id?: string | null;
 }
 
-async function sendViaSmtp(
-  input: { to: string; subject: string; html: string; text?: string; headers?: Record<string, string> },
-  options: { host: string; port: number; secure: boolean; user: string; pass: string; from: string },
+async function sendMail(
+  input: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+    headers?: Record<string, string>;
+  },
+  smtp: MarketingSmtpConfig,
 ) {
-  const nodemailer = await import('npm:nodemailer@6.9.16');
-  const transport = nodemailer.default.createTransport({
-    host: options.host,
-    port: options.port,
-    secure: options.secure,
-    auth: {
-      user: options.user,
-      pass: options.pass,
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-  });
-
-  await new Promise<void>((resolve, reject) => {
-    transport.sendMail(
-      {
-        from: options.from,
-        to: input.to,
-        subject: input.subject,
-        html: input.html,
-        text: input.text,
-        headers: input.headers,
-      },
-      (error) => {
-        if (error) reject(error);
-        else resolve();
-      },
-    );
-  });
-}
-
-async function sendMail(input: {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-  headers?: Record<string, string>;
-}) {
-  const host = Deno.env.get('SMTP_HOST') || 'smtp.hostinger.com';
-  const user = Deno.env.get('SMTP_USER');
-  const pass = Deno.env.get('SMTP_PASS');
-  const fromName = 'Nexlogs';
-  const fromAddress = Deno.env.get('EMAIL_FROM_ADDRESS') || user;
-
-  if (!user || !pass || !fromAddress) {
-    throw new Error('SMTP_USER, SMTP_PASS, and EMAIL_FROM_ADDRESS must be set in Supabase Edge Function secrets');
-  }
-
-  const from = `"${fromName}" <${fromAddress}>`;
-  const attempts = [
-    { port: 465, secure: true },
-    { port: 587, secure: false },
-  ];
-
-  let lastError: Error | null = null;
-
-  for (const attempt of attempts) {
-    try {
-      await sendViaSmtp(input, {
-        host,
-        port: attempt.port,
-        secure: attempt.secure,
-        user,
-        pass,
-        from,
-      });
-      return;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      lastError = error instanceof Error ? error : new Error(message);
-      console.error(`[send-admin-broadcast-email] SMTP ${host}:${attempt.port} failed:`, message);
-    }
-  }
-
-  throw lastError ?? new Error('SMTP send failed');
+  return sendViaMarketingSmtp(input, smtp);
 }
 
 function sleep(ms: number) {
@@ -192,6 +130,7 @@ Deno.serve(async (req) => {
     const sendToAll = Boolean(body.send_to_all);
     const skipHistory = Boolean(body.skip_history);
     const trackingToken = body.tracking_token?.trim() ?? '';
+    const smtpAccountId = body.smtp_account_id?.trim() || null;
     const requestedRecipientIds = Array.isArray(body.recipient_user_ids)
       ? body.recipient_user_ids.map((id) => String(id).trim()).filter(Boolean)
       : [];
@@ -204,6 +143,7 @@ Deno.serve(async (req) => {
     subject = validated.sanitizedSubject;
     customMessage = validated.sanitizedMessage;
 
+    const smtp = await resolveMarketingSmtpConfig(adminClient, smtpAccountId);
     const appName = Deno.env.get('APP_NAME') || 'Nexlogs';
     const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://www.nexlogs.store').replace(
       /\/$/,
@@ -301,7 +241,7 @@ Deno.serve(async (req) => {
           html,
           text: emailContent.text,
           headers: deliverabilityHeaders,
-        });
+        }, smtp);
         if (trackingToken) {
           await markMarketingSendResult(adminClient, trackingToken, { ok: true });
         }
@@ -368,7 +308,8 @@ Deno.serve(async (req) => {
       sent_count: sent,
       failed_count: failed,
       failures: failures.slice(0, 10),
-      from: 'Nexlogs <support@nexlogs.store>',
+      from: `${smtp.fromName} <${smtp.fromAddress}>`,
+      smtp_account: smtp.label,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Broadcast email failed';

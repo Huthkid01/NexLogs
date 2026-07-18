@@ -14,6 +14,7 @@ import {
 import { HtmlCampaignComposer } from '@/components/admin/HtmlCampaignComposer';
 import { HtmlCampaignPreviewModal } from '@/components/admin/HtmlCampaignPreviewModal';
 import { EmailMarketingOverview } from '@/components/admin/EmailMarketingOverview';
+import { MarketingSmtpManager } from '@/components/admin/MarketingSmtpManager';
 import { useBroadcastDeliverability } from '@/components/admin/BroadcastEmailPreview';
 import { useHtmlCampaignDeliverability } from '@/components/admin/HtmlCampaignEmailPreview';
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
@@ -30,6 +31,7 @@ import {
 } from '@/lib/marketing-send-recipients';
 import { runSequentialEmailSend, type SequentialSendProgressInfo } from '@/lib/marketing-sequential-send';
 import type { MarketingSendRecipient } from '@/lib/marketing-send-recipients';
+import { DEFAULT_MARKETING_SMTP_ID } from '@/services/marketing-smtp.service';
 import { APP_NAME } from '@/constants';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types';
@@ -92,6 +94,7 @@ export default function AdminSenderPage() {
   const htmlSendSelectionRef = useRef<BroadcastRecipientSelection | null>(null);
   const broadcastAbortRef = useRef<AbortController | null>(null);
   const htmlAbortRef = useRef<AbortController | null>(null);
+  const [selectedSmtpAccountId, setSelectedSmtpAccountId] = useState(DEFAULT_MARKETING_SMTP_ID);
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -263,6 +266,8 @@ export default function AdminSenderPage() {
           subject,
           custom_message: customMessage,
           skip_history: true,
+          smtp_account_id:
+            selectedSmtpAccountId === DEFAULT_MARKETING_SMTP_ID ? null : selectedSmtpAccountId,
           ...buildSingleRecipientPayload(recipient),
         }),
         send: async (recipient, payload) => {
@@ -368,6 +373,8 @@ export default function AdminSenderPage() {
           html_body: sanitizedHtmlBody,
           template_name: htmlTemplateName,
           skip_history: true,
+          smtp_account_id:
+            selectedSmtpAccountId === DEFAULT_MARKETING_SMTP_ID ? null : selectedSmtpAccountId,
           ...buildSingleRecipientPayload(recipient),
         }),
         send: async (recipient, payload) => {
@@ -459,11 +466,16 @@ export default function AdminSenderPage() {
       <div className="space-y-1">
         <h1 className="text-xl font-bold sm:text-2xl">Email Sender</h1>
         <p className="text-sm text-muted-foreground">
-          Send product announcements or custom HTML campaigns from <strong>support@nexlogs.store</strong>.
-          Use <strong>Email marketing</strong> templates for external contacts, or add any email in the To field.
-          Promotional sends include an unsubscribe link automatically.
+          Send product announcements or custom HTML campaigns. Choose the default SMTP or another account you add below.
+          Use <strong>Account emails → inbox-friendly</strong> templates for the best chance of Primary inbox.
+          Activation and password-reset emails still use the system SMTP and are not changed here.
         </p>
       </div>
+
+      <MarketingSmtpManager
+        selectedSmtpAccountId={selectedSmtpAccountId}
+        onSelectedSmtpAccountIdChange={setSelectedSmtpAccountId}
+      />
 
       <div className="flex w-full flex-col gap-3">
         <BroadcastComposer
