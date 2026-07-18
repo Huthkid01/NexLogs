@@ -20,21 +20,23 @@ import {
   HtmlCampaignEmailPreview,
   useHtmlCampaignDeliverability,
 } from '@/components/admin/HtmlCampaignEmailPreview';
+import { EmailComposeLauncher } from '@/components/admin/EmailComposeLauncher';
 import { EmailComposerModal } from '@/components/admin/EmailComposerModal';
+import { HtmlTemplatePickerModal } from '@/components/admin/HtmlTemplatePickerModal';
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
 import { useTheme } from '@/hooks/useTheme';
 import {
   clearHtmlCampaignDraft,
   saveHtmlCampaignDraft,
 } from '@/lib/html-campaign-draft';
+import { runHtmlCampaignDeliverabilityChecks } from '@/lib/html-campaign-deliverability';
 import {
   DEFAULT_HTML_CAMPAIGN_SUBJECT,
-  HTML_CAMPAIGN_TEMPLATE_CATEGORIES,
   HTML_CAMPAIGN_TEMPLATES,
 } from '@/lib/html-campaign-templates';
 import { cn } from '@/lib/utils';
 
-const FROM_ADDRESS = 'support@nexlogs.store';
+const DEFAULT_FROM = 'support@nexlogs.store';
 
 export interface HtmlCampaignComposerProps {
   contacts: BroadcastContact[];
@@ -54,6 +56,8 @@ export interface HtmlCampaignComposerProps {
   onRecipientCountChange?: (count: number) => void;
   sending?: boolean;
   canSend: boolean;
+  fromName?: string;
+  fromAddress?: string;
 }
 
 export function HtmlCampaignComposer({
@@ -74,6 +78,8 @@ export function HtmlCampaignComposer({
   onRecipientCountChange,
   sending = false,
   canSend,
+  fromName = 'Nexlogs',
+  fromAddress = DEFAULT_FROM,
 }: HtmlCampaignComposerProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -91,6 +97,14 @@ export function HtmlCampaignComposer({
     () => HTML_CAMPAIGN_TEMPLATES.find((template) => template.id === templateName),
     [templateName],
   );
+  const fromLabel = `${fromName} <${fromAddress}>`;
+  const launcherMeta = [
+    subject?.trim() || DEFAULT_HTML_CAMPAIGN_SUBJECT,
+    selectedTemplate?.name,
+    sendCount ? `${sendCount} recipient${sendCount === 1 ? '' : 's'}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const handleSaveDraft = () => {
     const saved = saveHtmlCampaignDraft({
@@ -115,16 +129,51 @@ export function HtmlCampaignComposer({
     updateHtmlCampaign({ minimized: true });
   };
 
+  const applySpamFilterToEditor = () => {
+    const cleanedSubject = deliverability.sanitizedSubject;
+    const cleanedHtml = deliverability.sanitizedHtml;
+    const phrases = deliverability.filteredSpamPhrases ?? [];
+    let changed = false;
+    if (cleanedSubject && cleanedSubject !== subject) {
+      onSubjectChange(cleanedSubject);
+      changed = true;
+    }
+    if (cleanedHtml && cleanedHtml !== htmlBody) {
+      onHtmlBodyChange(cleanedHtml);
+      changed = true;
+    }
+    if (phrases.length || changed) {
+      toast.success(
+        phrases.length
+          ? `Spam filter cleaned: ${phrases.slice(0, 4).join(', ')}${phrases.length > 4 ? '…' : ''}`
+          : 'Email content cleaned for inbox delivery',
+      );
+    } else {
+      toast.message('No spam trigger phrases found');
+    }
+  };
+
   const applyTemplate = (templateId: string) => {
     const template = HTML_CAMPAIGN_TEMPLATES.find((item) => item.id === templateId);
     if (!template) return;
+    const cleaned = runHtmlCampaignDeliverabilityChecks({
+      subject: template.defaultSubject || subject,
+      htmlBody: template.html,
+      recipientCount: Math.max(sendCount, 1),
+    });
     onTemplateNameChange(template.id);
-    onHtmlBodyChange(template.html);
-    if (template.defaultSubject) {
-      onSubjectChange(template.defaultSubject);
+    onHtmlBodyChange(cleaned.sanitizedHtml || template.html);
+    if (template.defaultSubject || cleaned.sanitizedSubject) {
+      onSubjectChange(cleaned.sanitizedSubject || template.defaultSubject || subject);
     }
     setTemplateMenuOpen(false);
-    toast.success(`Template "${template.name}" loaded`);
+    if (cleaned.filteredSpamPhrases?.length) {
+      toast.success(
+        `Template "${template.name}" loaded — spam words filtered (${cleaned.filteredSpamPhrases.slice(0, 3).join(', ')})`,
+      );
+    } else {
+      toast.success(`Template "${template.name}" loaded`);
+    }
   };
 
   const handleSendClick = () => {
@@ -146,6 +195,13 @@ export function HtmlCampaignComposer({
       toast.error('Add a subject before sending.');
       return;
     }
+    // Always apply spam filter into the editor before send so recipients get cleaned copy.
+    if (deliverability.sanitizedSubject && deliverability.sanitizedSubject !== subject) {
+      onSubjectChange(deliverability.sanitizedSubject);
+    }
+    if (deliverability.sanitizedHtml && deliverability.sanitizedHtml !== htmlBody) {
+      onHtmlBodyChange(deliverability.sanitizedHtml);
+    }
     if (!deliverability.canSend) {
       toast.error('Fix the failed inbox checks before sending.');
       return;
@@ -156,22 +212,16 @@ export function HtmlCampaignComposer({
 
   return (
     <>
-      <div className="flex w-full justify-start">
-        <button
-          type="button"
-          onClick={() => updateHtmlCampaign({ minimized: false })}
-          className={cn(
-            'flex w-full max-w-2xl items-center justify-between rounded-xl border px-4 py-3 text-left shadow-lg transition hover:shadow-xl',
-            isDark ? 'border-[#22324a] bg-[#0b1628] text-slate-100' : 'border-slate-200 bg-white text-slate-900',
-            !minimized && 'ring-2 ring-primary/40',
-          )}
-        >
-          <span className="truncate text-sm font-medium">
-            HTML campaign — {subject || DEFAULT_HTML_CAMPAIGN_SUBJECT}
-          </span>
-          <Maximize2 className="h-4 w-4 shrink-0 text-slate-400" />
-        </button>
-      </div>
+      <EmailComposeLauncher
+        title="HTML campaign"
+        description="Write custom HTML or load an inbox-friendly Account template."
+        meta={launcherMeta}
+        icon={Code2}
+        isDark={isDark}
+        active={!minimized}
+        accent="sky"
+        onClick={() => updateHtmlCampaign({ minimized: false })}
+      />
 
       <EmailComposerModal
         open={!minimized}
@@ -182,12 +232,15 @@ export function HtmlCampaignComposer({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-slate-100 dark:border-[#18263b]">
         <div className="flex items-center justify-between px-4 py-3">
-          <h2 className="text-sm font-semibold">HTML campaign</h2>
+          <div>
+            <h2 className="text-sm font-semibold tracking-tight">HTML campaign</h2>
+            <p className="mt-0.5 text-xs text-slate-400">Custom template send</p>
+          </div>
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => updateHtmlCampaign({ minimized: true })}
-              className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
               aria-label="Minimize"
             >
               <Minus className="h-4 w-4" />
@@ -195,7 +248,7 @@ export function HtmlCampaignComposer({
             <button
               type="button"
               onClick={() => updateHtmlCampaign({ expanded: !expanded })}
-              className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
               aria-label={expanded ? 'Restore size' : 'Maximize'}
             >
               <Maximize2 className="h-4 w-4" />
@@ -203,7 +256,7 @@ export function HtmlCampaignComposer({
             <button
               type="button"
               onClick={handleClose}
-              className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -213,9 +266,9 @@ export function HtmlCampaignComposer({
         </div>
 
         <div className="flex min-h-0 shrink-0 flex-col border-b border-slate-100 dark:border-[#18263b]">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-2 dark:border-[#18263b]">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 dark:border-[#18263b]">
           <span className="w-14 shrink-0 text-sm text-slate-500">From</span>
-          <span className="text-sm">{FROM_ADDRESS}</span>
+          <span className="truncate text-sm font-medium">{fromLabel}</span>
         </div>
 
         <BroadcastRecipientPicker
@@ -230,7 +283,7 @@ export function HtmlCampaignComposer({
           variant="composer"
         />
 
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-2 dark:border-[#18263b]">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 dark:border-[#18263b]">
           <span className="w-14 shrink-0 text-sm text-slate-500">Subject</span>
           <input
             type="text"
@@ -241,65 +294,16 @@ export function HtmlCampaignComposer({
           />
         </div>
 
-        <div className="flex items-center gap-3 px-4 py-2">
+        <div className="flex items-center gap-3 px-4 py-2.5">
           <span className="w-14 shrink-0 text-sm text-slate-500">Template</span>
-          <div className="relative min-w-0 flex-1">
-            <button
-              type="button"
-              onClick={() => setTemplateMenuOpen((value) => !value)}
-              className="flex items-center gap-2 text-sm text-primary hover:text-primary-dark"
-            >
-              <FileText className="h-4 w-4" />
-              {selectedTemplate?.name ?? 'Choose template'}
-              <ChevronDown className={cn('h-4 w-4 transition-transform', templateMenuOpen && 'rotate-180')} />
-            </button>
-            {templateMenuOpen && (
-              <>
-                <button type="button" className="fixed inset-0 z-10" onClick={() => setTemplateMenuOpen(false)} />
-                <div className="absolute left-0 top-full z-20 mt-1 max-h-[min(70vh,420px)] w-[min(92vw,320px)] overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 shadow-xl dark:border-[#22324a] dark:bg-[#0b1628]">
-                  {HTML_CAMPAIGN_TEMPLATE_CATEGORIES.map((category) => {
-                    const templates = HTML_CAMPAIGN_TEMPLATES.filter(
-                      (template) => template.category === category.id,
-                    );
-                    if (!templates.length) return null;
-
-                    return (
-                      <div key={category.id} className="px-1 pb-1">
-                        <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                          {category.label}
-                        </p>
-                        {templates.map((template) => (
-                          <button
-                            key={template.id}
-                            type="button"
-                            onClick={() => applyTemplate(template.id)}
-                            className={cn(
-                              'block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-[#06101d]',
-                              template.id === templateName && 'bg-orange-50 dark:bg-orange-950/40',
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'block text-sm font-medium',
-                                template.id === templateName && 'text-primary dark:text-primary',
-                              )}
-                            >
-                              {template.name}
-                            </span>
-                            {template.description && (
-                              <span className="mt-0.5 block text-xs leading-snug text-slate-500">
-                                {template.description}
-                              </span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setTemplateMenuOpen(true)}
+            className="inline-flex min-w-0 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-[#f26522]/40 hover:bg-orange-50 dark:border-[#22324a] dark:bg-[#06111f] dark:text-slate-200 dark:hover:border-[#f26522]/40"
+          >
+            <FileText className="h-4 w-4 shrink-0 text-[#f26522]" />
+            <span className="truncate">{selectedTemplate?.name ?? 'Choose template'}</span>
+          </button>
           <p className="hidden text-xs text-slate-500 sm:block">Use {'{{name}}'} for recipient name</p>
         </div>
         </div>
@@ -350,15 +354,24 @@ export function HtmlCampaignComposer({
 
         {previewInlineOpen && (
           <div className="max-h-[min(42vh,360px)] shrink-0 overflow-y-auto border-t border-slate-100 bg-slate-50/80 px-4 py-4 dark:border-[#18263b] dark:bg-[#06101d]/50">
-            <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">Inbox placement checks</p>
-              <button
-                type="button"
-                onClick={() => updateHtmlCampaign({ previewInlineOpen: false })}
-                className="text-xs font-medium text-primary hover:underline dark:text-primary"
-              >
-                Hide
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={applySpamFilterToEditor}
+                  className="text-xs font-medium text-primary hover:underline dark:text-primary"
+                >
+                  Clean spam words
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateHtmlCampaign({ previewInlineOpen: false })}
+                  className="text-xs font-medium text-primary hover:underline dark:text-primary"
+                >
+                  Hide
+                </button>
+              </div>
             </div>
             <HtmlCampaignEmailPreview
               subject={subject}
@@ -458,6 +471,14 @@ export function HtmlCampaignComposer({
         </div>
         </div>
       </EmailComposerModal>
+
+      <HtmlTemplatePickerModal
+        open={templateMenuOpen}
+        isDark={isDark}
+        selectedTemplateId={templateName}
+        onClose={() => setTemplateMenuOpen(false)}
+        onSelect={applyTemplate}
+      />
     </>
   );
 }

@@ -1,19 +1,10 @@
 import type { DeliverabilityCheck } from '@/lib/broadcast-email-deliverability';
-
-const SPAM_TRIGGER_WORDS = [
-  'free money',
-  'act now',
-  'click here',
-  'winner',
-  'congratulations',
-  '100% free',
-  'risk free',
-  'no obligation',
-  'limited time',
-  'urgent',
-  'cash bonus',
-  'earn extra cash',
-];
+import {
+  findRemainingSpamPhrases,
+  scrubSpamFromHtml,
+  scrubSpamFromText,
+  sentenceCaseSubject,
+} from '@/lib/spam-content-filter';
 
 function uppercaseRatio(value: string) {
   const letters = value.replace(/[^a-zA-Z]/g, '');
@@ -23,18 +14,18 @@ function uppercaseRatio(value: string) {
 }
 
 export function sanitizeHtmlCampaignSubject(subject: string) {
-  return subject
-    .trim()
-    .replace(/\s+/g, ' ')
+  const scrubbed = scrubSpamFromText(subject);
+  return sentenceCaseSubject(scrubbed.text)
     .replace(/!{2,}/g, '!')
     .slice(0, 180);
 }
 
 export function sanitizeHtmlCampaignBody(html: string) {
-  return html
+  const withoutScripts = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .trim()
     .slice(0, 100000);
+  return scrubSpamFromHtml(withoutScripts).text;
 }
 
 function htmlToPlainText(html: string) {
@@ -62,10 +53,20 @@ export function runHtmlCampaignDeliverabilityChecks(options: {
   htmlBody: string;
   recipientCount: number;
 }) {
-  const subject = sanitizeHtmlCampaignSubject(options.subject);
-  const htmlBody = sanitizeHtmlCampaignBody(options.htmlBody);
+  const subjectScrub = scrubSpamFromText(options.subject);
+  const htmlScrub = scrubSpamFromHtml(
+    options.htmlBody
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .trim()
+      .slice(0, 100000),
+  );
+  const subject = sentenceCaseSubject(subjectScrub.text)
+    .replace(/!{2,}/g, '!')
+    .slice(0, 180);
+  const htmlBody = htmlScrub.text;
   const plainText = htmlToPlainText(htmlBody).toLowerCase();
-  const combined = `${subject} ${plainText}`.toLowerCase();
+  const filteredPhrases = [...new Set([...subjectScrub.removed, ...htmlScrub.removed])];
+  const remaining = findRemainingSpamPhrases(`${subject} ${plainText}`);
   const checks: DeliverabilityCheck[] = [];
 
   if (!subject) {
@@ -123,13 +124,21 @@ export function runHtmlCampaignDeliverabilityChecks(options: {
     });
   }
 
-  const trigger = SPAM_TRIGGER_WORDS.find((word) => combined.includes(word));
-  if (trigger) {
+  if (remaining.length > 0) {
     checks.push({
       id: 'spam-words',
       level: 'fail',
-      title: 'Spam trigger phrase detected',
-      detail: `Remove or rephrase "${trigger}" in the subject or email body.`,
+      title: 'Spam trigger phrase still present',
+      detail: `Could not auto-clean: ${remaining.slice(0, 3).join(', ')}. Rephrase manually.`,
+    });
+  } else if (filteredPhrases.length > 0) {
+    checks.push({
+      id: 'spam-words',
+      level: 'warn',
+      title: 'Spam words auto-filtered',
+      detail: `Removed/replaced: ${filteredPhrases.slice(0, 5).join(', ')}${
+        filteredPhrases.length > 5 ? '…' : ''
+      }. Cleaned copy will be sent.`,
     });
   } else {
     checks.push({
@@ -261,6 +270,7 @@ export function runHtmlCampaignDeliverabilityChecks(options: {
     sanitizedSubject: subject,
     sanitizedHtml: htmlBody,
     preheader: extractPreheader(htmlBody),
+    filteredSpamPhrases: filteredPhrases,
   };
 }
 

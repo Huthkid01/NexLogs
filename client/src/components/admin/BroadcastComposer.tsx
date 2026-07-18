@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { BroadcastInlineProductSelector } from '@/components/admin/BroadcastInlineProductSelector';
 import { BroadcastEmailPreview } from '@/components/admin/BroadcastEmailPreview';
 import { BroadcastPreviewModal } from '@/components/admin/BroadcastPreviewModal';
+import { EmailComposeLauncher } from '@/components/admin/EmailComposeLauncher';
 import { EmailComposerModal } from '@/components/admin/EmailComposerModal';
 import {
   BroadcastRecipientPicker,
@@ -28,12 +29,13 @@ import { useBroadcastDeliverability } from '@/components/admin/BroadcastEmailPre
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
 import { useTheme } from '@/hooks/useTheme';
 import { clearBroadcastDraft, saveBroadcastDraft } from '@/lib/broadcast-draft';
+import { runDeliverabilityChecks } from '@/lib/broadcast-email-deliverability';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/constants';
 import type { Product } from '@/types';
 
 const DEFAULT_SUBJECT = `New products available on ${APP_NAME}`;
-const FROM_ADDRESS = 'support@nexlogs.store';
+const DEFAULT_FROM = 'support@nexlogs.store';
 
 const DEFAULT_ANNOUNCEMENT_MESSAGE =
   'We just added new products to the marketplace. Browse the list below and click any product to view details.';
@@ -58,6 +60,8 @@ export interface BroadcastComposerProps {
   onRecipientCountChange?: (count: number) => void;
   sending?: boolean;
   canSend: boolean;
+  fromName?: string;
+  fromAddress?: string;
 }
 
 export function BroadcastComposer({
@@ -80,6 +84,8 @@ export function BroadcastComposer({
   onRecipientCountChange,
   sending = false,
   canSend,
+  fromName = 'Nexlogs',
+  fromAddress = DEFAULT_FROM,
 }: BroadcastComposerProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -108,6 +114,16 @@ export function BroadcastComposer({
   );
 
   const sendCount = selectedRecipientIds.length + selectedExternalEmails.length;
+  const fromLabel = `${fromName} <${fromAddress}>`;
+  const launcherMeta = [
+    subject?.trim() || DEFAULT_SUBJECT,
+    sendCount ? `${sendCount} recipient${sendCount === 1 ? '' : 's'}` : null,
+    selectedProductIds.length
+      ? `${selectedProductIds.length} product${selectedProductIds.length === 1 ? '' : 's'}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const toggleProduct = (productId: string) => {
     onSelectedProductIdsChange(
@@ -162,6 +178,33 @@ export function BroadcastComposer({
     setPreviewOpen(true);
   };
 
+  const applySpamFilterToEditor = () => {
+    const cleaned = runDeliverabilityChecks({
+      subject,
+      customMessage,
+      productCount: Math.max(selectedProductIds.length, 1),
+    });
+    const phrases = cleaned.filteredSpamPhrases ?? [];
+    let changed = false;
+    if (cleaned.sanitizedSubject !== subject) {
+      onSubjectChange(cleaned.sanitizedSubject);
+      changed = true;
+    }
+    if (cleaned.sanitizedMessage !== customMessage) {
+      onCustomMessageChange(cleaned.sanitizedMessage);
+      changed = true;
+    }
+    if (phrases.length || changed) {
+      toast.success(
+        phrases.length
+          ? `Spam filter cleaned: ${phrases.slice(0, 4).join(', ')}${phrases.length > 4 ? '…' : ''}`
+          : 'Email content cleaned for inbox delivery',
+      );
+    } else {
+      toast.message('No spam trigger phrases found');
+    }
+  };
+
   const handleSendClick = () => {
     const committed = recipientPickerRef.current?.commitPendingInput() ?? {
       userIds: selectedRecipientIds,
@@ -177,6 +220,12 @@ export function BroadcastComposer({
       toast.error('Select at least one product to include.');
       return;
     }
+    if (deliverability.sanitizedSubject !== subject) {
+      onSubjectChange(deliverability.sanitizedSubject);
+    }
+    if (deliverability.sanitizedMessage !== customMessage) {
+      onCustomMessageChange(deliverability.sanitizedMessage);
+    }
     if (!deliverability.canSend) {
       toast.error('Fix the failed inbox checks before sending.');
       return;
@@ -187,22 +236,16 @@ export function BroadcastComposer({
 
   return (
     <>
-      <div className="flex w-full justify-start">
-        <button
-          type="button"
-          onClick={() => updateBroadcast({ minimized: false })}
-          className={cn(
-            'flex w-full max-w-2xl items-center justify-between rounded-xl border px-4 py-3 text-left shadow-lg transition hover:shadow-xl',
-            isDark ? 'border-[#22324a] bg-[#0b1628] text-slate-100' : 'border-slate-200 bg-white text-slate-900',
-            !minimized && 'ring-2 ring-primary/40',
-          )}
-        >
-          <span className="truncate text-sm font-medium">
-            New message — {subject || DEFAULT_SUBJECT}
-          </span>
-          <Maximize2 className="h-4 w-4 shrink-0 text-slate-400" />
-        </button>
-      </div>
+      <EmailComposeLauncher
+        title="Product announcement"
+        description="Gmail-style compose for new marketplace products with automatic product links."
+        meta={launcherMeta}
+        icon={Package}
+        isDark={isDark}
+        active={!minimized}
+        accent="orange"
+        onClick={() => updateBroadcast({ minimized: false })}
+      />
 
       <EmailComposerModal
         open={!minimized}
@@ -213,12 +256,15 @@ export function BroadcastComposer({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-slate-100 dark:border-[#18263b]">
         <div className="flex items-center justify-between px-4 py-3">
-          <h2 className="text-sm font-semibold">New message</h2>
+          <div>
+            <h2 className="text-sm font-semibold tracking-tight">New message</h2>
+            <p className="mt-0.5 text-xs text-slate-400">Product announcement</p>
+          </div>
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => updateBroadcast({ minimized: true })}
-              className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
               aria-label="Minimize"
             >
               <Minus className="h-4 w-4" />
@@ -226,7 +272,7 @@ export function BroadcastComposer({
             <button
               type="button"
               onClick={() => updateBroadcast({ expanded: !expanded })}
-              className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
               aria-label={expanded ? 'Restore size' : 'Maximize'}
             >
               <Maximize2 className="h-4 w-4" />
@@ -234,7 +280,7 @@ export function BroadcastComposer({
             <button
               type="button"
               onClick={handleClose}
-              className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-[#06101d] dark:hover:text-slate-200"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -244,16 +290,11 @@ export function BroadcastComposer({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-2 dark:border-[#18263b]">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 dark:border-[#18263b]">
           <span className="w-14 shrink-0 text-sm text-slate-500">From</span>
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 items-center gap-1 text-sm"
-            disabled
-          >
-            <span className="truncate">{FROM_ADDRESS}</span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
-          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-1 text-sm">
+            <span className="truncate font-medium">{fromLabel}</span>
+          </div>
         </div>
 
         <BroadcastRecipientPicker
@@ -307,15 +348,24 @@ export function BroadcastComposer({
 
         {previewInlineOpen && (
           <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-4 dark:border-[#18263b] dark:bg-[#06101d]/50">
-            <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">Email preview</p>
-              <button
-                type="button"
-                onClick={handlePreviewFullscreen}
-                className="text-xs font-medium text-primary hover:underline dark:text-primary"
-              >
-                Open full screen
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={applySpamFilterToEditor}
+                  className="text-xs font-medium text-primary hover:underline dark:text-primary"
+                >
+                  Clean spam words
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePreviewFullscreen}
+                  className="text-xs font-medium text-primary hover:underline dark:text-primary"
+                >
+                  Open full screen
+                </button>
+              </div>
             </div>
             <BroadcastEmailPreview
               subject={subject}

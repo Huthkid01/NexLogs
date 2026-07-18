@@ -1,17 +1,8 @@
-const SPAM_TRIGGER_WORDS = [
-  'free money',
-  'act now',
-  'click here',
-  'winner',
-  'congratulations',
-  '100% free',
-  'risk free',
-  'no obligation',
-  'limited time',
-  'urgent',
-  'cash bonus',
-  'earn extra cash',
-];
+import {
+  findRemainingSpamPhrases,
+  scrubSpamFromText,
+  sentenceCaseSubject,
+} from '../_shared/spam-content-filter.ts';
 
 function uppercaseRatio(value: string) {
   const letters = value.replace(/[^a-zA-Z]/g, '');
@@ -21,21 +12,23 @@ function uppercaseRatio(value: string) {
 }
 
 export function sanitizeBroadcastSubject(subject: string) {
-  return subject
-    .trim()
-    .replace(/\s+/g, ' ')
+  const scrubbed = scrubSpamFromText(subject);
+  return sentenceCaseSubject(scrubbed.text)
     .replace(/!{2,}/g, '!')
     .slice(0, 180);
 }
 
 export function sanitizeBroadcastMessage(message: string) {
-  return message.trim().replace(/\s+/g, ' ').slice(0, 1200);
+  return scrubSpamFromText(message).text.slice(0, 1200);
 }
 
 export function validateBroadcastContent(subject: string, customMessage: string) {
-  const sanitizedSubject = sanitizeBroadcastSubject(subject);
-  const sanitizedMessage = sanitizeBroadcastMessage(customMessage);
-  const combined = `${sanitizedSubject} ${sanitizedMessage}`.toLowerCase();
+  const subjectScrub = scrubSpamFromText(subject);
+  const messageScrub = scrubSpamFromText(customMessage);
+  const sanitizedSubject = sentenceCaseSubject(subjectScrub.text)
+    .replace(/!{2,}/g, '!')
+    .slice(0, 180);
+  const sanitizedMessage = messageScrub.text.slice(0, 1200);
 
   if (!sanitizedSubject) {
     throw new Error('Subject line is required');
@@ -49,9 +42,11 @@ export function validateBroadcastContent(subject: string, customMessage: string)
     throw new Error('Subject has too much punctuation. Remove repeated ! or ? marks.');
   }
 
-  const trigger = SPAM_TRIGGER_WORDS.find((word) => combined.includes(word));
-  if (trigger) {
-    throw new Error(`Content includes spam trigger phrase "${trigger}". Rephrase before sending.`);
+  const remaining = findRemainingSpamPhrases(`${sanitizedSubject} ${sanitizedMessage}`);
+  if (remaining.length > 0) {
+    throw new Error(
+      `Content still includes spam trigger phrase "${remaining[0]}" after auto-filter. Rephrase before sending.`,
+    );
   }
 
   return { sanitizedSubject, sanitizedMessage };

@@ -18,6 +18,7 @@ import { MarketingSmtpManager } from '@/components/admin/MarketingSmtpManager';
 import { useBroadcastDeliverability } from '@/components/admin/BroadcastEmailPreview';
 import { useHtmlCampaignDeliverability } from '@/components/admin/HtmlCampaignEmailPreview';
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
+import { useTheme } from '@/hooks/useTheme';
 import { broadcastEmailService, htmlCampaignService, marketingTrackingService } from '@/services';
 import type { BroadcastEmailPayload, EmailBroadcastRecord } from '@/services/broadcast-email.service';
 import type { EmailCampaignRecord, HtmlCampaignPayload } from '@/services/html-campaign.service';
@@ -31,7 +32,11 @@ import {
 } from '@/lib/marketing-send-recipients';
 import { runSequentialEmailSend, type SequentialSendProgressInfo } from '@/lib/marketing-sequential-send';
 import type { MarketingSendRecipient } from '@/lib/marketing-send-recipients';
-import { DEFAULT_MARKETING_SMTP_ID } from '@/services/marketing-smtp.service';
+import {
+  DEFAULT_MARKETING_SMTP_ID,
+  type MarketingSmtpAccount,
+} from '@/services/marketing-smtp.service';
+import { adminMutedTextClass } from '@/lib/admin-theme';
 import { APP_NAME } from '@/constants';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types';
@@ -95,6 +100,12 @@ export default function AdminSenderPage() {
   const broadcastAbortRef = useRef<AbortController | null>(null);
   const htmlAbortRef = useRef<AbortController | null>(null);
   const [selectedSmtpAccountId, setSelectedSmtpAccountId] = useState(DEFAULT_MARKETING_SMTP_ID);
+  const [activeSmtpAccount, setActiveSmtpAccount] = useState<MarketingSmtpAccount | null>(null);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  const fromName = activeSmtpAccount?.from_name || 'Nexlogs';
+  const fromAddress = activeSmtpAccount?.from_address || 'support@nexlogs.store';
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -462,76 +473,104 @@ export default function AdminSenderPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-1">
-        <h1 className="text-xl font-bold sm:text-2xl">Email Sender</h1>
-        <p className="text-sm text-muted-foreground">
-          Send product announcements or custom HTML campaigns. Choose the default SMTP or another account you add below.
-          Use <strong>Account emails → inbox-friendly</strong> templates for the best chance of Primary inbox.
-          Activation and password-reset emails still use the system SMTP and are not changed here.
+    <div className={cn('space-y-8', isDark ? 'text-slate-100' : 'text-slate-900')}>
+      <div className="space-y-2">
+        <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">Email Sender</h1>
+        <p className={cn('max-w-2xl text-sm leading-relaxed', adminMutedTextClass(isDark))}>
+          Compose like Gmail, send through your chosen marketing SMTP, and keep activation emails on the system account.
         </p>
       </div>
 
       <MarketingSmtpManager
         selectedSmtpAccountId={selectedSmtpAccountId}
         onSelectedSmtpAccountIdChange={setSelectedSmtpAccountId}
+        onActiveAccountChange={setActiveSmtpAccount}
       />
 
-      <div className="flex w-full flex-col gap-3">
-        <BroadcastComposer
-          contacts={contactList}
-          contactsLoading={contactsLoading}
-          products={products ?? []}
-          productsLoading={productsLoading}
-          subject={subject}
-          onSubjectChange={(value) => updateBroadcast({ subject: value })}
-          customMessage={customMessage}
-          onCustomMessageChange={(value) => updateBroadcast({ customMessage: value })}
-          selectedProductIds={selectedProductIds}
-          onSelectedProductIdsChange={(ids) => updateBroadcast({ selectedProductIds: ids })}
-          selectedRecipientIds={selectedRecipientIds}
-          onSelectedRecipientIdsChange={(ids) => updateBroadcast({ selectedRecipientIds: ids })}
-          selectedExternalEmails={selectedExternalEmails}
-          onSelectedExternalEmailsChange={(emails) => updateBroadcast({ selectedExternalEmails: emails })}
-          onRecipientCountChange={setBroadcastRecipientCount}
-          onPrepareSend={(selection) => {
-            broadcastSendSelectionRef.current = selection;
-          }}
-          onSend={openSendFlow}
-          sending={sendPhase === 'sending'}
-          canSend={canSend}
-        />
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold tracking-tight">Compose</h2>
+            <p className={cn('mt-0.5 text-sm', adminMutedTextClass(isDark))}>
+              Open a composer to write, preview, and send.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <BroadcastComposer
+            contacts={contactList}
+            contactsLoading={contactsLoading}
+            products={products ?? []}
+            productsLoading={productsLoading}
+            subject={subject}
+            onSubjectChange={(value) => updateBroadcast({ subject: value })}
+            customMessage={customMessage}
+            onCustomMessageChange={(value) => updateBroadcast({ customMessage: value })}
+            selectedProductIds={selectedProductIds}
+            onSelectedProductIdsChange={(ids) => updateBroadcast({ selectedProductIds: ids })}
+            selectedRecipientIds={selectedRecipientIds}
+            onSelectedRecipientIdsChange={(ids) => updateBroadcast({ selectedRecipientIds: ids })}
+            selectedExternalEmails={selectedExternalEmails}
+            onSelectedExternalEmailsChange={(emails) => updateBroadcast({ selectedExternalEmails: emails })}
+            onRecipientCountChange={setBroadcastRecipientCount}
+            onPrepareSend={(selection) => {
+              broadcastSendSelectionRef.current = selection;
+            }}
+            onSend={openSendFlow}
+            sending={sendPhase === 'sending'}
+            canSend={canSend}
+            fromName={fromName}
+            fromAddress={fromAddress}
+          />
 
-        <HtmlCampaignComposer
-          contacts={contactList}
-          contactsLoading={contactsLoading}
-          subject={htmlSubject}
-          onSubjectChange={(value) => updateHtmlCampaign({ subject: value })}
-          htmlBody={htmlBody}
-          onHtmlBodyChange={(value) => updateHtmlCampaign({ htmlBody: value })}
-          templateName={htmlTemplateName}
-          onTemplateNameChange={(value) => updateHtmlCampaign({ templateName: value })}
-          selectedRecipientIds={htmlRecipientIds}
-          onSelectedRecipientIdsChange={(ids) => updateHtmlCampaign({ selectedRecipientIds: ids })}
-          selectedExternalEmails={htmlExternalEmails}
-          onSelectedExternalEmailsChange={(emails) => updateHtmlCampaign({ selectedExternalEmails: emails })}
-          onRecipientCountChange={setHtmlRecipientCount}
-          onPrepareSend={(selection) => {
-            htmlSendSelectionRef.current = selection;
-          }}
-          onSend={openHtmlSendFlow}
-          sending={htmlSendPhase === 'sending'}
-          canSend={canSendHtml}
-        />
-      </div>
+          <HtmlCampaignComposer
+            contacts={contactList}
+            contactsLoading={contactsLoading}
+            subject={htmlSubject}
+            onSubjectChange={(value) => updateHtmlCampaign({ subject: value })}
+            htmlBody={htmlBody}
+            onHtmlBodyChange={(value) => updateHtmlCampaign({ htmlBody: value })}
+            templateName={htmlTemplateName}
+            onTemplateNameChange={(value) => updateHtmlCampaign({ templateName: value })}
+            selectedRecipientIds={htmlRecipientIds}
+            onSelectedRecipientIdsChange={(ids) => updateHtmlCampaign({ selectedRecipientIds: ids })}
+            selectedExternalEmails={htmlExternalEmails}
+            onSelectedExternalEmailsChange={(emails) => updateHtmlCampaign({ selectedExternalEmails: emails })}
+            onRecipientCountChange={setHtmlRecipientCount}
+            onPrepareSend={(selection) => {
+              htmlSendSelectionRef.current = selection;
+            }}
+            onSend={openHtmlSendFlow}
+            sending={htmlSendPhase === 'sending'}
+            canSend={canSendHtml}
+            fromName={fromName}
+            fromAddress={fromAddress}
+          />
+        </div>
+      </section>
 
-      <EmailMarketingOverview />
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">Performance</h2>
+          <p className={cn('mt-0.5 text-sm', adminMutedTextClass(isDark))}>
+            Opens and clicks from tracked marketing sends.
+          </p>
+        </div>
+        <EmailMarketingOverview />
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">Recent sends</h2>
+          <p className={cn('mt-0.5 text-sm', adminMutedTextClass(isDark))}>
+            Preview past broadcasts and campaigns, or resend to missing contacts.
+          </p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4 text-[#f26522]" />
               Product broadcasts
             </CardTitle>
             <CardDescription>Click a broadcast to preview it or see who received it.</CardDescription>
@@ -542,24 +581,24 @@ export default function AdminSenderPage() {
             ) : !broadcasts?.length ? (
               <p className="text-sm text-muted-foreground">No product broadcasts sent yet.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {broadcasts.map((broadcast) => (
                   <button
                     key={broadcast.id}
                     type="button"
                     onClick={() => setHistoryPreview(broadcast)}
                     className={cn(
-                      'flex w-full flex-col gap-1 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/40',
+                      'flex w-full flex-col gap-1 rounded-xl border border-border p-3.5 text-left transition-colors hover:bg-muted/40',
                       'sm:flex-row sm:items-center sm:justify-between',
                     )}
                   >
-                    <div>
-                      <p className="font-medium">{broadcast.subject}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{broadcast.subject}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(broadcast.created_at).toLocaleString()} • {broadcast.product_ids.length} products
                       </p>
                     </div>
-                    <p className="text-sm">
+                    <p className="shrink-0 text-sm tabular-nums">
                       Sent {broadcast.sent_count}/{broadcast.recipient_count}
                     </p>
                   </button>
@@ -571,8 +610,8 @@ export default function AdminSenderPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Mail className="h-4 w-4 text-sky-500" />
               HTML campaigns
             </CardTitle>
             <CardDescription>Click a campaign to preview it or see who received it.</CardDescription>
@@ -583,25 +622,25 @@ export default function AdminSenderPage() {
             ) : !htmlCampaigns?.length ? (
               <p className="text-sm text-muted-foreground">No HTML campaigns sent yet.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {htmlCampaigns.map((campaign) => (
                   <button
                     key={campaign.id}
                     type="button"
                     onClick={() => setHtmlHistoryPreview(campaign)}
                     className={cn(
-                      'flex w-full flex-col gap-1 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/40',
+                      'flex w-full flex-col gap-1 rounded-xl border border-border p-3.5 text-left transition-colors hover:bg-muted/40',
                       'sm:flex-row sm:items-center sm:justify-between',
                     )}
                   >
-                    <div>
-                      <p className="font-medium">{campaign.subject}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{campaign.subject}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(campaign.created_at).toLocaleString()}
                         {campaign.template_name ? ` • ${campaign.template_name}` : ''}
                       </p>
                     </div>
-                    <p className="text-sm">
+                    <p className="shrink-0 text-sm tabular-nums">
                       Sent {campaign.sent_count}/{campaign.recipient_count}
                     </p>
                   </button>
@@ -610,7 +649,8 @@ export default function AdminSenderPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </section>
 
       <BroadcastPreviewModal
         open={!!historyPreview}

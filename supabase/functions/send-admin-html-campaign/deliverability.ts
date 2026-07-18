@@ -1,17 +1,9 @@
-const SPAM_TRIGGER_WORDS = [
-  'free money',
-  'act now',
-  'click here',
-  'winner',
-  'congratulations',
-  '100% free',
-  'risk free',
-  'no obligation',
-  'limited time',
-  'urgent',
-  'cash bonus',
-  'earn extra cash',
-];
+import {
+  findRemainingSpamPhrases,
+  scrubSpamFromHtml,
+  scrubSpamFromText,
+  sentenceCaseSubject,
+} from '../_shared/spam-content-filter.ts';
 
 function uppercaseRatio(value: string) {
   const letters = value.replace(/[^a-zA-Z]/g, '');
@@ -21,23 +13,32 @@ function uppercaseRatio(value: string) {
 }
 
 export function sanitizeCampaignSubject(subject: string) {
-  return subject
-    .trim()
-    .replace(/\s+/g, ' ')
+  const scrubbed = scrubSpamFromText(subject);
+  return sentenceCaseSubject(scrubbed.text)
     .replace(/!{2,}/g, '!')
     .slice(0, 180);
 }
 
 export function sanitizeHtmlBody(html: string) {
-  return html
+  const withoutScripts = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .trim()
     .slice(0, 100000);
+  return scrubSpamFromHtml(withoutScripts).text;
 }
 
 export function validateCampaignContent(subject: string, htmlBody: string) {
-  const sanitizedSubject = sanitizeCampaignSubject(subject);
-  const sanitizedHtml = sanitizeHtmlBody(htmlBody);
+  const subjectScrub = scrubSpamFromText(subject);
+  const htmlScrub = scrubSpamFromHtml(
+    htmlBody
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .trim()
+      .slice(0, 100000),
+  );
+  const sanitizedSubject = sentenceCaseSubject(subjectScrub.text)
+    .replace(/!{2,}/g, '!')
+    .slice(0, 180);
+  const sanitizedHtml = htmlScrub.text;
 
   if (!sanitizedSubject) {
     throw new Error('Subject line is required');
@@ -51,9 +52,16 @@ export function validateCampaignContent(subject: string, htmlBody: string) {
     throw new Error('Subject uses too many capital letters. Use sentence case to avoid spam filters.');
   }
 
-  const trigger = SPAM_TRIGGER_WORDS.find((word) => sanitizedSubject.toLowerCase().includes(word));
-  if (trigger) {
-    throw new Error(`Subject includes spam trigger phrase "${trigger}". Rephrase before sending.`);
+  const plainForCheck = sanitizedHtml
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const remaining = findRemainingSpamPhrases(`${sanitizedSubject} ${plainForCheck}`);
+  if (remaining.length > 0) {
+    throw new Error(
+      `Content still includes spam trigger phrase "${remaining[0]}" after auto-filter. Rephrase before sending.`,
+    );
   }
 
   return { sanitizedSubject, sanitizedHtml };

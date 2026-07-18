@@ -1,3 +1,9 @@
+import {
+  findRemainingSpamPhrases,
+  scrubSpamFromText,
+  sentenceCaseSubject,
+} from '@/lib/spam-content-filter';
+
 export type DeliverabilityLevel = 'pass' | 'warn' | 'fail';
 
 export interface DeliverabilityCheck {
@@ -7,21 +13,6 @@ export interface DeliverabilityCheck {
   detail: string;
 }
 
-const SPAM_TRIGGER_WORDS = [
-  'free money',
-  'act now',
-  'click here',
-  'winner',
-  'congratulations',
-  '100% free',
-  'risk free',
-  'no obligation',
-  'limited time',
-  'urgent',
-  'cash bonus',
-  'earn extra cash',
-];
-
 function uppercaseRatio(value: string) {
   const letters = value.replace(/[^a-zA-Z]/g, '');
   if (!letters.length) return 0;
@@ -30,15 +21,14 @@ function uppercaseRatio(value: string) {
 }
 
 export function sanitizeBroadcastSubject(subject: string) {
-  return subject
-    .trim()
-    .replace(/\s+/g, ' ')
+  const scrubbed = scrubSpamFromText(subject);
+  return sentenceCaseSubject(scrubbed.text)
     .replace(/!{2,}/g, '!')
     .slice(0, 180);
 }
 
 export function sanitizeBroadcastMessage(message: string) {
-  return message.trim().replace(/\s+/g, ' ').slice(0, 1200);
+  return scrubSpamFromText(message).text.slice(0, 1200);
 }
 
 export function runDeliverabilityChecks(options: {
@@ -46,9 +36,14 @@ export function runDeliverabilityChecks(options: {
   customMessage?: string;
   productCount: number;
 }) {
-  const subject = sanitizeBroadcastSubject(options.subject);
-  const message = sanitizeBroadcastMessage(options.customMessage ?? '');
-  const combined = `${subject} ${message}`.toLowerCase();
+  const subjectScrub = scrubSpamFromText(options.subject);
+  const messageScrub = scrubSpamFromText(options.customMessage ?? '');
+  const subject = sentenceCaseSubject(subjectScrub.text)
+    .replace(/!{2,}/g, '!')
+    .slice(0, 180);
+  const message = messageScrub.text.slice(0, 1200);
+  const filteredPhrases = [...new Set([...subjectScrub.removed, ...messageScrub.removed])];
+  const remaining = findRemainingSpamPhrases(`${subject} ${message}`);
   const checks: DeliverabilityCheck[] = [];
 
   if (!subject) {
@@ -106,13 +101,21 @@ export function runDeliverabilityChecks(options: {
     });
   }
 
-  const trigger = SPAM_TRIGGER_WORDS.find((word) => combined.includes(word));
-  if (trigger) {
+  if (remaining.length > 0) {
     checks.push({
       id: 'spam-words',
       level: 'fail',
-      title: 'Spam trigger phrase detected',
-      detail: `Remove or rephrase "${trigger}" to reduce spam scoring.`,
+      title: 'Spam trigger phrase still present',
+      detail: `Could not auto-clean: ${remaining.slice(0, 3).join(', ')}. Rephrase manually.`,
+    });
+  } else if (filteredPhrases.length > 0) {
+    checks.push({
+      id: 'spam-words',
+      level: 'warn',
+      title: 'Spam words auto-filtered',
+      detail: `Removed/replaced: ${filteredPhrases.slice(0, 5).join(', ')}${
+        filteredPhrases.length > 5 ? '…' : ''
+      }. Cleaned copy will be sent.`,
     });
   } else {
     checks.push({
@@ -179,5 +182,6 @@ export function runDeliverabilityChecks(options: {
     warnings,
     sanitizedSubject: subject,
     sanitizedMessage: message,
+    filteredSpamPhrases: filteredPhrases,
   };
 }
