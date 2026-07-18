@@ -28,7 +28,7 @@ import {
   resolveMarketingSendRecipients,
   type MarketingSendProgressItem,
 } from '@/lib/marketing-send-recipients';
-import { runSequentialEmailSend } from '@/lib/marketing-sequential-send';
+import { runSequentialEmailSend, type SequentialSendProgressInfo } from '@/lib/marketing-sequential-send';
 import type { MarketingSendRecipient } from '@/lib/marketing-send-recipients';
 import { APP_NAME } from '@/constants';
 import { cn } from '@/lib/utils';
@@ -75,6 +75,7 @@ export default function AdminSenderPage() {
   const [sendResult, setSendResult] = useState({ sentCount: 0, failedCount: 0 });
   const [sendProgress, setSendProgress] = useState<MarketingSendProgressItem[]>([]);
   const [currentSendEmail, setCurrentSendEmail] = useState<string | null>(null);
+  const [sendInfo, setSendInfo] = useState<SequentialSendProgressInfo | null>(null);
   const [historyPreview, setHistoryPreview] = useState<EmailBroadcastRecord | null>(null);
 
   const [htmlSendFlowOpen, setHtmlSendFlowOpen] = useState(false);
@@ -83,6 +84,7 @@ export default function AdminSenderPage() {
   const [htmlSendResult, setHtmlSendResult] = useState({ sentCount: 0, failedCount: 0 });
   const [htmlSendProgress, setHtmlSendProgress] = useState<MarketingSendProgressItem[]>([]);
   const [htmlCurrentSendEmail, setHtmlCurrentSendEmail] = useState<string | null>(null);
+  const [htmlSendInfo, setHtmlSendInfo] = useState<SequentialSendProgressInfo | null>(null);
   const [htmlHistoryPreview, setHtmlHistoryPreview] = useState<EmailCampaignRecord | null>(null);
   const [broadcastRecipientCount, setBroadcastRecipientCount] = useState(0);
   const [htmlRecipientCount, setHtmlRecipientCount] = useState(0);
@@ -157,6 +159,7 @@ export default function AdminSenderPage() {
     setSendResult({ sentCount: 0, failedCount: 0 });
     setSendProgress([]);
     setCurrentSendEmail(null);
+    setSendInfo(null);
     setSendPhase('confirm');
     setSendFlowOpen(true);
   };
@@ -166,6 +169,7 @@ export default function AdminSenderPage() {
     setSendFlowOpen(false);
     setSendPhase('confirm');
     setSendError('');
+    setSendInfo(null);
   };
 
   const openHtmlSendFlow = () => {
@@ -173,6 +177,7 @@ export default function AdminSenderPage() {
     setHtmlSendResult({ sentCount: 0, failedCount: 0 });
     setHtmlSendProgress([]);
     setHtmlCurrentSendEmail(null);
+    setHtmlSendInfo(null);
     setHtmlSendPhase('confirm');
     setHtmlSendFlowOpen(true);
   };
@@ -182,6 +187,7 @@ export default function AdminSenderPage() {
     setHtmlSendFlowOpen(false);
     setHtmlSendPhase('confirm');
     setHtmlSendError('');
+    setHtmlSendInfo(null);
   };
 
   const buildSingleRecipientPayload = (recipient: MarketingSendRecipient) => {
@@ -264,9 +270,10 @@ export default function AdminSenderPage() {
             throw error;
           }
         },
-        onProgress: (items, currentEmail) => {
+        onProgress: (items, currentEmail, info) => {
           setSendProgress(items);
           setCurrentSendEmail(currentEmail);
+          setSendInfo(info);
         },
       });
 
@@ -293,6 +300,7 @@ export default function AdminSenderPage() {
       toast.error(message);
     } finally {
       setCurrentSendEmail(null);
+      setSendInfo(null);
     }
   };
 
@@ -360,9 +368,10 @@ export default function AdminSenderPage() {
             throw error;
           }
         },
-        onProgress: (items, currentEmail) => {
+        onProgress: (items, currentEmail, info) => {
           setHtmlSendProgress(items);
           setHtmlCurrentSendEmail(currentEmail);
+          setHtmlSendInfo(info);
         },
       });
 
@@ -389,6 +398,7 @@ export default function AdminSenderPage() {
       toast.error(message);
     } finally {
       setHtmlCurrentSendEmail(null);
+      setHtmlSendInfo(null);
     }
   };
 
@@ -612,6 +622,7 @@ export default function AdminSenderPage() {
         errorMessage={sendError}
         sendProgress={sendProgress}
         currentSendEmail={currentSendEmail}
+        sendInfo={sendInfo}
         onConfirmSend={() => void handleConfirmSend()}
         onClose={closeSendFlow}
       />
@@ -625,6 +636,7 @@ export default function AdminSenderPage() {
         errorMessage={htmlSendError}
         sendProgress={htmlSendProgress}
         currentSendEmail={htmlCurrentSendEmail}
+        sendInfo={htmlSendInfo}
         confirmTitle="Send HTML campaign?"
         onConfirmSend={() => void handleConfirmHtmlSend()}
         onClose={closeHtmlSendFlow}

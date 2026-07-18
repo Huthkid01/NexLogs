@@ -166,7 +166,7 @@ export function runDeliverabilityChecks(options: {
     id: 'rate-limit',
     level: 'pass',
     title: 'Send throttling enabled',
-    detail: 'Emails are sent gradually to protect sender reputation.',
+    detail: 'Emails go out one by one: 10 per batch, then a 5 second pause before the next batch.',
   });
 
   const failures = checks.filter((check) => check.level === 'fail');
