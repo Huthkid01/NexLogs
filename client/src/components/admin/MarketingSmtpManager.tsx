@@ -24,8 +24,8 @@ import { cn } from '@/lib/utils';
 
 const emptyForm: MarketingSmtpInput = {
   label: '',
-  host: 'smtp.hostinger.com',
-  port: 465,
+  host: 'sm1.cloudoon.com',
+  port: 587,
   secure: true,
   username: '',
   password: '',
@@ -33,6 +33,10 @@ const emptyForm: MarketingSmtpInput = {
   from_address: '',
   is_active: true,
 };
+
+function normalizeSmtpPort(port: number) {
+  return port >= 1 && port <= 65535 ? port : 587;
+}
 
 interface MarketingSmtpManagerProps {
   selectedSmtpAccountId: string;
@@ -88,10 +92,11 @@ export function MarketingSmtpManager({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const payload = { ...form, port: normalizeSmtpPort(form.port) };
       if (editingId) {
-        return marketingSmtpService.update(editingId, form);
+        return marketingSmtpService.update(editingId, payload);
       }
-      return marketingSmtpService.create(form);
+      return marketingSmtpService.create(payload);
     },
     onSuccess: (account) => {
       void queryClient.invalidateQueries({ queryKey: ['marketing-smtp-accounts'] });
@@ -120,8 +125,9 @@ export function MarketingSmtpManager({
 
   const testMutation = useMutation({
     mutationFn: async () => {
+      const payload = { ...form, port: normalizeSmtpPort(form.port) };
       if (modalOpen) {
-        return marketingSmtpService.test(form);
+        return marketingSmtpService.test(payload);
       }
       return marketingSmtpService.test({ id: selectedSmtpAccountId });
     },
@@ -161,6 +167,8 @@ export function MarketingSmtpManager({
     Boolean(form.host.trim()) &&
     Boolean(form.username.trim()) &&
     Boolean(form.from_address.trim()) &&
+    form.port >= 1 &&
+    form.port <= 65535 &&
     (editingId ? true : Boolean(form.password?.trim()));
 
   return (
@@ -394,13 +402,21 @@ export function MarketingSmtpManager({
                   <Input
                     id="smtp-port"
                     type="number"
-                    value={form.port}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        port: Number(event.target.value) || 465,
-                      }))
-                    }
+                    min={1}
+                    max={65535}
+                    value={form.port === 0 ? '' : form.port}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (raw === '') {
+                        setForm((current) => ({ ...current, port: 0 }));
+                        return;
+                      }
+                      const parsed = Number.parseInt(raw, 10);
+                      if (!Number.isNaN(parsed)) {
+                        setForm((current) => ({ ...current, port: parsed }));
+                      }
+                    }}
+                    placeholder="587"
                   />
                 </div>
                 <div className="space-y-1.5">
