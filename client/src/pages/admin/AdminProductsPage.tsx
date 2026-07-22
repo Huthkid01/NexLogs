@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Package2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Package2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
 import { AdminDualCurrencyPriceInput } from '@/components/admin/AdminDualCurrencyPriceInput';
 import { ProductBuyerDetailsEditor } from '@/components/admin/ProductBuyerDetailsEditor';
@@ -227,6 +237,19 @@ function buildProductPayload(
 const PRODUCT_TABLE_GRID =
   'grid-cols-[minmax(240px,2fr)_minmax(120px,1fr)_minmax(100px,0.9fr)_minmax(100px,0.9fr)_100px]';
 
+const PAGE_SIZE = 10;
+
+type VisibilityFilter = 'all' | 'visible' | 'hidden';
+type StatusFilter = 'all' | 'active' | 'draft';
+type FeaturedFilter = 'all' | 'featured' | 'not_featured';
+type StockFilter = 'all' | 'in_stock' | 'low' | 'out';
+
+function csvEscape(value: string | number | boolean | null | undefined) {
+  const text = String(value ?? '');
+  if (/[",\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
+  return text;
+}
+
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -235,6 +258,13 @@ export default function AdminProductsPage() {
   const isDark = theme === 'dark';
   const isLoggsplugCatalog = location.pathname.includes('/products/loggsplug');
   const [search, setSearch] = useState('');
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [platformFilter, setPlatformFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [featuredFilter, setFeaturedFilter] = useState<FeaturedFilter>('all');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productPendingDelete, setProductPendingDelete] = useState<Product | null>(null);
@@ -242,6 +272,13 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     setSearch('');
+    setVisibilityFilter('all');
+    setCategoryFilter('all');
+    setPlatformFilter('all');
+    setStatusFilter('all');
+    setFeaturedFilter('all');
+    setStockFilter('all');
+    setPage(1);
     setIsModalOpen(false);
     setEditingProduct(null);
     setProductPendingDelete(null);
@@ -290,18 +327,165 @@ export default function AdminProductsPage() {
     );
   }, [products, isLoggsplugCatalog]);
 
+  const categoryOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const product of scopedProducts) {
+      if (product.category_id && product.category?.name) {
+        map.set(product.category_id, product.category.name);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [scopedProducts]);
+
+  const platformOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const product of scopedProducts) {
+      if (product.platform) set.add(product.platform);
+    }
+    return Array.from(set).sort();
+  }, [scopedProducts]);
+
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return scopedProducts;
 
     return scopedProducts.filter((product) => {
+      if (visibilityFilter === 'visible' && !product.is_active) return false;
+      if (visibilityFilter === 'hidden' && product.is_active) return false;
+      if (categoryFilter !== 'all' && product.category_id !== categoryFilter) return false;
+      if (platformFilter !== 'all' && product.platform !== platformFilter) return false;
+      if (statusFilter === 'active' && !product.is_active) return false;
+      if (statusFilter === 'draft' && product.is_active) return false;
+      if (featuredFilter === 'featured' && !product.featured) return false;
+      if (featuredFilter === 'not_featured' && product.featured) return false;
+      if (stockFilter === 'in_stock' && product.stock <= 0) return false;
+      if (stockFilter === 'low' && !(product.stock > 0 && product.stock <= 5)) return false;
+      if (stockFilter === 'out' && product.stock > 0) return false;
+
+      if (!term) return true;
       const categoryName = product.category?.name ?? '';
-      return [product.title, product.slug, product.platform, categoryName]
+      return [product.title, product.slug, product.platform, categoryName, product.country, product.niche]
         .join(' ')
         .toLowerCase()
         .includes(term);
     });
-  }, [scopedProducts, search]);
+  }, [
+    scopedProducts,
+    search,
+    visibilityFilter,
+    categoryFilter,
+    platformFilter,
+    statusFilter,
+    featuredFilter,
+    stockFilter,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, visibilityFilter, categoryFilter, platformFilter, statusFilter, featuredFilter, stockFilter]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, currentPage]);
+
+  const pageStart = filteredProducts.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(currentPage * PAGE_SIZE, filteredProducts.length);
+
+  const hasActiveFilters =
+    search.trim() !== '' ||
+    visibilityFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    platformFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    featuredFilter !== 'all' ||
+    stockFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearch('');
+    setVisibilityFilter('all');
+    setCategoryFilter('all');
+    setPlatformFilter('all');
+    setStatusFilter('all');
+    setFeaturedFilter('all');
+    setStockFilter('all');
+    setPage(1);
+  };
+
+  const exportProducts = () => {
+    if (!filteredProducts.length) {
+      toast.error('No products to export with the current filters.');
+      return;
+    }
+
+    const headers = [
+      'Title',
+      'Slug',
+      'Category',
+      'Platform',
+      'Price (NGN)',
+      'Stock',
+      'Status',
+      'Featured',
+      'Verified',
+      'Country',
+      'Niche',
+    ];
+    const rows = filteredProducts.map((product) => [
+      product.title,
+      product.slug,
+      product.category?.name ?? '',
+      product.platform,
+      product.price,
+      product.stock,
+      product.is_active ? 'Active' : 'Draft',
+      product.featured ? 'Yes' : 'No',
+      product.verified ? 'Yes' : 'No',
+      product.country ?? '',
+      product.niche ?? '',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(csvEscape).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `${isLoggsplugCatalog ? 'loggsplug' : 'nexlogs'}-products-${stamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredProducts.length} products`);
+  };
+
+  const filterSelectClass = cn(
+    'h-10 w-full rounded-xl border px-3 text-sm outline-none transition-colors',
+    isDark
+      ? 'border-[#22324a] bg-[#06101d] text-slate-100'
+      : 'border-slate-200 bg-white text-slate-900',
+  );
+
+  const pageButtonClass = (active: boolean) =>
+    cn(
+      'inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2.5 text-sm font-medium transition-colors',
+      active
+        ? 'border-[#f26522] bg-[#f26522] text-white'
+        : isDark
+          ? 'border-[#22324a] bg-[#0b1628] text-slate-200 hover:bg-[#10213a]'
+          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100',
+    );
 
   const saveProduct = useMutation({
     mutationFn: async ({ payload }: { payload: ReturnType<typeof buildProductPayload> }) => {
@@ -414,45 +598,139 @@ export default function AdminProductsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">
-              {isLoggsplugCatalog ? 'LOGGSPLUG products' : 'My products'}
+              {isLoggsplugCatalog ? 'LOGGSPLUG products' : 'Product Management'}
             </h1>
             <p className="admin-muted text-sm">
               {isLoggsplugCatalog
-                ? 'Products synced from LOGGSPLUG. Edit markup and visibility here; sync catalog from LOGGSPLUG Sync.'
-                : 'Products you upload manually. Add, edit, and organize your own catalog here.'}
+                ? `Manage your LOGGSPLUG catalog (${scopedProducts.length} total products)`
+                : `Manage your product catalog (${scopedProducts.length} total products)`}
             </p>
           </div>
-          {isLoggsplugCatalog ? (
-            <Button asChild className="w-full bg-[#f26522] hover:bg-[#d94e0f] sm:w-auto">
-              <Link to="/admin/supplier/loggsplug">Open LOGGSPLUG Sync</Link>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(
+                'w-full sm:w-auto',
+                isDark
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+              )}
+              onClick={exportProducts}
+            >
+              <Download className="h-4 w-4" />
+              Export ({filteredProducts.length})
             </Button>
-          ) : (
-            <Button className="w-full bg-[#f26522] hover:bg-[#d94e0f] sm:w-auto" onClick={openCreateModal}>
-              <Plus className="h-4 w-4" />
-              Add Product
-            </Button>
-          )}
+            {isLoggsplugCatalog ? (
+              <Button asChild className="w-full bg-[#f26522] hover:bg-[#d94e0f] sm:w-auto">
+                <Link to="/admin/supplier/loggsplug">Open LOGGSPLUG Sync</Link>
+              </Button>
+            ) : (
+              <Button className="w-full bg-[#f26522] hover:bg-[#d94e0f] sm:w-auto" onClick={openCreateModal}>
+                <Plus className="h-4 w-4" />
+                Add Product
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card className={adminMainCardClass(isDark)}>
           <CardContent className="space-y-5 p-6">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-              <div>
-                <p className={cn('text-xs font-semibold uppercase tracking-[0.18em]', adminSubtleTextClass(isDark))}>Catalog</p>
-                <p className={cn('mt-2 text-2xl font-semibold', adminStrongTextClass(isDark))}>{filteredProducts.length}</p>
-                <p className={cn('mt-1 text-sm', adminMutedTextClass(isDark))}>
-                  {isLoggsplugCatalog
-                    ? 'LOGGSPLUG synced products in this list.'
-                    : 'Your own uploaded products in this list.'}
-                </p>
+            <div
+              className={cn(
+                'space-y-3 rounded-2xl border p-4',
+                isDark ? 'border-[#18263b] bg-[#06111f]' : 'border-slate-200 bg-slate-50',
+              )}
+            >
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]">
+                <div className="relative min-w-0">
+                  <Search className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', adminSubtleTextClass(isDark))} />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search products..."
+                    className={cn(adminInputClass(isDark), 'pl-9')}
+                  />
+                </div>
+                <select
+                  value={visibilityFilter}
+                  onChange={(event) => setVisibilityFilter(event.target.value as VisibilityFilter)}
+                  className={filterSelectClass}
+                  aria-label="Filter by visibility"
+                >
+                  <option value="all">All Visibility</option>
+                  <option value="visible">Visible on site</option>
+                  <option value="hidden">Hidden</option>
+                </select>
+                <select
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value)}
+                  className={filterSelectClass}
+                  aria-label="Filter by category"
+                >
+                  <option value="all">All Categories</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={platformFilter}
+                  onChange={(event) => setPlatformFilter(event.target.value)}
+                  className={filterSelectClass}
+                  aria-label="Filter by platform"
+                >
+                  <option value="all">All Platforms</option>
+                  {platformOptions.map((platform) => (
+                    <option key={platform} value={platform}>
+                      {platform}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                  className={filterSelectClass}
+                  aria-label="Filter by status"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                </select>
               </div>
-              <div className="flex items-end">
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by title, slug, platform, or category"
-                  className={adminInputClass(isDark)}
-                />
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(2,minmax(0,1fr))_auto]">
+                <select
+                  value={stockFilter}
+                  onChange={(event) => setStockFilter(event.target.value as StockFilter)}
+                  className={filterSelectClass}
+                  aria-label="Filter by stock level"
+                >
+                  <option value="all">All Stock Levels</option>
+                  <option value="in_stock">In stock</option>
+                  <option value="low">Low stock (1–5)</option>
+                  <option value="out">Out of stock</option>
+                </select>
+                <select
+                  value={featuredFilter}
+                  onChange={(event) => setFeaturedFilter(event.target.value as FeaturedFilter)}
+                  className={filterSelectClass}
+                  aria-label="Filter by featured"
+                >
+                  <option value="all">All Featured</option>
+                  <option value="featured">Featured only</option>
+                  <option value="not_featured">Not featured</option>
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn('w-full xl:w-auto', adminOutlineButtonClass(isDark))}
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters}
+                >
+                  Clear All
+                </Button>
               </div>
             </div>
 
@@ -467,14 +745,14 @@ export default function AdminProductsPage() {
                     <p className={cn('mt-4 text-lg font-medium', adminStrongTextClass(isDark))}>No products found</p>
                     <p className={cn('mt-2 text-sm', adminMutedTextClass(isDark))}>
                       {isLoggsplugCatalog
-                        ? 'Try a different search, or sync products from Admin → Products → LOGGSPLUG Sync.'
-                        : 'Try a different search or add a new product.'}
+                        ? 'Try different filters, or sync products from Admin → Products → LOGGSPLUG Sync.'
+                        : 'Try different filters or add a new product.'}
                     </p>
                   </div>
                 ) : null
               }
             >
-              {filteredProducts.map((product) => (
+              {paginatedProducts.map((product) => (
                 <AdminScrollTableRow key={product.id} gridClassName={PRODUCT_TABLE_GRID}>
                   <div className="flex min-w-[240px] items-start gap-4">
                     <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center', adminPlatformIconWrapClass(isDark))}>
@@ -541,6 +819,63 @@ export default function AdminProductsPage() {
                 </AdminScrollTableRow>
               ))}
             </AdminScrollTable>
+
+            <div
+              className={cn(
+                'flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between',
+                isDark ? 'border-[#18263b]' : 'border-slate-200',
+              )}
+            >
+              <p className={cn('text-sm', adminMutedTextClass(isDark))}>
+                Showing {pageStart} to {pageEnd} of {filteredProducts.length} results
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className={cn(pageButtonClass(false), 'disabled:cursor-not-allowed disabled:opacity-40')}
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .filter((pageNumber) => {
+                    if (totalPages <= 7) return true;
+                    if (pageNumber === 1 || pageNumber === totalPages) return true;
+                    return Math.abs(pageNumber - currentPage) <= 1;
+                  })
+                  .map((pageNumber, index, visiblePages) => {
+                    const previous = visiblePages[index - 1];
+                    const showEllipsis = previous != null && pageNumber - previous > 1;
+                    return (
+                      <span key={pageNumber} className="contents">
+                        {showEllipsis ? (
+                          <span className={cn('px-1 text-sm', adminSubtleTextClass(isDark))}>…</span>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={pageButtonClass(pageNumber === currentPage)}
+                          onClick={() => setPage(pageNumber)}
+                          aria-label={`Page ${pageNumber}`}
+                          aria-current={pageNumber === currentPage ? 'page' : undefined}
+                        >
+                          {pageNumber}
+                        </button>
+                      </span>
+                    );
+                  })}
+                <button
+                  type="button"
+                  className={cn(pageButtonClass(false), 'disabled:cursor-not-allowed disabled:opacity-40')}
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
