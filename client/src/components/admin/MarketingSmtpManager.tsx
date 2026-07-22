@@ -26,7 +26,7 @@ const emptyForm: MarketingSmtpInput = {
   label: '',
   host: 'sm1.cloudoon.com',
   port: 587,
-  secure: true,
+  secure: false,
   username: '',
   password: '',
   from_name: 'Nexlogs',
@@ -413,7 +413,11 @@ export function MarketingSmtpManager({
                       }
                       const parsed = Number.parseInt(raw, 10);
                       if (!Number.isNaN(parsed)) {
-                        setForm((current) => ({ ...current, port: parsed }));
+                        setForm((current) => ({
+                          ...current,
+                          port: parsed,
+                          secure: parsed === 465 ? true : parsed === 587 ? false : current.secure,
+                        }));
                       }
                     }}
                     placeholder="587"
@@ -471,12 +475,12 @@ export function MarketingSmtpManager({
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={form.secure !== false}
+                  checked={form.secure === true}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, secure: event.target.checked }))
                   }
                 />
-                Use secure connection (SSL/TLS)
+                Use SSL on connect (port 465). Leave off for port 587 (STARTTLS).
               </label>
             </div>
 

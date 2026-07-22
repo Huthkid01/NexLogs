@@ -166,13 +166,21 @@ export async function sendViaMarketingSmtp(
   const nodemailer = await import('npm:nodemailer@6.9.16');
   const from = `"${smtp.fromName.replaceAll('"', '')}" <${smtp.fromAddress}>`;
 
+  const configuredPort = smtp.port || 587;
+  const configuredSecure =
+    configuredPort === 587 ? false : configuredPort === 465 ? true : smtp.secure !== false;
+
   const attempts = smtp.isDefault
     ? [
-        { port: smtp.port || 465, secure: smtp.secure !== false },
-        { port: 465, secure: true },
+        { port: configuredPort, secure: configuredSecure },
         { port: 587, secure: false },
+        { port: 465, secure: true },
       ]
-    : [{ port: smtp.port || 465, secure: smtp.secure !== false }];
+    : [
+        { port: configuredPort, secure: configuredSecure },
+        { port: 587, secure: false },
+        { port: 465, secure: true },
+      ];
 
   // Deduplicate attempts
   const seen = new Set<string>();
@@ -226,20 +234,52 @@ export async function sendViaMarketingSmtp(
   throw lastError ?? new Error('SMTP send failed');
 }
 
+function buildSmtpVerifyAttempts(smtp: MarketingSmtpConfig) {
+  const configuredPort = smtp.port || 587;
+  const configuredSecure =
+    configuredPort === 587 ? false : configuredPort === 465 ? true : smtp.secure !== false;
+
+  const attempts = [
+    { port: configuredPort, secure: configuredSecure },
+    { port: 587, secure: false },
+    { port: 465, secure: true },
+  ];
+
+  const seen = new Set<string>();
+  return attempts.filter((attempt) => {
+    const key = `${attempt.port}:${attempt.secure}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export async function verifyMarketingSmtp(smtp: MarketingSmtpConfig) {
   const nodemailer = await import('npm:nodemailer@6.9.16');
-  const transport = nodemailer.default.createTransport({
-    host: smtp.host,
-    port: smtp.port || 465,
-    secure: smtp.secure !== false,
-    auth: {
-      user: smtp.username,
-      pass: smtp.password,
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-  });
+  let lastError: Error | null = null;
 
-  await transport.verify();
-  return true;
+  for (const attempt of buildSmtpVerifyAttempts(smtp)) {
+    try {
+      const transport = nodemailer.default.createTransport({
+        host: smtp.host,
+        port: attempt.port,
+        secure: attempt.secure,
+        auth: {
+          user: smtp.username,
+          pass: smtp.password,
+        },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+      });
+
+      await transport.verify();
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = error instanceof Error ? error : new Error(message);
+      console.error(`[marketing-smtp] verify ${smtp.host}:${attempt.port} secure=${attempt.secure} failed:`, message);
+    }
+  }
+
+  throw lastError ?? new Error('SMTP verification failed');
 }
