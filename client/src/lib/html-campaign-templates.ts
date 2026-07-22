@@ -79,7 +79,7 @@ function buildPlainEmailHtml(options: {
             <td style="padding:24px 0 0;border-top:1px solid #e5e7eb;">
               <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6b7280;">
                 Questions? Reply to this email or contact
-                <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a>.
+                <a href="mailto:support@nexlogs.site" style="color:#111827;text-decoration:underline;">support@nexlogs.site</a>.
               </p>
               <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">
                 © ${new Date().getFullYear()} ${APP_NAME}. <a href="${appUrl}" style="color:#111827;text-decoration:underline;">${siteHost}</a>
@@ -706,7 +706,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
                 <li><strong>Telegram:</strong> <a href="${telegramSupportUrl}" style="color:#111827;text-decoration:underline;">@nexlogs</a></li>
                 <li><strong>Support page:</strong> <a href="${appUrl}/support" style="color:#111827;text-decoration:underline;">${siteHost}/support</a></li>
-                <li><strong>Email:</strong> <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a></li>
+                <li><strong>Email:</strong> <a href="mailto:support@nexlogs.site" style="color:#111827;text-decoration:underline;">support@nexlogs.site</a></li>
               </ul>
               <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#111827;">Thank you for being part of ${APP_NAME}.</p>
               <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">This notification is sent to registered users of ${siteHost}. If you have feedback, reply to this email.</p>`,
@@ -759,7 +759,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
                 Visit <a href="${appUrl}/faq" style="color:#111827;text-decoration:underline;">FAQ</a> for common questions,
                 <a href="${appUrl}/support" style="color:#111827;text-decoration:underline;">Support</a> for help, or email
-                <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a>.
+                <a href="mailto:support@nexlogs.site" style="color:#111827;text-decoration:underline;">support@nexlogs.site</a>.
               </p>`,
       ctaLabel: 'Open marketplace',
       ctaUrl: `${appUrl}/marketplace`,
@@ -797,7 +797,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                 <a href="${telegramSupportUrl}" style="color:#111827;text-decoration:underline;">@nexlogs</a>
                 &nbsp;·&nbsp;
                 Email:
-                <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a>
+                <a href="mailto:support@nexlogs.site" style="color:#111827;text-decoration:underline;">support@nexlogs.site</a>
               </p>
               <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
                 Thank you for staying with us,<br/>
@@ -911,6 +911,47 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               </p>`,
       linkLabel: 'Visit the marketplace',
       linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
+    id: 'account-domain-migration-notice',
+    name: 'Domain move to nexlogs.site (inbox-friendly)',
+    category: 'account',
+    description:
+      'Notify all users that Nexlogs moved from nexlogs.store to nexlogs.site. Plain account notice for Primary inbox.',
+    defaultSubject: `Important update: ${APP_NAME} is now at nexlogs.site`,
+    html: buildInboxFriendlyEmailHtml({
+      title: 'We moved to nexlogs.site',
+      preheader: `Your ${APP_NAME} login details are unchanged. Our website is now at nexlogs.site.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We are writing with a short account update. ${APP_NAME} has moved from <strong>nexlogs.store</strong> to <strong>nexlogs.site</strong>.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We are sorry for any inconvenience this may have caused while we completed the move.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Your account is unchanged</strong></p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Sign in with the <strong>same email and password</strong> you used before</li>
+                <li>Your wallet balance, orders, and purchase history are still on your account</li>
+                <li>Google sign-in continues to work on the new site</li>
+              </ul>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Please bookmark our new address: <strong>${siteHost}</strong>
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                If a link still opens the old domain, use
+                <a href="${appUrl}/login" style="color:#111827;text-decoration:underline;">${siteHost}/login</a>
+                instead. Need help? Reply to this email or contact
+                <a href="mailto:support@nexlogs.site" style="color:#111827;text-decoration:underline;">support@nexlogs.site</a>.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you for staying with us,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Sign in to Nexlogs',
+      linkUrl: `${appUrl}/login`,
     }),
   },
   {

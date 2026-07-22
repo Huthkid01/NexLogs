@@ -36,7 +36,7 @@ import {
 } from '@/lib/html-campaign-templates';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_FROM = 'support@nexlogs.store';
+const DEFAULT_FROM = 'support@nexlogs.site';
 
 export interface HtmlCampaignComposerProps {
   contacts: BroadcastContact[];

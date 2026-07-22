@@ -11,7 +11,7 @@ export interface MarketingUnsubscribeResult {
 
 export async function processMarketingUnsubscribe(token: string): Promise<MarketingUnsubscribeResult> {
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('App configuration is missing. Please contact support@nexlogs.store.');
+    throw new Error('App configuration is missing. Please contact support@nexlogs.site.');
   }
 
   const response = await fetch(

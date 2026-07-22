@@ -1,7 +1,7 @@
 import { APP_NAME, APP_URL } from '@/constants';
 import { buildProductMarketplaceUrl } from '@/lib/product-deep-link';
 
-const FROM_ADDRESS = 'support@nexlogs.store';
+const FROM_ADDRESS = 'support@nexlogs.site';
 const FROM_NAME = 'Nexlogs';
 
 function escapeHtml(value: string) {

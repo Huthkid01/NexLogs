@@ -75,7 +75,7 @@ export const QUICK_TOUR_STEPS: QuickTourStep[] = [
     placement: 'center',
     title: 'Need help?',
     body:
-      'Open Need help? from the menu, visit the Support page, or email support@nexlogs.store if you get stuck.',
+      'Open Need help? from the menu, visit the Support page, or email support@nexlogs.site if you get stuck.',
   },
 ];
 

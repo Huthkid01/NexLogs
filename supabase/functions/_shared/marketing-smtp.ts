@@ -49,7 +49,7 @@ export function getDefaultMarketingSmtpConfig(): MarketingSmtpConfig {
 
   return {
     id: null,
-    label: 'Default (support@nexlogs.store)',
+    label: 'Default (support@nexlogs.site)',
     host,
     port: Number.isFinite(port) && port > 0 ? port : 465,
     secure,

@@ -35,7 +35,7 @@ export function getUserSignUpMessage(message: string) {
   }
 
   if (normalized.includes('error sending confirmation email') || normalized.includes('error sending email')) {
-    return 'Account setup failed while sending the verification email. Contact support@nexlogs.store.';
+    return 'Account setup failed while sending the verification email. Contact support@nexlogs.site.';
   }
 
   if (normalized.includes('database error saving new user')) {

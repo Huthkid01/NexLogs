@@ -97,7 +97,7 @@ export function BroadcastSendFlowModal({
                       productCount != null
                         ? ` about ${productCount} product${productCount === 1 ? '' : 's'}`
                         : ' with your HTML template'
-                    } from support@nexlogs.store.`}
+                    } from support@nexlogs.site.`}
                 </p>
                 <p className={cn('mt-3 text-xs leading-5', adminMutedTextClass(isDark))}>
                   Emails are sent one by one like a mail client: 10 at a time, then a 5 second pause before the next batch. This improves delivery and inbox placement.

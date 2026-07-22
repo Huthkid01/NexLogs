@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
 
     const validated = validateCampaignContent(body.subject?.trim() || '', body.html_body || '');
     const subject = validated.sanitizedSubject;
-    const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://www.nexlogs.store').replace(
+    const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://www.nexlogs.site').replace(
       /\/$/,
       '',
     );

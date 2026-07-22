@@ -35,7 +35,7 @@ import { APP_NAME } from '@/constants';
 import type { Product } from '@/types';
 
 const DEFAULT_SUBJECT = `New products available on ${APP_NAME}`;
-const DEFAULT_FROM = 'support@nexlogs.store';
+const DEFAULT_FROM = 'support@nexlogs.site';
 
 const DEFAULT_ANNOUNCEMENT_MESSAGE =
   'We just added new products to the marketplace. Browse the list below and click any product to view details.';

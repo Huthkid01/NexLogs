@@ -54,8 +54,8 @@ export function validateBroadcastContent(subject: string, customMessage: string)
 
 export function buildDeliverabilityHeaders(_appUrl: string, oneClickUnsubscribeUrl: string) {
   return {
-    'Reply-To': 'support@nexlogs.store',
-    'List-Unsubscribe': `<${oneClickUnsubscribeUrl}>, <mailto:support@nexlogs.store?subject=Unsubscribe>`,
+    'Reply-To': 'support@nexlogs.site',
+    'List-Unsubscribe': `<${oneClickUnsubscribeUrl}>, <mailto:support@nexlogs.site?subject=Unsubscribe>`,
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     'X-Mailer': 'Nexlogs',
   };

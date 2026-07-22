@@ -73,8 +73,8 @@ export default function UnsubscribePage() {
             <p className="mt-4 text-sm leading-7 text-gray-700 dark:text-gray-300">{message}</p>
             <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
               You can also email{' '}
-              <a href="mailto:support@nexlogs.store" className="font-medium text-[#f26522] hover:text-[#d94e0f]">
-                support@nexlogs.store
+              <a href="mailto:support@nexlogs.site" className="font-medium text-[#f26522] hover:text-[#d94e0f]">
+                support@nexlogs.site
               </a>{' '}
               to opt out of promotional messages.
             </p>

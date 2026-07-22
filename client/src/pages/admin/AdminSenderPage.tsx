@@ -105,7 +105,7 @@ export default function AdminSenderPage() {
   const isDark = theme === 'dark';
 
   const fromName = activeSmtpAccount?.from_name || 'Nexlogs';
-  const fromAddress = activeSmtpAccount?.from_address || 'support@nexlogs.store';
+  const fromAddress = activeSmtpAccount?.from_address || 'support@nexlogs.site';
 
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['admin-products'],

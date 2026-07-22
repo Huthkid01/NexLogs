@@ -68,7 +68,7 @@ function emailLayout(options: {
           <tr>
             <td style="padding:24px 0 0;border-top:1px solid #e5e7eb;">
               <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">
-                Questions? <a href="mailto:support@nexlogs.store" style="color:#111827;text-decoration:underline;">support@nexlogs.store</a><br/>
+                Questions? <a href="mailto:support@nexlogs.site" style="color:#111827;text-decoration:underline;">support@nexlogs.site</a><br/>
                 © ${new Date().getFullYear()} ${escapeHtml(appName)}.
               </p>
             </td>

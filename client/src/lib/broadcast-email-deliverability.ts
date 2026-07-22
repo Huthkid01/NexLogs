@@ -161,8 +161,8 @@ export function runDeliverabilityChecks(options: {
   checks.push({
     id: 'sender-domain',
     level: 'pass',
-    title: 'Sender uses support@nexlogs.store',
-    detail: 'Ensure SPF, DKIM, and DMARC are enabled on Hostinger for nexlogs.store.',
+    title: 'Sender uses support@nexlogs.site',
+    detail: 'Ensure SPF, DKIM, and DMARC are configured for nexlogs.site (Brevo + Truehost DNS in Vercel).',
   });
 
   checks.push({

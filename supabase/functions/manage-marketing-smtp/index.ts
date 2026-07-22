@@ -98,13 +98,13 @@ Deno.serve(async (req) => {
       } catch {
         defaultAccount = {
           id: 'default',
-          label: 'Default (support@nexlogs.store)',
+          label: 'Default (support@nexlogs.site)',
           host: Deno.env.get('SMTP_HOST') || 'smtp.hostinger.com',
           port: Number(Deno.env.get('SMTP_PORT') || 465),
           secure: Deno.env.get('SMTP_SECURE') !== 'false',
-          username: Deno.env.get('SMTP_USER') || 'support@nexlogs.store',
+          username: Deno.env.get('SMTP_USER') || 'support@nexlogs.site',
           from_name: 'Nexlogs',
-          from_address: Deno.env.get('EMAIL_FROM_ADDRESS') || 'support@nexlogs.store',
+          from_address: Deno.env.get('EMAIL_FROM_ADDRESS') || 'support@nexlogs.site',
           is_active: true,
           is_default: true,
           has_password: Boolean(Deno.env.get('SMTP_PASS')),

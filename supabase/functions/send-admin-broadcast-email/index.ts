@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
 
     const smtp = await resolveMarketingSmtpConfig(adminClient, smtpAccountId);
     const appName = Deno.env.get('APP_NAME') || 'Nexlogs';
-    const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://www.nexlogs.store').replace(
+    const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://www.nexlogs.site').replace(
       /\/$/,
       '',
     );
@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
     return jsonResponse(
       {
         error: message,
-        hint: 'Deploy send-admin-broadcast-email and set SMTP_USER=support@nexlogs.store in Edge Function secrets.',
+        hint: 'Deploy send-admin-broadcast-email and set SMTP_USER=support@nexlogs.site in Edge Function secrets.',
       },
       500,
     );

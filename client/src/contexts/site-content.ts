@@ -303,7 +303,7 @@ export const defaultSiteContent: SiteContent = {
   privacy: {
     title: 'Privacy Policy',
     lastUpdatedLabel: 'Last updated:',
-    contactEmail: 'support@nexlogs.store',
+    contactEmail: 'support@nexlogs.site',
     sections: [
       {
         title: '1. Introduction',
@@ -354,7 +354,7 @@ export const defaultSiteContent: SiteContent = {
       },
       {
         title: '3d. Your Choices for Google Data',
-        body: 'You can stop using Google Sign-In by signing in with email and password instead, or by revoking Nexlogs access in your Google Account security settings at https://myaccount.google.com/permissions. To request account deletion or data removal, contact us at support@nexlogs.store.',
+        body: 'You can stop using Google Sign-In by signing in with email and password instead, or by revoking Nexlogs access in your Google Account security settings at https://myaccount.google.com/permissions. To request account deletion or data removal, contact us at support@nexlogs.site.',
       },
       {
         title: '4. How We Use Your Information',

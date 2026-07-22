@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
     console.log('[send-transactional-email] start', { type, hasSmtpUser: Boolean(Deno.env.get('SMTP_USER')) });
 
     const appName = Deno.env.get('APP_NAME') || 'Nexlogs';
-    const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://nexlogs.store').replace(
+    const appUrl = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || 'https://www.nexlogs.site').replace(
       /\/$/,
       '',
     );
@@ -345,7 +345,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: message,
-        hint: 'Check Edge Function secrets: SMTP_USER=support@nexlogs.store and matching app password.',
+        hint: 'Check Edge Function secrets: SMTP_USER=support@nexlogs.site and matching app password.',
       }),
       {
         status: 500,
