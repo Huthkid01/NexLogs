@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authService } from '@/services/auth.service';
-import { openErrorReport } from '@/lib/error-report';
+import { maskEmailAddress } from '@/lib/auth-errors';
 
 const schema = z.object({ email: z.string().email() });
 type Form = z.infer<typeof schema>;
@@ -17,25 +17,27 @@ type Form = z.infer<typeof schema>;
 export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data: Form) => {
+    if (loading || sent) return;
+
     setLoading(true);
+    const email = data.email.trim();
+
     try {
-      await authService.resetPassword(data.email);
-      setSent(true);
-      toast.success('Reset link sent to your email');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to send reset email';
-      toast.error('We could not send the reset email.');
-      openErrorReport({
-        title: 'Error while sending reset email',
-        message: 'We could not send the reset email.',
-        source: 'login',
-        errorMessage: message,
-      });
+      await authService.resetPassword(email);
+    } catch {
+      // Supabase may still deliver the email when the browser sees a timeout,
+      // rate-limit, or duplicate-click error — never scare users with "could not send".
     } finally {
+      setSentEmail(email);
+      setSent(true);
       setLoading(false);
+      toast.success('Check your inbox and spam folder', {
+        description: `If an account exists for ${maskEmailAddress(email)}, a reset link was sent. It can take a minute to arrive.`,
+      });
     }
   };
 
@@ -44,7 +46,11 @@ export default function ForgotPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Forgot Password</CardTitle>
-          <CardDescription>{sent ? 'Check your email for a reset link' : 'Enter your email to receive a reset link'}</CardDescription>
+          <CardDescription>
+            {sent
+              ? `If an account exists for ${maskEmailAddress(sentEmail)}, check Inbox and Spam for the reset link.`
+              : 'Enter your email to receive a reset link'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {!sent ? (
@@ -53,10 +59,19 @@ export default function ForgotPasswordPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" error={errors.email?.message} {...register('email')} />
               </div>
-              <Button type="submit" className="w-full" loading={loading}>Send Reset Link</Button>
+              <Button type="submit" className="w-full" loading={loading} disabled={loading}>
+                Send Reset Link
+              </Button>
             </form>
           ) : (
-            <Button className="w-full" asChild><Link to="/login">Back to Login</Link></Button>
+            <div className="space-y-4">
+              <p className="text-center text-sm text-muted-foreground">
+                Didn’t see it? Wait a minute, check Spam/Junk, then try again once.
+              </p>
+              <Button className="w-full" asChild>
+                <Link to="/login">Back to Login</Link>
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
