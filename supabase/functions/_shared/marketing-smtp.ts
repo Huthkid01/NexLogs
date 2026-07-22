@@ -35,13 +35,13 @@ function trimRequired(value: unknown, field: string) {
 }
 
 export function getDefaultMarketingSmtpConfig(): MarketingSmtpConfig {
-  const host = Deno.env.get('SMTP_HOST') || 'smtp.hostinger.com';
+  const host = Deno.env.get('SMTP_HOST') || 'workplace.truehost.cloud';
   const username = Deno.env.get('SMTP_USER') || '';
   const password = Deno.env.get('SMTP_PASS') || '';
   const fromAddress = Deno.env.get('EMAIL_FROM_ADDRESS') || username;
   const fromName = Deno.env.get('EMAIL_FROM_NAME') || Deno.env.get('APP_NAME') || 'Nexlogs';
-  const port = Number(Deno.env.get('SMTP_PORT') || 465);
-  const secure = Deno.env.get('SMTP_SECURE') !== 'false';
+  const port = Number(Deno.env.get('SMTP_PORT') || 587);
+  const secure = Deno.env.get('SMTP_SECURE') === 'true' || port === 465;
 
   if (!username || !password || !fromAddress) {
     throw new Error('Default SMTP is not configured. Set SMTP_USER, SMTP_PASS, and EMAIL_FROM_ADDRESS secrets.');
@@ -49,9 +49,9 @@ export function getDefaultMarketingSmtpConfig(): MarketingSmtpConfig {
 
   return {
     id: null,
-    label: 'Default (support@nexlogs.site)',
+    label: 'Default (Edge secrets / Truehost)',
     host,
-    port: Number.isFinite(port) && port > 0 ? port : 465,
+    port: Number.isFinite(port) && port > 0 ? port : 587,
     secure,
     username,
     password,

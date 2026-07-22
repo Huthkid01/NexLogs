@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 
 const emptyForm: MarketingSmtpInput = {
   label: '',
-  host: 'sm1.cloudoon.com',
+  host: 'smtp-relay.brevo.com',
   port: 587,
   secure: false,
   username: '',
@@ -394,7 +394,7 @@ export function MarketingSmtpManager({
                     onChange={(event) =>
                       setForm((current) => ({ ...current, host: event.target.value }))
                     }
-                    placeholder="smtp.hostinger.com"
+                    placeholder="smtp-relay.brevo.com"
                   />
                 </div>
                 <div className="space-y-1.5">

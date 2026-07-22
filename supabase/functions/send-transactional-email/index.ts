@@ -95,7 +95,8 @@ async function sendViaSmtp(
 }
 
 async function sendMail(input: { to: string; subject: string; html: string; text?: string }) {
-  const host = Deno.env.get('SMTP_HOST') || 'smtp.hostinger.com';
+  // Truehost Workplace Starter: workplace.truehost.cloud:587 (STARTTLS) or :465 (SSL)
+  const host = Deno.env.get('SMTP_HOST') || 'workplace.truehost.cloud';
   const user = Deno.env.get('SMTP_USER');
   const pass = Deno.env.get('SMTP_PASS');
   const fromName = Deno.env.get('EMAIL_FROM_NAME') || Deno.env.get('APP_NAME') || 'Nexlogs';
@@ -106,13 +107,22 @@ async function sendMail(input: { to: string; subject: string; html: string; text
   }
 
   const from = `"${fromName}" <${fromAddress}>`;
-  const configuredPort = Number(Deno.env.get('SMTP_PORT') || 465);
-  const configuredSecure = Deno.env.get('SMTP_SECURE') !== 'false';
+  const configuredPort = Number(Deno.env.get('SMTP_PORT') || 587);
+  const configuredSecure =
+    configuredPort === 587
+      ? false
+      : configuredPort === 465
+        ? true
+        : Deno.env.get('SMTP_SECURE') !== 'false';
 
   const attempts = [
-    { port: 465, secure: true },
+    { port: configuredPort, secure: configuredSecure },
     { port: 587, secure: false },
-  ];
+    { port: 465, secure: true },
+  ].filter((attempt, index, list) => {
+    const key = `${attempt.port}:${attempt.secure}`;
+    return list.findIndex((item) => `${item.port}:${item.secure}` === key) === index;
+  });
 
   let lastError: Error | null = null;
 
