@@ -26,3 +26,11 @@ export function isCountableSmsOrder(order: {
   }
   return isValidSmsVerificationCode(order.verification_code);
 }
+
+/** History rows: only finished activations that received a verification code. */
+export function isSmsHistoryOrder(order: {
+  status: string;
+  verification_code: string | null;
+}): boolean {
+  return order.status === 'completed' && isValidSmsVerificationCode(order.verification_code);
+}

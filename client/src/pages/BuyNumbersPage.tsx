@@ -23,7 +23,11 @@ import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { cn } from '@/lib/utils';
 import { matchesSmsCountrySearch } from '@/lib/sms-country-search';
 import { calculateSmsChargeNgn } from '@/lib/sms-pricing';
-import { getDisplaySmsVerificationCode, isValidSmsVerificationCode } from '@/lib/sms-verification-code';
+import {
+  getDisplaySmsVerificationCode,
+  isSmsHistoryOrder,
+  isValidSmsVerificationCode,
+} from '@/lib/sms-verification-code';
 import { getPurchaseErrorMessage, isAuthError, isInsufficientFundsError } from '@/lib/purchase-errors';
 import { useHandleSessionExpired } from '@/hooks/useHandleSessionExpired';
 import {
@@ -530,7 +534,7 @@ export default function BuyNumbersPage() {
   );
 
   const historyOrdersWithCode = useMemo(
-    () => (history?.orders ?? []).filter((order) => isValidSmsVerificationCode(order.verification_code)),
+    () => (history?.orders ?? []).filter(isSmsHistoryOrder),
     [history?.orders],
   );
 

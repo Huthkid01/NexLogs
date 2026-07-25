@@ -1,8 +1,48 @@
 import { supabase } from '@/lib/supabase';
+import { isValidSmsVerificationCode } from '@/lib/sms-verification-code';
 import type { PaginatedResponse, ProfileStats, ReferralStats, Transaction } from '@/types';
 
 function makeRef(prefix: string) {
   return `${prefix}-${Math.random().toString(16).slice(2, 10).toUpperCase()}`;
+}
+
+const HIDDEN_WALLET_SOURCES = new Set([
+  'sms_number_refund',
+  'duplicate_sms_refund_correction',
+]);
+
+function collectHiddenSmsWalletTxIds(
+  orders: Array<{
+    wallet_transaction_id: string | null;
+    verification_code: string | null;
+    metadata: unknown;
+  }>,
+) {
+  const hidden = new Set<string>();
+
+  for (const order of orders) {
+    const meta = order.metadata && typeof order.metadata === 'object'
+      ? order.metadata as Record<string, unknown>
+      : {};
+
+    const refundTxId = meta.refund_wallet_transaction_id;
+    if (typeof refundTxId === 'string' && refundTxId.trim()) {
+      hidden.add(refundTxId.trim());
+    }
+
+    // Only keep the original SMS charge when a real verification code was received.
+    if (!isValidSmsVerificationCode(order.verification_code)) {
+      if (order.wallet_transaction_id) {
+        hidden.add(String(order.wallet_transaction_id));
+      }
+      const resendTxId = meta.last_resend_wallet_transaction_id;
+      if (typeof resendTxId === 'string' && resendTxId.trim()) {
+        hidden.add(resendTxId.trim());
+      }
+    }
+  }
+
+  return hidden;
 }
 
 export const profileService = {
@@ -30,26 +70,60 @@ export const profileService = {
   async getTransactions(userId: string, page = 1, limit = 5): Promise<PaginatedResponse<Transaction>> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
-    const { data, error, count } = await supabase
+
+    // Display-only filter: hide cancelled/no-code SMS charges + refunds.
+    // Does not change wallet balances or order rows.
+    const { data: smsOrders, error: smsOrdersError } = await supabase
+      .from('sms_number_orders')
+      .select('wallet_transaction_id, verification_code, metadata')
+      .eq('user_id', userId);
+
+    if (smsOrdersError) throw smsOrdersError;
+
+    const hiddenTxIds = collectHiddenSmsWalletTxIds(
+      (smsOrders || []) as Array<{
+        wallet_transaction_id: string | null;
+        verification_code: string | null;
+        metadata: unknown;
+      }>,
+    );
+
+    let query = supabase
       .from('wallet_transactions')
-      .select('id, ref, created_at, updated_at, payment_method, amount, status', { count: 'exact' })
+      .select('id, ref, created_at, updated_at, payment_method, amount, status, metadata', { count: 'exact' })
       .eq('user_id', userId)
-      .eq('status', 'completed')
+      .eq('status', 'completed');
+
+    if (hiddenTxIds.size > 0) {
+      query = query.not('id', 'in', `(${Array.from(hiddenTxIds).join(',')})`);
+    }
+
+    const { data, error, count } = await query
       .order('created_at', { ascending: false })
       .range(from, to);
     if (error) throw error;
 
-    const mapped = (data || []).map((tx) => ({
-      id: tx.id as string,
-      ref: tx.ref as string,
-      created_at: tx.created_at as string,
-      updated_at: tx.updated_at as string,
-      payment_method: tx.payment_method as string,
-      amount: Number(tx.amount || 0),
-      status: tx.status as Transaction['status'],
-    })) as Transaction[];
+    const mapped = (data || [])
+      .filter((tx) => {
+        const meta = tx.metadata && typeof tx.metadata === 'object'
+          ? tx.metadata as Record<string, unknown>
+          : {};
+        const source = typeof meta.source === 'string' ? meta.source : '';
+        return !HIDDEN_WALLET_SOURCES.has(source);
+      })
+      .map((tx) => ({
+        id: tx.id as string,
+        ref: tx.ref as string,
+        created_at: tx.created_at as string,
+        updated_at: tx.updated_at as string,
+        payment_method: tx.payment_method as string,
+        amount: Number(tx.amount || 0),
+        status: tx.status as Transaction['status'],
+      })) as Transaction[];
 
-    const total = count || 0;
+    // Prefer exact DB count when we did not need a client-side source filter on this page.
+    const filteredOutOnPage = (data || []).length - mapped.length;
+    const total = Math.max(0, (count || 0) - filteredOutOnPage);
     return { data: mapped, total, page, limit, totalPages: Math.ceil(total / limit) };
   },
 
