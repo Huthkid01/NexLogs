@@ -31,6 +31,7 @@ import {
   refundWallet,
   requireAdmin,
   syncSmsOrderFromRemote,
+  ensureSmsOrderExpiresAt,
 } from '../_shared/sms-number-handler.ts';
 
 const SMS_PROVIDER = 'fivesim';
@@ -284,10 +285,11 @@ Deno.serve(async (req) => {
       } catch (purchaseError) {
         try {
           await refundWallet(
-            walletClient,
+            admin,
             chargedNgn,
             '5sim purchase failed',
             { provider: SMS_PROVIDER, country_id: country, service_id: service },
+            user.id,
           );
         } catch {
           return jsonResponse({
@@ -322,7 +324,7 @@ Deno.serve(async (req) => {
           status: 'active',
           cost_usd: costUsd,
           charged_ngn: chargedNgn,
-          expires_at: purchase.expiresAt,
+          expires_at: purchase.expiresAt ?? ensureSmsOrderExpiresAt({ created_at: new Date().toISOString() }),
           wallet_transaction_id: walletTxId,
           metadata: {
             provider: SMS_PROVIDER,
@@ -339,10 +341,11 @@ Deno.serve(async (req) => {
         await cancelFiveSimOrder(purchase.orderId).catch(() => undefined);
         try {
           await refundWallet(
-            walletClient,
+            admin,
             chargedNgn,
             'Could not save SMS order',
             { provider: SMS_PROVIDER, fivesim_order_id: purchase.orderId },
+            user.id,
           );
         } catch {
           throw new Error('Could not save SMS order and wallet refund failed. Please contact support.');

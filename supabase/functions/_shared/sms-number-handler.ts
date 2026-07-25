@@ -86,7 +86,28 @@ export async function refundWallet(
   amountNgn: number,
   reason: string,
   metadata: Record<string, unknown>,
+  userId?: string,
 ) {
+  // Prefer service-role helper with explicit user id. Calling wallet_refund_sms with a
+  // buyer JWT is treated as `authenticated`, which is no longer granted EXECUTE.
+  if (userId) {
+    const { data, error } = await walletClient.rpc('wallet_refund_sms_for_user', {
+      p_user_id: userId,
+      p_amount_ngn: amountNgn,
+      p_reason: reason,
+      p_metadata: metadata,
+    });
+
+    if (!error) {
+      return data as string;
+    }
+
+    // Fallback for environments that have not applied migration 088 yet.
+    if (!error.message?.includes('Could not find the function') && !error.message?.includes('schema cache')) {
+      throw new Error(error.message || 'Could not refund wallet.');
+    }
+  }
+
   const { data, error } = await walletClient.rpc('wallet_refund_sms', {
     p_amount_ngn: amountNgn,
     p_reason: reason,
@@ -98,6 +119,15 @@ export async function refundWallet(
   }
 
   return data as string;
+}
+
+const DEFAULT_SMS_ORDER_TTL_MS = 20 * 60 * 1000;
+
+export function ensureSmsOrderExpiresAt(orderRow: Record<string, unknown>) {
+  if (orderRow.expires_at) return String(orderRow.expires_at);
+  const createdAt = new Date(String(orderRow.created_at ?? '')).getTime();
+  const base = Number.isFinite(createdAt) ? createdAt : Date.now();
+  return new Date(base + DEFAULT_SMS_ORDER_TTL_MS).toISOString();
 }
 
 async function findExistingSmsRefund(
@@ -208,8 +238,14 @@ function orderHasDeliveredCode(
 }
 
 function isLocallyExpired(orderRow: Record<string, unknown>) {
-  const expiresAt = orderRow.expires_at ? new Date(String(orderRow.expires_at)).getTime() : NaN;
+  const expiresAt = new Date(ensureSmsOrderExpiresAt(orderRow)).getTime();
   return Number.isFinite(expiresAt) && Date.now() > expiresAt;
+}
+
+function hasRefundableBalance(orderRow: Record<string, unknown>) {
+  if (computeRefundableNgn(orderRow) > 0) return true;
+  const chargedNgn = Number(orderRow.charged_ngn);
+  return Number.isFinite(chargedNgn) && chargedNgn > 0;
 }
 
 function resolveRefundWithoutCodeTarget(
@@ -222,18 +258,18 @@ function resolveRefundWithoutCodeTarget(
   },
 ): 'expired' | 'cancelled' | null {
   if (orderHasDeliveredCode(orderRow, remote.code, remote.message)) return null;
-  if (computeRefundableNgn(orderRow) <= 0) return null;
+  if (!hasRefundableBalance(orderRow)) return null;
   if (remote.providerRefunded) return 'cancelled';
-  if (isRecentSmsOrder(orderRow)) return null;
+  if (isRecentSmsOrder(orderRow) && !isLocallyExpired(orderRow)) return null;
 
   const mapped = mapRemoteOrderStatus(
     normalizeSyncRemoteStatus(orderRow, remote.status, remote.providerRefunded),
   );
-  if (mapped === 'expired' || isLocallyExpired(orderRow)) {
-    return 'expired';
-  }
   if (mapped === 'cancelled') {
     return 'cancelled';
+  }
+  if (mapped === 'expired' || isLocallyExpired(orderRow)) {
+    return 'expired';
   }
   return null;
 }
@@ -292,14 +328,20 @@ export async function syncSmsOrderFromRemote(
     providerRefunded?: boolean;
   },
 ) {
+  const orderWithExpiry = {
+    ...orderRow,
+    expires_at: orderRow.expires_at ?? remote.expiresAt ?? ensureSmsOrderExpiresAt(orderRow),
+  };
+
   const normalizedStatus = normalizeSyncRemoteStatus(
-    orderRow,
+    orderWithExpiry,
     remote.status,
     remote.providerRefunded,
   );
-  const refundTarget = resolveRefundWithoutCodeTarget(orderRow, {
+  const refundTarget = resolveRefundWithoutCodeTarget(orderWithExpiry, {
     status: normalizedStatus,
     code: remote.code,
+    message: remote.message,
     providerRefunded: remote.providerRefunded,
   });
 
@@ -308,14 +350,41 @@ export async function syncSmsOrderFromRemote(
       ? 'SMS order expired without code'
       : 'SMS order cancelled without code';
 
-    const { error: refundError } = await userClient.rpc('refund_sms_number_order_without_code', {
+    // Prefer service-role client so refunds still work after wallet RPC grants were hardened.
+    const { data: refundTxId, error: refundError } = await admin.rpc('refund_sms_number_order_without_code', {
       p_order_id: orderRow.id,
       p_target_status: refundTarget,
       p_reason: reason,
     });
 
-    if (refundError && !refundError.message?.includes('ORDER_NOT_REFUNDABLE')) {
-      throw new Error(refundError.message || 'Could not refund expired SMS order.');
+    if (refundError) {
+      const { data: fallbackTxId, error: fallbackError } = await userClient.rpc(
+        'refund_sms_number_order_without_code',
+        {
+          p_order_id: orderRow.id,
+          p_target_status: refundTarget,
+          p_reason: reason,
+        },
+      );
+
+      if (fallbackError && !fallbackError.message?.includes('ORDER_NOT_REFUNDABLE')) {
+        throw new Error(fallbackError.message || refundError.message || 'Could not refund expired SMS order.');
+      }
+
+      const { data: updated } = await admin
+        .from('sms_number_orders')
+        .select('*')
+        .eq('id', orderRow.id)
+        .single();
+
+      const metadata = getOrderMetadata((updated ?? orderRow) as Record<string, unknown>);
+      const actuallyRefunded = Boolean(fallbackTxId)
+        || Boolean(metadata.refund_wallet_transaction_id);
+
+      return {
+        order: (updated ?? { ...orderRow, status: refundTarget }) as Record<string, unknown>,
+        refunded: actuallyRefunded,
+      };
     }
 
     const { data: updated } = await admin
@@ -324,20 +393,28 @@ export async function syncSmsOrderFromRemote(
       .eq('id', orderRow.id)
       .single();
 
+    const metadata = getOrderMetadata((updated ?? orderRow) as Record<string, unknown>);
+    const actuallyRefunded = Boolean(refundTxId)
+      || Boolean(metadata.refund_wallet_transaction_id);
+
     return {
       order: (updated ?? { ...orderRow, status: refundTarget }) as Record<string, unknown>,
-      refunded: true,
+      refunded: actuallyRefunded,
     };
   }
 
-  const effectiveStatus = isValidSmsVerificationCode(remote.code)
+  // Never mark expired/cancelled without going through the refund path above.
+  const safeStatus = isValidSmsVerificationCode(remote.code)
     ? 'completed'
-    : normalizedStatus;
+    : normalizedStatus === 'expired' || normalizedStatus === 'cancelled'
+      ? 'pending'
+      : normalizedStatus;
 
-  const order = await applyRemoteOrderUpdate(admin, orderRow, {
+  const order = await applyRemoteOrderUpdate(admin, orderWithExpiry, {
     ...remote,
-    status: effectiveStatus,
+    status: safeStatus,
     code: remote.code,
+    expiresAt: remote.expiresAt ?? String(orderWithExpiry.expires_at),
   });
 
   return { order, refunded: false };
@@ -400,7 +477,7 @@ export async function cancelSmsNumberOrderAtomic(
         },
       })
       .eq('id', orderId)
-      .in('status', ['active', 'completed']);
+      .in('status', ['active', 'completed', 'cancelled', 'expired']);
 
     const { data: updated } = await admin
       .from('sms_number_orders')
@@ -414,29 +491,45 @@ export async function cancelSmsNumberOrderAtomic(
     };
   }
 
-  const { data: locked, error: lockError } = await admin
-    .from('sms_number_orders')
-    .update({
-      status: 'cancelled',
-      verification_code: null,
-      metadata: {
-        ...getOrderMetadata(workingOrder),
-        cancelled_at: new Date().toISOString(),
-      },
-    })
-    .eq('id', orderId)
-    .in('status', ['active', 'completed'])
-    .select('*')
-    .maybeSingle();
+  // Refund first (service role), then mark cancelled — never leave a cancelled unpaid order.
+  const { data: refundTxId, error: refundError } = await admin.rpc('refund_sms_number_order_without_code', {
+    p_order_id: orderId,
+    p_target_status: 'cancelled',
+    p_reason: orderCodeEverDelivered(workingOrder)
+      ? 'SMS resend cancelled without new code'
+      : 'SMS order cancelled',
+  });
 
-  if (lockError) {
-    throw new Error(lockError.message || 'Could not cancel order.');
-  }
+  if (refundError || !refundTxId) {
+    // Fallback for older DBs / partial failures
+    try {
+      const fallbackTxId = await refundWallet(
+        admin,
+        refundableNgn,
+        orderCodeEverDelivered(workingOrder)
+          ? 'SMS resend cancelled without new code'
+          : 'SMS order cancelled',
+        {
+          order_id: orderId,
+          smspool_order_id: externalOrderId,
+          partial_refund: orderCodeEverDelivered(workingOrder),
+        },
+        userId,
+      );
 
-  if (!locked) {
-    const currentStatus = String(orderRow.status ?? '');
-    if (currentStatus === 'cancelled' || currentStatus === 'refunded') {
-      const refundTxId = existingRefundId ?? await findExistingSmsRefund(admin, userId, orderId);
+      await admin
+        .from('sms_number_orders')
+        .update({
+          status: 'cancelled',
+          verification_code: null,
+          metadata: {
+            ...getOrderMetadata(workingOrder),
+            refund_wallet_transaction_id: fallbackTxId,
+            cancelled_at: new Date().toISOString(),
+          },
+        })
+        .eq('id', orderId);
+
       const { data: updated } = await admin
         .from('sms_number_orders')
         .select('*')
@@ -444,51 +537,25 @@ export async function cancelSmsNumberOrderAtomic(
         .single();
 
       return {
-        refundTxId: refundTxId ?? null,
-        order: (updated ?? orderRow) as Record<string, unknown>,
+        refundTxId: fallbackTxId,
+        order: (updated ?? { ...workingOrder, status: 'cancelled' }) as Record<string, unknown>,
       };
+    } catch (fallbackError) {
+      throw new Error(
+        refundError?.message
+          || (fallbackError instanceof Error ? fallbackError.message : 'Could not refund cancelled SMS order.'),
+      );
     }
-
-    throw new Error('ORDER_NOT_CANCELLABLE');
-  }
-
-  let refundTxId: string | null = null;
-  try {
-    refundTxId = await refundWallet(
-      userClient,
-      refundableNgn,
-      orderCodeEverDelivered(locked)
-        ? 'SMS resend cancelled without new code'
-        : 'SMS order cancelled',
-      {
-        order_id: orderId,
-        smspool_order_id: externalOrderId,
-        partial_refund: orderCodeEverDelivered(locked),
-      },
-    );
-  } catch (refundError) {
-    await admin
-      .from('sms_number_orders')
-      .update({ status: 'active' })
-      .eq('id', orderId)
-      .eq('status', 'cancelled');
-    throw refundError;
   }
 
   const { data: updated } = await admin
     .from('sms_number_orders')
-    .update({
-      metadata: {
-        ...getOrderMetadata(locked),
-        refund_wallet_transaction_id: refundTxId,
-      },
-    })
-    .eq('id', orderId)
     .select('*')
+    .eq('id', orderId)
     .single();
 
   return {
-    refundTxId,
-    order: (updated ?? locked) as Record<string, unknown>,
+    refundTxId: String(refundTxId),
+    order: (updated ?? { ...workingOrder, status: 'cancelled' }) as Record<string, unknown>,
   };
 }

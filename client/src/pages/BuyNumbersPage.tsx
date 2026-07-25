@@ -195,8 +195,10 @@ async function copyText(value: string, label: string) {
 }
 
 function isOrderPastExpiry(order: SmsNumberOrder) {
-  if (!order.expires_at) return false;
-  return new Date(order.expires_at).getTime() <= Date.now();
+  const expiresAt = order.expires_at
+    ? new Date(order.expires_at).getTime()
+    : new Date(order.created_at).getTime() + 20 * 60 * 1000;
+  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
 }
 
 function useExpiryCountdown(expiresAt: string | null, enabled: boolean) {

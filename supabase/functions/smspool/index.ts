@@ -28,6 +28,7 @@ import {
   refundWallet,
   requireAdmin,
   syncSmsOrderFromRemote,
+  ensureSmsOrderExpiresAt,
 } from '../_shared/sms-number-handler.ts';
 
 const SMS_PROVIDER = 'smspool';
@@ -297,10 +298,11 @@ Deno.serve(async (req) => {
         purchase = await purchaseSmsPoolNumber(country, service, quote.costUsd * 1.2, pool);
       } catch (purchaseError) {
         await refundWallet(
-          walletClient,
+          admin,
           chargedNgn,
           'SMS Pool purchase failed',
           { country_id: country, service_id: service },
+          user.id,
         );
 
         const message = purchaseError instanceof Error
@@ -328,7 +330,7 @@ Deno.serve(async (req) => {
           status: 'active',
           cost_usd: purchase.costUsd || quote.costUsd,
           charged_ngn: chargedNgn,
-          expires_at: purchase.expiresAt,
+          expires_at: purchase.expiresAt ?? ensureSmsOrderExpiresAt({ created_at: new Date().toISOString() }),
           wallet_transaction_id: walletTxId,
           metadata: {
             provider: SMS_PROVIDER,
@@ -343,10 +345,11 @@ Deno.serve(async (req) => {
       if (insertError || !orderRow) {
         await cancelSmsPoolOrder(purchase.orderId).catch(() => undefined);
         await refundWallet(
-          walletClient,
+          admin,
           chargedNgn,
           'Could not save SMS order',
           { smspool_order_id: purchase.orderId },
+          user.id,
         );
         throw new Error(insertError?.message || 'Could not save SMS order.');
       }
