@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Copy, Check, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/copy-to-clipboard';
@@ -20,9 +20,17 @@ interface PurchaseCardProps {
   order: Order;
   existingReview?: Review | null;
   onReviewSubmitted?: () => void;
+  autoOpenDetails?: boolean;
+  onAutoDetailsClosed?: () => void;
 }
 
-export function PurchaseCard({ order, existingReview, onReviewSubmitted }: PurchaseCardProps) {
+export function PurchaseCard({
+  order,
+  existingReview,
+  onReviewSubmitted,
+  autoOpenDetails = false,
+  onAutoDetailsClosed,
+}: PurchaseCardProps) {
   const [copied, setCopied] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -36,6 +44,12 @@ export function PurchaseCard({ order, existingReview, onReviewSubmitted }: Purch
     product && isTelegramProduct(product) && product.supplier !== 'loggsplug',
   );
 
+  useEffect(() => {
+    if (autoOpenDetails) {
+      setDetailsOpen(true);
+    }
+  }, [autoOpenDetails]);
+
   const handleCopyOrderId = async () => {
     try {
       const copied = await copyToClipboard(orderId);
@@ -44,12 +58,19 @@ export function PurchaseCard({ order, existingReview, onReviewSubmitted }: Purch
       toast.success('Order ID copied');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Failed to copy order ID');
+      toast.error('Failed to copy Order ID');
     }
   };
 
   const handleView = () => {
     setDetailsOpen(true);
+  };
+
+  const handleDetailsClose = () => {
+    setDetailsOpen(false);
+    if (autoOpenDetails) {
+      onAutoDetailsClosed?.();
+    }
   };
 
   return (
@@ -132,7 +153,7 @@ export function PurchaseCard({ order, existingReview, onReviewSubmitted }: Purch
         orderId={orderId}
         deliveredDetails={orderItem?.delivered_details}
         open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
+        onClose={handleDetailsClose}
       />
 
       {product && !existingReview ? (

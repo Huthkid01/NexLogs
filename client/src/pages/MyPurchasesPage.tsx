@@ -17,6 +17,7 @@ export default function MyPurchasesPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [openDetailsOrderId, setOpenDetailsOrderId] = useState<string | null>(null);
   const [promptReviewOrderId, setPromptReviewOrderId] = useState<string | null>(null);
 
   const { data: orders, isLoading } = useQuery({
@@ -34,9 +35,13 @@ export default function MyPurchasesPage() {
   });
 
   useEffect(() => {
-    const state = location.state as { reviewOrderId?: string } | null;
+    const state = location.state as { reviewOrderId?: string; skipAutoDetails?: boolean } | null;
     if (state?.reviewOrderId) {
-      setPromptReviewOrderId(state.reviewOrderId);
+      if (state.skipAutoDetails) {
+        setPromptReviewOrderId(state.reviewOrderId);
+      } else {
+        setOpenDetailsOrderId(state.reviewOrderId);
+      }
       navigate(location.pathname, { replace: true, state: null });
     }
   }, [location.pathname, location.state, navigate]);
@@ -108,6 +113,14 @@ export default function MyPurchasesPage() {
               order={order}
               existingReview={reviewsByOrder?.[order.id] ?? null}
               onReviewSubmitted={refreshReviews}
+              autoOpenDetails={order.id === openDetailsOrderId}
+              onAutoDetailsClosed={() => {
+                if (order.id !== openDetailsOrderId) return;
+                setOpenDetailsOrderId(null);
+                if (!reviewsByOrder?.[order.id]) {
+                  setPromptReviewOrderId(order.id);
+                }
+              }}
             />
           ))}
         </div>

@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModalLock } from '@/hooks/useModalLock';
 import { ProductDetailsModal } from '@/components/home/ProductDetailsModal';
-import { PurchaseReviewModal } from '@/components/purchases/PurchaseReviewModal';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { LoggsplugDescriptionView } from '@/components/home/LoggsplugDescriptionView';
@@ -34,6 +33,8 @@ import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { orderService, productService, profileService } from '@/services';
 import type { Product } from '@/types';
 
+const POST_PURCHASE_MODAL_SECONDS = 10;
+
 interface ProductVariantsModalProps {
   product: Product | null;
   open: boolean;
@@ -51,16 +52,13 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const [purchaseOrderId, setPurchaseOrderId] = useState('');
   const [logSeed, setLogSeed] = useState('');
   const [deliveredDetails, setDeliveredDetails] = useState<string | null>(null);
+  const [redirectSecondsLeft, setRedirectSecondsLeft] = useState<number | null>(null);
   const [insufficientOpen, setInsufficientOpen] = useState(false);
   const [requiredAmount, setRequiredAmount] = useState(0);
   const [currentBalance, setCurrentBalance] = useState(0);
   const [purchasing, setPurchasing] = useState(false);
-  const [pendingReview, setPendingReview] = useState<{
-    orderId: string;
-    productId: string;
-    productTitle: string;
-  } | null>(null);
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const pendingReviewOrderIdRef = useRef('');
+  const redirectingRef = useRef(false);
 
   useModalLock(open, onClose);
 
@@ -123,6 +121,41 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     toast.error('Insufficient balance. Add funds to continue.');
   };
 
+  const goToMyPurchases = useCallback(() => {
+    if (redirectingRef.current) return;
+    redirectingRef.current = true;
+
+    const reviewOrderId = pendingReviewOrderIdRef.current;
+    setRedirectSecondsLeft(null);
+    setDetailsOpen(false);
+    setLogSeed('');
+    setPurchaseDate('');
+    setPurchaseOrderId('');
+    setDeliveredDetails(null);
+    pendingReviewOrderIdRef.current = '';
+
+    navigate('/purchases', {
+      state: reviewOrderId
+        ? { reviewOrderId, skipAutoDetails: true }
+        : undefined,
+    });
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!detailsOpen || redirectSecondsLeft == null) return;
+
+    if (redirectSecondsLeft <= 0) {
+      goToMyPurchases();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setRedirectSecondsLeft((current) => (current == null ? null : current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [detailsOpen, redirectSecondsLeft, goToMyPurchases]);
+
   const handleBuy = async (variantId: string, price: number) => {
     if (!displayProduct) return;
     if (!user) {
@@ -132,6 +165,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
     }
 
     setPurchasing(true);
+    redirectingRef.current = false;
     try {
       const freshStats = await profileService.getStats(user.id);
       void queryClient.setQueryData(['profile-stats', user.id], freshStats);
@@ -166,20 +200,20 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
 
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
+      await queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });
+
+      pendingReviewOrderIdRef.current = reviewOrderId;
       setLogSeed(variantId);
       setPurchaseDate(purchaseCreatedAt);
       setPurchaseOrderId(purchaseOrderNumber);
       setDeliveredDetails(purchasedDetails);
-      if (reviewOrderId) {
-        setPendingReview({
-          orderId: reviewOrderId,
-          productId: displayProduct.id,
-          productTitle: displayProduct.title,
-        });
-      }
+      setRedirectSecondsLeft(POST_PURCHASE_MODAL_SECONDS);
       setDetailsOpen(true);
       onClose();
-      toast.success('Purchase successful');
+      toast.success(
+        'Purchase successful. Copy your product details now — you will go to My Purchases in 10 seconds.',
+        { duration: 8000 },
+      );
     } catch (err: unknown) {
       if (isInsufficientFundsError(err)) {
         const latest = await profileService.getStats(user.id).catch(() => null);
@@ -225,19 +259,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   };
 
   const handleDetailsClose = () => {
-    setDetailsOpen(false);
-    setLogSeed('');
-    setPurchaseDate('');
-    setPurchaseOrderId('');
-    setDeliveredDetails(null);
-    if (pendingReview) {
-      setReviewOpen(true);
-    }
-  };
-
-  const handleReviewClose = () => {
-    setReviewOpen(false);
-    setPendingReview(null);
+    goToMyPurchases();
   };
 
   return (
@@ -425,18 +447,8 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
         deliveredDetails={deliveredDetails}
         open={detailsOpen && !!displayProduct && !!logSeed}
         onClose={handleDetailsClose}
+        redirectSecondsLeft={redirectSecondsLeft}
       />
-
-      {pendingReview ? (
-        <PurchaseReviewModal
-          open={reviewOpen}
-          onClose={handleReviewClose}
-          orderId={pendingReview.orderId}
-          productId={pendingReview.productId}
-          productTitle={pendingReview.productTitle}
-          onSubmitted={handleReviewClose}
-        />
-      ) : null}
     </>
   );
 }
