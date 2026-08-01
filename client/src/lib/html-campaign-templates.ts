@@ -567,6 +567,47 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-new-month-inbox',
+    name: 'Happy August — inbox-friendly',
+    category: 'account',
+    description:
+      'August new-month wish mixed with a soft account note that products and SMS are available on Nexlogs. Plain Primary-inbox layout — no promo banners or hard sell.',
+    defaultSubject: `Happy August from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `Wishing you a peaceful August from ${APP_NAME}. Your account is ready if you need anything this month.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Happy new month — welcome to <strong>August</strong>. We hope this month treats you kindly and that your plans go well.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                A short note from us at <strong>${APP_NAME}</strong>: whenever you need digital products, SMS verification numbers, or an RDP plan, you can purchase them from your account the same way you always have.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Here is what is available for you this month:
+              </p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li><strong>Marketplace</strong> — browse and purchase digital products with your wallet</li>
+                <li><strong>SMS verification</strong> — reserve a number and receive codes on the site (Service 1 and Service 2)</li>
+                <li><strong>Purchase RDP</strong> — Windows remote desktop plans when you need one</li>
+                <li><strong>My Purchases</strong> — open delivered details anytime after you buy</li>
+              </ul>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                If you need something this August, sign in, add funds if your balance is low, then choose what you need from the marketplace or Buy Numbers. No rush — we are here when you are ready.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Thank you for being with ${APP_NAME}. We wish you a calm and successful August.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Warm regards,<br/>
+                <strong style="color:#111827;">Team ${APP_NAME}</strong>
+              </p>`,
+      linkLabel: `Open your ${APP_NAME} account`,
+      linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
     id: 'marketing-reengagement',
     name: 'We miss you',
     category: 'marketing',
