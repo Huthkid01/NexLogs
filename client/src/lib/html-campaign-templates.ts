@@ -94,24 +94,6 @@ function buildPlainEmailHtml(options: {
 </html>`;
 }
 
-function buildMarketingEmailHtml(options: {
-  title: string;
-  preheader: string;
-  bodyHtml: string;
-  ctaLabel?: string;
-  ctaUrl?: string;
-  heroTitle?: string;
-  compactLogo?: boolean;
-}) {
-  return buildPlainEmailHtml({
-    title: options.heroTitle ?? options.title,
-    preheader: options.preheader,
-    bodyHtml: options.bodyHtml,
-    linkUrl: options.ctaUrl,
-    linkLabel: options.ctaLabel,
-  });
-}
-
 function buildInboxFriendlyEmailHtml(options: {
   title: string;
   preheader: string;
@@ -591,10 +573,10 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     name: 'Every day is a new opportunity — inbox-friendly',
     category: 'account',
     description:
-      'Same daily-opportunity message in a plain Primary-inbox layout — no dark promo card, no banners.',
-    defaultSubject: `A short note from ${APP_NAME}`,
+      'Daily-opportunity message in a plain Primary-inbox layout — no dark promo card, no banners.',
+    defaultSubject: `Every Day Is a New Opportunity with ${APP_NAME}`,
     html: buildInboxFriendlyEmailHtml({
-      title: APP_NAME,
+      title: `Every Day Is a New Opportunity with ${APP_NAME}`,
       preheader: `Whether you need social accounts, SMS verification numbers, or RDP — ${siteHost} is ready when you are.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
