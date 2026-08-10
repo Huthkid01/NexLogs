@@ -16,7 +16,7 @@ export const HTML_CAMPAIGN_TEMPLATE_CATEGORIES: {
   id: HtmlCampaignTemplateCategory;
   label: string;
 }[] = [
-  { id: 'marketing', label: 'Email marketing' },
+  { id: 'marketing', label: 'Inbox campaigns' },
   { id: 'account', label: 'Account emails' },
   { id: 'general', label: 'General' },
 ];
@@ -125,125 +125,139 @@ function buildInboxFriendlyEmailHtml(options: {
 export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
   {
     id: 'marketing-intro',
-    name: 'Introduce Nexlogs',
+    name: 'Introduce Nexlogs — inbox-friendly',
     category: 'marketing',
-    description: 'Introduce your brand to new subscribers or cold contacts.',
-    defaultSubject: `Discover ${APP_NAME} — digital products made simple`,
-    html: buildMarketingEmailHtml({
-      title: `Discover ${APP_NAME}`,
-      preheader: `Browse digital products on ${APP_NAME}. Simple checkout and fast delivery.`,
-      heroTitle: 'Welcome to Nexlogs',
+    description: 'Plain account-style intro for new contacts. Best chance for Primary inbox.',
+    defaultSubject: `About your ${APP_NAME} account`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `${APP_NAME} is a marketplace for digital products. Sign in to browse and manage orders.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                <strong>${APP_NAME}</strong> is a marketplace for digital products — social accounts, tools, and services you can browse and purchase in a few clicks.
+                <strong>${APP_NAME}</strong> is a marketplace for digital products — social accounts, tools, and services you can browse and purchase from your account.
               </p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                Create a free account to add funds, place orders, and track your purchases from one dashboard.
+                You can add funds, place orders, and track purchases from one place.
               </p>
-              <ul style="margin:0 0 8px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
-                <li>Curated catalog with clear pricing</li>
-                <li>Secure wallet for quick checkout</li>
-                <li>Order history and support when you need it</li>
-              </ul>`,
-      ctaLabel: 'Explore the marketplace',
-      ctaUrl: `${appUrl}/marketplace`,
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Marketplace with clear pricing</li>
+                <li>Wallet checkout from your balance</li>
+                <li>Order history under My Purchases</li>
+              </ul>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
     id: 'marketing-marketplace-update',
-    name: 'Marketplace update',
+    name: 'Marketplace update — inbox-friendly',
     category: 'marketing',
-    description: 'Tell contacts about new listings and catalog updates.',
-    defaultSubject: `New on ${APP_NAME} — see what just landed`,
-    html: buildMarketingEmailHtml({
-      title: 'Marketplace update',
-      preheader: `Fresh listings and updates are live on ${APP_NAME} today.`,
-      heroTitle: 'New on the marketplace',
+    description: 'Plain note about marketplace updates. Primary-inbox layout.',
+    defaultSubject: `A quick marketplace update from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `A short update about listings and products on ${APP_NAME}.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                We refreshed our marketplace with new products and updated listings. Whether you are buying for the first time or checking back in, there is plenty to explore.
+                We refreshed the marketplace with new products and updated listings. You can browse anytime from your account.
               </p>
-              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;"><strong>This week on ${APP_NAME}</strong></p>
-              <ul style="margin:0;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
-                <li>New product categories added</li>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>What is available</strong></p>
+              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>New product categories</li>
                 <li>Updated pricing on selected items</li>
-                <li>Faster checkout from your wallet balance</li>
-              </ul>`,
-      ctaLabel: 'Browse marketplace',
-      ctaUrl: `${appUrl}/marketplace`,
+                <li>Checkout from your wallet balance</li>
+              </ul>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
     id: 'marketing-newsletter',
-    name: 'Newsletter',
+    name: 'Account update — inbox-friendly',
     category: 'marketing',
-    description: 'Multi-section newsletter for regular marketing sends.',
-    defaultSubject: `${APP_NAME} newsletter — updates and picks for you`,
-    html: buildMarketingEmailHtml({
-      title: `${APP_NAME} newsletter`,
-      preheader: `Your ${APP_NAME} update: marketplace news, tips, and featured picks.`,
-      heroTitle: 'Your Nexlogs update',
+    description: 'Short multi-section account update. Plain layout for Primary inbox.',
+    defaultSubject: `A short update from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `A short update from ${APP_NAME}: marketplace news and a tip for your account.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">
-                Here is a quick roundup from ${APP_NAME} — what is new, what is popular, and where to go next.
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Here is a short update from ${APP_NAME} — what is new and where to go next.
               </p>
-              <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#f26522;">Featured</p>
-              <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#374151;">
-                Visit the marketplace to see trending products and newly listed items. Edit this section with your own highlights before sending.
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Marketplace</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                Visit the marketplace to see current products and newly listed items. You can edit this section with your own highlights before sending.
               </p>
-              <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#f26522;">Tip</p>
-              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;">
-                Add funds once, then checkout in seconds — no need to re-enter payment details for every order.
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Tip</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                Add funds once, then checkout from your wallet for later orders.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
               </p>`,
-      ctaLabel: 'Open marketplace',
-      ctaUrl: `${appUrl}/marketplace`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
     id: 'marketing-product-highlight',
-    name: 'Product highlight',
+    name: 'Product highlight — inbox-friendly',
     category: 'marketing',
-    description: 'Spotlight one product or offer with a clear call to action.',
-    defaultSubject: `A pick for you on ${APP_NAME}`,
-    html: buildMarketingEmailHtml({
-      title: 'Product highlight',
-      preheader: `We picked something you might like on ${APP_NAME}. Take a look inside.`,
-      heroTitle: 'Recommended for you',
+    description: 'Spotlight one product in plain account style for Primary inbox.',
+    defaultSubject: `A product note from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `A short product note from ${APP_NAME}. Open to read more.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                We wanted to share a product worth a closer look. Replace the placeholder below with your product name, price, and a short description before sending.
+                We wanted to share a product that may be useful for you. Replace the placeholder below with your product name, price, and a short description before sending.
               </p>
               <p style="margin:0 0 8px;font-size:16px;line-height:1.7;color:#111827;"><strong>[Product name]</strong></p>
               <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;">[One sentence about why this product is useful]</p>
-              <p style="margin:0;font-size:15px;line-height:1.7;color:#374151;"><strong>[Price]</strong></p>`,
-      ctaLabel: 'View product',
-      ctaUrl: `${appUrl}/marketplace`,
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;"><strong>[Price]</strong></p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
     id: 'marketing-special-offer',
-    name: 'Special offer',
+    name: 'Selected items update — inbox-friendly',
     category: 'marketing',
-    description: 'Promote a sale or bundle without spam trigger words.',
-    defaultSubject: `Save on selected items at ${APP_NAME}`,
-    html: buildMarketingEmailHtml({
-      title: 'Special offer',
-      preheader: `Selected items on ${APP_NAME} are available at updated prices this week.`,
-      heroTitle: 'Selected items on sale',
+    description: 'Soft pricing update without sale/spam language. Plain Primary-inbox layout.',
+    defaultSubject: `Selected items update on ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `Selected items on ${APP_NAME} have updated pricing. Details inside.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                For a limited period, selected products on ${APP_NAME} are available at reduced prices. Update the details below with your actual offer before sending.
+                Selected products on ${APP_NAME} currently have updated prices. Edit the details below with your actual message before sending.
               </p>
-              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>This week only</strong></p>
-              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;color:#111827;"><strong>[Your offer headline]</strong></p>
-              <p style="margin:0;font-size:15px;line-height:1.7;color:#374151;">[Short offer details — e.g. selected marketplace items]</p>`,
-      ctaLabel: 'Shop the offer',
-      ctaUrl: `${appUrl}/marketplace`,
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>[Your update headline]</strong></p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">[Short details — for example selected marketplace items]</p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
@@ -306,38 +320,44 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
   },
   {
     id: 'marketing-buy-numbers-sms',
-    name: 'Buy Numbers — SMS verification',
+    name: 'Buy Numbers — SMS verification (inbox-friendly)',
     category: 'marketing',
-    description: 'Marketing layout with hero banner. Often lands in Gmail Promotions — use the inbox-friendly template for Primary.',
-    defaultSubject: `SMS verification is live on ${APP_NAME} — buy a number in minutes`,
-    html: buildMarketingEmailHtml({
-      title: 'SMS verification is live',
-      preheader: `Reserve a phone number on ${APP_NAME} and receive SMS codes for WhatsApp, Facebook, and more.`,
-      heroTitle: 'Buy numbers. Get your code.',
+    description:
+      'Plain account notice for SMS verification numbers. Use this instead of promo-style SMS emails.',
+    defaultSubject: `SMS verification on ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `You can reserve a phone number on ${APP_NAME} and receive SMS codes in your account.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                You can now <strong>buy a temporary phone number</strong> on ${APP_NAME} and receive SMS verification codes directly in your account — no extra apps required.
+                You can <strong>buy a temporary phone number</strong> on ${APP_NAME} and receive SMS verification codes directly in your account.
               </p>
-              <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">
-                Use it for account verification on popular platforms when you need a fresh number in a specific country.
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Use it for account verification when you need a fresh number in a specific country.
               </p>
               <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Works with services like</strong></p>
               <p style="margin:0 0 16px;font-size:15px;line-height:1.8;color:#374151;">
-                WhatsApp, Facebook, Instagram, Google, Telegram, TikTok, Twitter, Snapchat, Discord, Microsoft, Apple, Naver, Tinder, eBay, Viber, and many more.
+                WhatsApp, Facebook, Instagram, Google, Telegram, TikTok, Twitter, Snapchat, Discord, Microsoft, Apple, and more.
               </p>
               <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>How it works</strong></p>
-              <ol style="margin:0;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
-                <li>Sign in and open <strong>Buy Numbers</strong> from the menu</li>
-                <li>Choose your <strong>country</strong> and <strong>service</strong> (for example WhatsApp)</li>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
+                <li>Sign in and open <strong>Buy Numbers</strong></li>
+                <li>Choose your <strong>country</strong> and <strong>service</strong></li>
                 <li>Confirm and pay from your <strong>wallet balance</strong></li>
                 <li>Tap <strong>Get SMS Code</strong> when the message arrives</li>
               </ol>
-              <p style="margin:16px 0 0;font-size:14px;line-height:1.7;color:#6b7280;">
-                Need wallet funds first? Use <a href="${appUrl}/add-funds" style="color:#f26522;text-decoration:none;">Add Funds</a> in your account menu. Numbers are for legitimate verification only.
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#374151;">
+                Need wallet funds first? Open
+                <a href="${appUrl}/add-funds" style="color:#111827;text-decoration:underline;">Add Funds</a>
+                from your account menu.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
               </p>`,
-      ctaLabel: 'Buy a number now',
-      ctaUrl: `${appUrl}/buy-numbers`,
+      linkLabel: 'Open Buy Numbers',
+      linkUrl: `${appUrl}/buy-numbers`,
     }),
   },
   {
@@ -567,6 +587,34 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-daily-opportunity',
+    name: 'Every day is a new opportunity — inbox-friendly',
+    category: 'account',
+    description:
+      'Same daily-opportunity message in a plain Primary-inbox layout — no dark promo card, no banners.',
+    defaultSubject: `A short note from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `Whether you need social accounts, SMS verification numbers, or RDP — ${siteHost} is ready when you are.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Whether you need to purchase premium social media accounts, verify apps and websites with reliable virtual numbers, grow your social media presence, or get a remote desktop plan, <strong>${siteHost}</strong> has everything you need — all in one secure and trusted platform.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Join thousands of users who trust ${APP_NAME} for fast, reliable, and seamless digital services. Whatever your goals are today, we are here to help you achieve them.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Visit ${siteHost} today and make the most of every opportunity.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                The ${APP_NAME} Team
+              </p>`,
+      linkLabel: `Visit ${siteHost}`,
+      linkUrl: `${appUrl}`,
+    }),
+  },
+  {
     id: 'account-new-month-inbox',
     name: 'Happy August — inbox-friendly',
     category: 'account',
@@ -609,44 +657,49 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
   },
   {
     id: 'marketing-reengagement',
-    name: 'We miss you',
+    name: 'We miss you — inbox-friendly',
     category: 'marketing',
-    description: 'Gentle re-engagement email for inactive contacts. Often lands in Promotions — use the inbox-friendly version under Account emails instead.',
-    defaultSubject: `Still shopping on ${APP_NAME}?`,
-    html: buildMarketingEmailHtml({
-      title: 'We miss you',
-      preheader: `It has been a while — see what is new on ${APP_NAME}.`,
-      heroTitle: 'We would love to see you back',
+    description: 'Gentle re-engagement as a plain account note for Primary inbox.',
+    defaultSubject: `A note from ${APP_NAME} for your account`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `It has been a while since your last visit to ${APP_NAME}. Your account is still ready.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 It has been a while since your last visit. Our marketplace has grown since then — new products, smoother checkout, and the same support team if you need help.
               </p>
-              <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#374151;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 Sign in anytime to browse, add funds, or pick up where you left off.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
               </p>`,
-      ctaLabel: 'Return to marketplace',
-      ctaUrl: `${appUrl}/marketplace`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
     id: 'marketing-minimal-cta',
-    name: 'Minimal CTA',
+    name: 'Quick note — inbox-friendly',
     category: 'marketing',
-    description: 'Short marketing email with one message and button.',
+    description: 'Short plain message with one soft link. Primary-inbox layout.',
     defaultSubject: `Quick note from ${APP_NAME}`,
-    html: buildMarketingEmailHtml({
-      title: 'Quick note',
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
       preheader: `A short update from ${APP_NAME} — open to read more.`,
-      heroTitle: 'A quick note from us',
-      compactLogo: true,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;">
-                [Write your marketing message here — keep it clear, helpful, and focused on one action.]
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                [Write your message here — keep it clear, helpful, and focused on one action.]
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
               </p>`,
-      ctaLabel: 'Learn more',
-      ctaUrl: `${appUrl}/marketplace`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
@@ -694,11 +747,9 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     description:
       'Notify a user their wallet was credited (₦7,000) after a delayed deposit. Includes fix notice for add-funds.',
     defaultSubject: `Your ${APP_NAME} wallet has been updated — ₦7,000 added`,
-    html: buildMarketingEmailHtml({
+    html: buildInboxFriendlyEmailHtml({
       title: 'Wallet updated',
       preheader: `₦7,000 has been added to your ${APP_NAME} wallet. The add-funds issue is fixed.`,
-      heroTitle: 'Your wallet has been updated',
-      compactLogo: true,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
@@ -714,11 +765,15 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 You can sign in and use your balance to purchase products on the marketplace whenever you are ready.
               </p>
-              <p style="margin:0;font-size:14px;line-height:1.7;color:#6b7280;">
+              <p style="margin:0 0 16px;font-size:14px;line-height:1.7;color:#6b7280;">
                 If anything still looks wrong in your account, reply to this email and we will help.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
               </p>`,
-      ctaLabel: 'Browse marketplace',
-      ctaUrl: `${appUrl}/marketplace`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
@@ -761,18 +816,17 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     category: 'account',
     description: 'Step-by-step guide to menus, marketplace, wallet, and support.',
     defaultSubject: `How to navigate ${APP_NAME}`,
-    html: buildMarketingEmailHtml({
-      title: `Navigate ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: `How to navigate ${APP_NAME}`,
       preheader: `A quick tour of ${APP_NAME} — marketplace, wallet, purchases, and help.`,
-      heroTitle: 'How to navigate our website',
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
                 Here is a simple guide to finding your way around <strong>${APP_NAME}</strong>. Sign in at
-                <a href="${appUrl}/login" style="color:#f26522;text-decoration:none;">${siteHost}/login</a>
+                <a href="${appUrl}/login" style="color:#111827;text-decoration:underline;">${siteHost}/login</a>
                 to access everything below.
               </p>
-              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">1. Main menu (top left ☰)</p>
+              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">1. Main menu (top left)</p>
               <p style="margin:0 0 16px;font-size:14px;line-height:1.8;color:#374151;">
                 Tap the menu icon to open the side panel. From there you can go to Marketplace, Purchase RDP, My Purchases, Buy Numbers, and Need help?.
               </p>
@@ -796,14 +850,18 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
                 <li>Confirm your order — payment comes from your wallet balance</li>
                 <li>Check delivery under <a href="${appUrl}/purchases" style="color:#111827;text-decoration:underline;">My Purchases</a></li>
               </ol>
-              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">5. Help &amp; footer links</p>
-              <p style="margin:0;font-size:14px;line-height:1.8;color:#374151;">
+              <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#111827;">5. Help and footer links</p>
+              <p style="margin:0 0 16px;font-size:14px;line-height:1.8;color:#374151;">
                 Visit <a href="${appUrl}/faq" style="color:#111827;text-decoration:underline;">FAQ</a> for common questions,
                 <a href="${appUrl}/support" style="color:#111827;text-decoration:underline;">Support</a> for help, or email
                 <a href="mailto:support@nexlogs.site" style="color:#111827;text-decoration:underline;">support@nexlogs.site</a>.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
               </p>`,
-      ctaLabel: 'Open marketplace',
-      ctaUrl: `${appUrl}/marketplace`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
@@ -861,7 +919,7 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                We want you closer to updates, deals, and support. Join the <strong>${APP_NAME} WhatsApp community</strong> and follow us on <strong>TikTok</strong> and <strong>Instagram</strong>.
+                We want you closer to updates and support. Join the <strong>${APP_NAME} WhatsApp community</strong> and follow us on <strong>TikTok</strong> and <strong>Instagram</strong>.
               </p>
               <p style="margin:0 0 8px;font-size:15px;line-height:1.7;color:#111827;"><strong>Join and follow here</strong></p>
               <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.9;color:#374151;">
@@ -1010,34 +1068,46 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
   },
   {
     id: 'announcement',
-    name: 'Simple announcement',
+    name: 'Simple announcement — inbox-friendly',
     category: 'general',
-    description: 'General update with hero banner.',
+    description: 'General update in plain Primary-inbox layout.',
     defaultSubject: `Update from ${APP_NAME}`,
-    html: buildMarketingEmailHtml({
-      title: 'Announcement',
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
       preheader: `An update from ${APP_NAME} for you.`,
-      heroTitle: 'Important update',
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;">We have an update for you on ${APP_NAME}. Add your announcement text here.</p>`,
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                We have an update for you on ${APP_NAME}. Add your announcement text here.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
   {
     id: 'promo',
-    name: 'Promo with CTA',
+    name: 'Marketplace note — inbox-friendly',
     category: 'general',
-    description: 'Simple promo layout with marketplace button.',
-    defaultSubject: `See what is new on ${APP_NAME}`,
-    html: buildMarketingEmailHtml({
-      title: 'Promo',
-      preheader: `Browse the latest on ${APP_NAME} today.`,
-      compactLogo: true,
+    description: 'Soft marketplace reminder. Plain Primary-inbox layout.',
+    defaultSubject: `A note from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `A short note about what is available on ${APP_NAME}.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi {{name}},</p>
-              <p style="margin:0 0 8px;font-size:16px;line-height:1.7;">Check out what is new on our marketplace today.</p>`,
-      ctaLabel: 'Visit marketplace',
-      ctaUrl: `${appUrl}/marketplace`,
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Check out what is available on our marketplace today. Your account is ready whenever you need it.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Thank you,<br/>
+                <strong style="color:#111827;">The ${APP_NAME} team</strong>
+              </p>`,
+      linkLabel: 'Open the marketplace',
+      linkUrl: `${appUrl}/marketplace`,
     }),
   },
 ];

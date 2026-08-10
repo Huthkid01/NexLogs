@@ -2,10 +2,13 @@ import type { MarketingSendProgressItem, MarketingSendRecipient } from '@/lib/ma
 
 /** Send this many emails, then pause before the next batch. */
 export const EMAIL_SEND_BATCH_SIZE = 10;
-/** Pause between batches (after every 10 sends). */
-export const EMAIL_SEND_BATCH_PAUSE_MS = 5_000;
-/** Short gap between each individual email so sending feels like a real mail client. */
-export const EMAIL_SEND_BETWEEN_MS = 500;
+/** Pause between batches (after every 10 sends) — helps Gmail treat the stream as human pace. */
+export const EMAIL_SEND_BATCH_PAUSE_MS = 8_000;
+/**
+ * Gap between each individual email.
+ * ~2.5s looks like a person sending one-by-one; 500ms was too fast and can look like a blast.
+ */
+export const EMAIL_SEND_BETWEEN_MS = 2_500;
 
 export interface SequentialSendResult {
   sentCount: number;
@@ -172,7 +175,7 @@ export async function runSequentialEmailSend<TPayload>(options: {
         sentInBatch: indexInBatch + 1,
       });
 
-      // Small gap between emails (skip after the very last recipient).
+      // Human-like gap between every email (batch pause already covers the batch boundary).
       if (index < recipients.length - 1 && betweenEmailMs > 0 && indexInBatch + 1 < batchSize) {
         await sleep(betweenEmailMs, signal);
       }

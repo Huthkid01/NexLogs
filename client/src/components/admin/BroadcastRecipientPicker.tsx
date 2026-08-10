@@ -112,6 +112,7 @@ export const BroadcastRecipientPicker = forwardRef<
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [ccOpen, setCcOpen] = useState(false);
+  const [recipientsExpanded, setRecipientsExpanded] = useState(false);
 
   const selectedContacts = useMemo(
     () => contacts.filter((contact) => selectedIds.includes(contact.id)),
@@ -394,6 +395,21 @@ export const BroadcastRecipientPicker = forwardRef<
     return filteredContacts.filter((contact) => contact.id !== pendingContact.id);
   }, [filteredContacts, pendingContact]);
 
+  const composerChipsCollapsed =
+    variant === 'composer' && totalSelectedCount > 8 && !recipientsExpanded;
+  const visibleComposerContacts = composerChipsCollapsed
+    ? selectedContacts.slice(0, 6)
+    : selectedContacts;
+  const visibleComposerExternals = composerChipsCollapsed
+    ? selectedExternalEmails.slice(0, Math.max(0, 6 - visibleComposerContacts.length))
+    : selectedExternalEmails;
+  const hiddenComposerCount = composerChipsCollapsed
+    ? Math.max(
+        0,
+        totalSelectedCount - visibleComposerContacts.length - visibleComposerExternals.length,
+      )
+    : 0;
+
   const pickerField = (
     <div ref={containerRef} className="relative min-w-0 flex-1">
       <div
@@ -408,8 +424,13 @@ export const BroadcastRecipientPicker = forwardRef<
           inputRef.current?.focus();
         }}
       >
-        <div className="flex flex-wrap gap-1.5">
-          {selectedContacts.map((contact) => (
+        <div
+          className={cn(
+            'flex flex-wrap gap-1.5',
+            variant === 'composer' && recipientsExpanded && 'max-h-28 overflow-y-auto pr-1',
+          )}
+        >
+          {(variant === 'composer' ? visibleComposerContacts : selectedContacts).map((contact) => (
             <span
               key={contact.id}
               className={cn(
@@ -437,7 +458,7 @@ export const BroadcastRecipientPicker = forwardRef<
             </span>
           ))}
 
-          {selectedExternalEmails.map((email) => (
+          {(variant === 'composer' ? visibleComposerExternals : selectedExternalEmails).map((email) => (
             <span
               key={`external-${email}`}
               className={cn(
@@ -461,6 +482,19 @@ export const BroadcastRecipientPicker = forwardRef<
               </button>
             </span>
           ))}
+
+          {hiddenComposerCount > 0 ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setRecipientsExpanded(true);
+              }}
+              className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              +{hiddenComposerCount} more
+            </button>
+          ) : null}
 
           <div className={cn('flex min-w-[120px] flex-1 items-center gap-2', variant === 'composer' ? 'px-0' : 'px-1')}>
             {variant !== 'composer' && <Search className="h-4 w-4 shrink-0 text-muted-foreground" />}
@@ -583,6 +617,29 @@ export const BroadcastRecipientPicker = forwardRef<
       <div className="flex min-w-0 items-start gap-3 border-b border-slate-100 px-4 py-2 dark:border-[#18263b]">
         <span className="w-14 shrink-0 pt-2 text-sm text-slate-500">To</span>
         <div className="min-w-0 flex-1">
+          {totalSelectedCount > 0 ? (
+            <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="font-medium text-slate-700 dark:text-slate-300">
+                {totalSelectedCount} recipient{totalSelectedCount === 1 ? '' : 's'}
+              </span>
+              {totalSelectedCount > 8 ? (
+                <button
+                  type="button"
+                  onClick={() => setRecipientsExpanded((value) => !value)}
+                  className="font-medium text-[#f26522] hover:underline"
+                >
+                  {recipientsExpanded ? 'Collapse' : 'Show all'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={clearAll}
+                className="font-medium text-slate-500 hover:text-red-500 hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          ) : null}
           {pickerField}
           {showCcToggle && ccOpen && (
             <div className="mt-2 flex items-start gap-3 border-t border-slate-100 pt-2 dark:border-[#18263b]">

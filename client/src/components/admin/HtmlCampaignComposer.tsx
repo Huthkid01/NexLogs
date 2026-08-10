@@ -353,8 +353,8 @@ export function HtmlCampaignComposer({
         )}
 
         {previewInlineOpen && (
-          <div className="max-h-[min(42vh,360px)] shrink-0 overflow-y-auto border-t border-slate-100 bg-slate-50/80 px-4 py-4 dark:border-[#18263b] dark:bg-[#06101d]/50">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="max-h-[min(28vh,240px)] shrink-0 overflow-y-auto border-t border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-[#18263b] dark:bg-[#06101d]/50">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">Inbox placement checks</p>
               <div className="flex items-center gap-3">
                 <button

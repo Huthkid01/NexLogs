@@ -100,7 +100,7 @@ export function BroadcastSendFlowModal({
                     } from support@nexlogs.site.`}
                 </p>
                 <p className={cn('mt-3 text-xs leading-5', adminMutedTextClass(isDark))}>
-                  Emails are sent one by one like a mail client: 10 at a time, then a 5 second pause before the next batch. This improves delivery and inbox placement.
+                  Emails are sent one by one like a person: 2.5 seconds between each email, 10 per batch, then an 8 second pause. This reduces spam risk and improves inbox placement.
                 </p>
               </div>
               <button type="button" onClick={onClose} className={adminIconButtonClass(isDark)} aria-label="Close">
@@ -134,7 +134,7 @@ export function BroadcastSendFlowModal({
               </p>
               {isPausing ? (
                 <p className="mt-2 text-sm font-medium text-[#f26522]">
-                  Waiting {sendInfo?.pauseSecondsLeft ?? 5}s, then sending the next 10…
+                  Waiting {sendInfo?.pauseSecondsLeft ?? 8}s, then sending the next 10…
                 </p>
               ) : activeItem || currentSendEmail ? (
                 <p className={cn('mt-2 truncate text-sm', adminMutedTextClass(isDark))}>
@@ -279,7 +279,7 @@ export function BroadcastSendFlowModal({
         {phase === 'sending' && (
           <p className="sr-only" role="status" aria-live="polite">
             {isPausing
-              ? `Pausing ${sendInfo?.pauseSecondsLeft ?? 5} seconds before the next batch. ${progressPercent}% complete.`
+              ? `Pausing ${sendInfo?.pauseSecondsLeft ?? 8} seconds before the next batch. ${progressPercent}% complete.`
               : activeItem
                 ? `Sending email to ${activeItem.email}. ${progressPercent}% complete.`
                 : `Sending emails. ${progressPercent}% complete. ${finishedCount} of ${totalRecipients}.`}
