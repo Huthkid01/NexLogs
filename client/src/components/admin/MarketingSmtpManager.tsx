@@ -133,7 +133,8 @@ export function MarketingSmtpManager({
     },
     onSuccess: (message) => toast.success(message),
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'SMTP test failed');
+      const message = error instanceof Error ? error.message : 'SMTP test failed';
+      toast.error(message, { duration: message.includes('\n') ? 12_000 : 6_000 });
     },
   });
 
@@ -416,7 +417,12 @@ export function MarketingSmtpManager({
                         setForm((current) => ({
                           ...current,
                           port: parsed,
-                          secure: parsed === 465 ? true : parsed === 587 ? false : current.secure,
+                          secure:
+                            parsed === 465
+                              ? true
+                              : parsed === 587 || parsed === 2525
+                                ? false
+                                : current.secure,
                         }));
                       }
                     }}
@@ -480,8 +486,12 @@ export function MarketingSmtpManager({
                     setForm((current) => ({ ...current, secure: event.target.checked }))
                   }
                 />
-                Use SSL on connect (port 465). Leave off for port 587 (STARTTLS).
+                Use SSL on connect (port 465). Leave off for 587 / 2525 (STARTTLS).
               </label>
+              <p className={cn('text-xs leading-5', adminMutedTextClass(isDark))}>
+                For Bulko (`smtp.bulko.io`), use port <strong>587</strong> or <strong>2525</strong> with SSL off.
+                If 587 fails from our servers, try <strong>2525</strong> — do not use 465.
+              </p>
             </div>
 
             <div

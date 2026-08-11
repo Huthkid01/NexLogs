@@ -85,7 +85,7 @@ export async function resolveMarketingSmtpConfig(
     id: data.id,
     label: data.label,
     host: data.host,
-    port: Number(data.port) || 465,
+    port: Number(data.port) || 587,
     secure: Boolean(data.secure),
     username: data.username,
     password: data.password,
@@ -131,9 +131,15 @@ export function parseSmtpAccountInput(body: Record<string, unknown>, options?: {
   const username = trimRequired(body.username, 'SMTP username');
   const fromAddress = trimRequired(body.from_address ?? body.fromAddress, 'From address');
   const fromName = String(body.from_name ?? body.fromName ?? 'Nexlogs').trim() || 'Nexlogs';
-  const portRaw = Number(body.port ?? 465);
-  const port = Number.isFinite(portRaw) && portRaw > 0 && portRaw <= 65535 ? Math.trunc(portRaw) : 465;
-  const secure = body.secure === false || body.secure === 'false' ? false : true;
+  const portRaw = Number(body.port ?? 587);
+  const port = Number.isFinite(portRaw) && portRaw > 0 && portRaw <= 65535 ? Math.trunc(portRaw) : 587;
+  // STARTTLS ports must not use implicit SSL. Default secure from port when omitted.
+  const secure =
+    body.secure === false || body.secure === 'false' || port === 587 || port === 2525
+      ? false
+      : body.secure === true || body.secure === 'true' || port === 465
+        ? true
+        : false;
   const password = String(body.password ?? '').trim();
 
   if (requirePassword && !password) {
@@ -166,32 +172,9 @@ export async function sendViaMarketingSmtp(
   const nodemailer = await import('npm:nodemailer@6.9.16');
   const from = `"${smtp.fromName.replaceAll('"', '')}" <${smtp.fromAddress}>`;
 
-  const configuredPort = smtp.port || 587;
-  const configuredSecure =
-    configuredPort === 587 ? false : configuredPort === 465 ? true : smtp.secure !== false;
+  const uniqueAttempts = buildSmtpVerifyAttempts(smtp);
 
-  const attempts = smtp.isDefault
-    ? [
-        { port: configuredPort, secure: configuredSecure },
-        { port: 587, secure: false },
-        { port: 465, secure: true },
-      ]
-    : [
-        { port: configuredPort, secure: configuredSecure },
-        { port: 587, secure: false },
-        { port: 465, secure: true },
-      ];
-
-  // Deduplicate attempts
-  const seen = new Set<string>();
-  const uniqueAttempts = attempts.filter((attempt) => {
-    const key = `${attempt.port}:${attempt.secure}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  let lastError: Error | null = null;
+  const errors: string[] = [];
 
   for (const attempt of uniqueAttempts) {
     try {
@@ -199,6 +182,7 @@ export async function sendViaMarketingSmtp(
         host: smtp.host,
         port: attempt.port,
         secure: attempt.secure,
+        requireTLS: !attempt.secure && (attempt.port === 587 || attempt.port === 2525),
         auth: {
           user: smtp.username,
           pass: smtp.password,
@@ -226,23 +210,32 @@ export async function sendViaMarketingSmtp(
       return { from };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      lastError = error instanceof Error ? error : new Error(message);
+      errors.push(`${smtp.host}:${attempt.port} → ${message}`);
       console.error(`[marketing-smtp] ${smtp.host}:${attempt.port} failed:`, message);
     }
   }
 
-  throw lastError ?? new Error('SMTP send failed');
+  throw new Error(errors.length ? `SMTP send failed. Tried:\n${errors.join('\n')}` : 'SMTP send failed');
+}
+
+function resolveAttemptSecure(port: number, configuredSecure: boolean): boolean {
+  if (port === 465) return true;
+  // 587 / 2525 = STARTTLS submission (common on Bulko, Mailgun, cloud hosts)
+  if (port === 587 || port === 2525) return false;
+  return configuredSecure;
 }
 
 function buildSmtpVerifyAttempts(smtp: MarketingSmtpConfig) {
   const configuredPort = smtp.port || 587;
-  const configuredSecure =
-    configuredPort === 587 ? false : configuredPort === 465 ? true : smtp.secure !== false;
+  const configuredSecure = resolveAttemptSecure(configuredPort, smtp.secure === true);
 
+  // Prefer configured port, then 2525 (works on Supabase Edge; 25/587 are blocked there),
+  // then 587. Only try 465 when the user explicitly configured it — Bulko refuses 465.
   const attempts = [
     { port: configuredPort, secure: configuredSecure },
+    { port: 2525, secure: false },
     { port: 587, secure: false },
-    { port: 465, secure: true },
+    ...(configuredPort === 465 ? [{ port: 465, secure: true }] : []),
   ];
 
   const seen = new Set<string>();
@@ -256,7 +249,7 @@ function buildSmtpVerifyAttempts(smtp: MarketingSmtpConfig) {
 
 export async function verifyMarketingSmtp(smtp: MarketingSmtpConfig) {
   const nodemailer = await import('npm:nodemailer@6.9.16');
-  let lastError: Error | null = null;
+  const errors: string[] = [];
 
   for (const attempt of buildSmtpVerifyAttempts(smtp)) {
     try {
@@ -264,6 +257,7 @@ export async function verifyMarketingSmtp(smtp: MarketingSmtpConfig) {
         host: smtp.host,
         port: attempt.port,
         secure: attempt.secure,
+        requireTLS: !attempt.secure && (attempt.port === 587 || attempt.port === 2525),
         auth: {
           user: smtp.username,
           pass: smtp.password,
@@ -276,10 +270,14 @@ export async function verifyMarketingSmtp(smtp: MarketingSmtpConfig) {
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      lastError = error instanceof Error ? error : new Error(message);
+      errors.push(`${smtp.host}:${attempt.port} → ${message}`);
       console.error(`[marketing-smtp] verify ${smtp.host}:${attempt.port} secure=${attempt.secure} failed:`, message);
     }
   }
 
-  throw lastError ?? new Error('SMTP verification failed');
+  throw new Error(
+    errors.length
+      ? `SMTP verification failed. Tried:\n${errors.join('\n')}`
+      : 'SMTP verification failed',
+  );
 }
