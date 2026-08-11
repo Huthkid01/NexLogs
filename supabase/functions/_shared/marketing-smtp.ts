@@ -1,4 +1,5 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { sendDenoSmtp, verifyDenoSmtp } from './deno-smtp.ts';
 
 export interface MarketingSmtpConfig {
   id: string | null;
@@ -169,44 +170,29 @@ export async function sendViaMarketingSmtp(
   },
   smtp: MarketingSmtpConfig,
 ) {
-  const nodemailer = await import('npm:nodemailer@6.9.16');
   const from = `"${smtp.fromName.replaceAll('"', '')}" <${smtp.fromAddress}>`;
-
   const uniqueAttempts = buildSmtpVerifyAttempts(smtp);
-
   const errors: string[] = [];
 
   for (const attempt of uniqueAttempts) {
     try {
-      const transport = nodemailer.default.createTransport({
-        host: smtp.host,
-        port: attempt.port,
-        secure: attempt.secure,
-        requireTLS: !attempt.secure && (attempt.port === 587 || attempt.port === 2525),
-        auth: {
-          user: smtp.username,
-          pass: smtp.password,
+      await sendDenoSmtp(
+        {
+          host: smtp.host,
+          port: attempt.port,
+          secure: attempt.secure,
+          username: smtp.username,
+          password: smtp.password,
         },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        transport.sendMail(
-          {
-            from,
-            to: input.to,
-            subject: input.subject,
-            html: input.html,
-            text: input.text,
-            headers: input.headers,
-          },
-          (error: Error | null) => {
-            if (error) reject(error);
-            else resolve();
-          },
-        );
-      });
+        {
+          from,
+          to: input.to,
+          subject: input.subject,
+          html: input.html,
+          text: input.text,
+          headers: input.headers,
+        },
+      );
       return { from };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -226,11 +212,11 @@ function resolveAttemptSecure(port: number, configuredSecure: boolean): boolean 
 }
 
 function buildSmtpVerifyAttempts(smtp: MarketingSmtpConfig) {
-  const configuredPort = smtp.port || 587;
+  const configuredPort = smtp.port || 2525;
   const configuredSecure = resolveAttemptSecure(configuredPort, smtp.secure === true);
 
-  // Prefer configured port, then 2525 (works on Supabase Edge; 25/587 are blocked there),
-  // then 587. Only try 465 when the user explicitly configured it — Bulko refuses 465.
+  // Prefer configured port, then 2525 (Edge-friendly; Bulko default), then 587.
+  // Only try 465 when the user explicitly configured it — Bulko refuses 465.
   const attempts = [
     { port: configuredPort, secure: configuredSecure },
     { port: 2525, secure: false },
@@ -248,25 +234,17 @@ function buildSmtpVerifyAttempts(smtp: MarketingSmtpConfig) {
 }
 
 export async function verifyMarketingSmtp(smtp: MarketingSmtpConfig) {
-  const nodemailer = await import('npm:nodemailer@6.9.16');
   const errors: string[] = [];
 
   for (const attempt of buildSmtpVerifyAttempts(smtp)) {
     try {
-      const transport = nodemailer.default.createTransport({
+      await verifyDenoSmtp({
         host: smtp.host,
         port: attempt.port,
         secure: attempt.secure,
-        requireTLS: !attempt.secure && (attempt.port === 587 || attempt.port === 2525),
-        auth: {
-          user: smtp.username,
-          pass: smtp.password,
-        },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
+        username: smtp.username,
+        password: smtp.password,
       });
-
-      await transport.verify();
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
