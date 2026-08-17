@@ -39,6 +39,110 @@ export interface MarketingBatchOverview {
   clicked_count: number;
 }
 
+type SendStatsRow = {
+  source_type: MarketingSourceType;
+  source_id: string;
+  send_status: string;
+  open_count: number;
+  click_count: number;
+};
+
+const SEND_STATS_PAGE_SIZE = 1000;
+
+async function fetchSendStatsForSources(
+  sourceType: MarketingSourceType,
+  sourceIds: string[],
+): Promise<SendStatsRow[]> {
+  if (!sourceIds.length) return [];
+
+  const rows: SendStatsRow[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('email_marketing_sends')
+      .select('source_type, source_id, send_status, open_count, click_count')
+      .eq('source_type', sourceType)
+      .in('source_id', sourceIds)
+      .order('created_at', { ascending: true })
+      .range(offset, offset + SEND_STATS_PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const page = (data ?? []) as SendStatsRow[];
+    rows.push(...page);
+    if (page.length < SEND_STATS_PAGE_SIZE) break;
+    offset += SEND_STATS_PAGE_SIZE;
+  }
+
+  return rows;
+}
+
+function aggregateSendStats(rows: SendStatsRow[]) {
+  const statsBySource = new Map<
+    string,
+    { delivered: number; failed: number; opened: number; clicked: number }
+  >();
+
+  for (const row of rows) {
+    const key = `${row.source_type}:${row.source_id}`;
+    const current = statsBySource.get(key) ?? { delivered: 0, failed: 0, opened: 0, clicked: 0 };
+    if (row.send_status === 'sent') current.delivered += 1;
+    if (row.send_status === 'failed') current.failed += 1;
+    if ((row.open_count ?? 0) > 0) current.opened += 1;
+    if ((row.click_count ?? 0) > 0) current.clicked += 1;
+    statsBySource.set(key, current);
+  }
+
+  return statsBySource;
+}
+
+function resolveBatchStats(
+  key: string,
+  statsBySource: Map<string, { delivered: number; failed: number; opened: number; clicked: number }>,
+  sentCount: number,
+  failedCount: number,
+) {
+  const tracked = statsBySource.get(key) ?? { delivered: 0, failed: 0, opened: 0, clicked: 0 };
+  // Fall back to campaign/broadcast sent_count when tracking rows were truncated or still pending.
+  return {
+    delivered: Math.max(tracked.delivered, sentCount ?? 0),
+    failed: Math.max(tracked.failed, failedCount ?? 0),
+    opened: tracked.opened,
+    clicked: tracked.clicked,
+  };
+}
+
+async function fetchAllSendsForBatch(
+  sourceType: MarketingSourceType,
+  sourceId: string,
+): Promise<EmailMarketingSend[]> {
+  const rows: EmailMarketingSend[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('email_marketing_sends')
+      .select('*')
+      .eq('source_type', sourceType)
+      .eq('source_id', sourceId)
+      .order('created_at', { ascending: true })
+      .range(offset, offset + SEND_STATS_PAGE_SIZE - 1);
+
+    if (error) {
+      if (error.message.includes('email_marketing_sends')) return rows;
+      throw error;
+    }
+
+    const page = (data ?? []) as EmailMarketingSend[];
+    rows.push(...page);
+    if (page.length < SEND_STATS_PAGE_SIZE) break;
+    offset += SEND_STATS_PAGE_SIZE;
+  }
+
+  return rows;
+}
+
 export const marketingTrackingService = {
   async createSend(input: {
     source_type: MarketingSourceType;
@@ -78,7 +182,7 @@ export const marketingTrackingService = {
   },
 
   async getBatchOverview(limit = 12): Promise<MarketingBatchOverview[]> {
-    const [{ data: broadcasts }, { data: campaigns }, { data: sends }] = await Promise.all([
+    const [{ data: broadcasts }, { data: campaigns }] = await Promise.all([
       supabase
         .from('email_broadcasts')
         .select('id, subject, created_at, recipient_count, sent_count, failed_count')
@@ -89,43 +193,25 @@ export const marketingTrackingService = {
         .select('id, subject, created_at, recipient_count, sent_count, failed_count')
         .order('created_at', { ascending: false })
         .limit(limit),
-      supabase
-        .from('email_marketing_sends')
-        .select('source_type, source_id, send_status, open_count, click_count'),
     ]);
 
-    if (sends === null) return [];
+    const broadcastIds = (broadcasts ?? []).map((row) => row.id);
+    const campaignIds = (campaigns ?? []).map((row) => row.id);
 
-    const statsBySource = new Map<string, {
-      delivered: number;
-      failed: number;
-      opened: number;
-      clicked: number;
-    }>();
+    const [broadcastSends, campaignSends] = await Promise.all([
+      fetchSendStatsForSources('broadcast', broadcastIds),
+      fetchSendStatsForSources('campaign', campaignIds),
+    ]);
 
-    for (const row of sends as Array<{
-      source_type: MarketingSourceType;
-      source_id: string;
-      send_status: string;
-      open_count: number;
-      click_count: number;
-    }>) {
-      const key = `${row.source_type}:${row.source_id}`;
-      const current = statsBySource.get(key) ?? { delivered: 0, failed: 0, opened: 0, clicked: 0 };
-      if (row.send_status === 'sent') current.delivered += 1;
-      if (row.send_status === 'failed') current.failed += 1;
-      if ((row.open_count ?? 0) > 0) current.opened += 1;
-      if ((row.click_count ?? 0) > 0) current.clicked += 1;
-      statsBySource.set(key, current);
-    }
+    const statsBySource = aggregateSendStats([...broadcastSends, ...campaignSends]);
 
     const broadcastRows = (broadcasts ?? []).map((row) => {
-      const stats = statsBySource.get(`broadcast:${row.id}`) ?? {
-        delivered: row.sent_count ?? 0,
-        failed: row.failed_count ?? 0,
-        opened: 0,
-        clicked: 0,
-      };
+      const stats = resolveBatchStats(
+        `broadcast:${row.id}`,
+        statsBySource,
+        row.sent_count ?? 0,
+        row.failed_count ?? 0,
+      );
 
       return {
         source_type: 'broadcast' as const,
@@ -141,12 +227,12 @@ export const marketingTrackingService = {
     });
 
     const campaignRows = (campaigns ?? []).map((row) => {
-      const stats = statsBySource.get(`campaign:${row.id}`) ?? {
-        delivered: row.sent_count ?? 0,
-        failed: row.failed_count ?? 0,
-        opened: 0,
-        clicked: 0,
-      };
+      const stats = resolveBatchStats(
+        `campaign:${row.id}`,
+        statsBySource,
+        row.sent_count ?? 0,
+        row.failed_count ?? 0,
+      );
 
       return {
         source_type: 'campaign' as const,
@@ -167,19 +253,7 @@ export const marketingTrackingService = {
   },
 
   async getSendsForBatch(sourceType: MarketingSourceType, sourceId: string): Promise<EmailMarketingSend[]> {
-    const { data, error } = await supabase
-      .from('email_marketing_sends')
-      .select('*')
-      .eq('source_type', sourceType)
-      .eq('source_id', sourceId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      if (error.message.includes('email_marketing_sends')) return [];
-      throw error;
-    }
-
-    return (data ?? []) as EmailMarketingSend[];
+    return fetchAllSendsForBatch(sourceType, sourceId);
   },
 
   async getClicksForSend(sendId: string): Promise<EmailMarketingClick[]> {

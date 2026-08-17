@@ -40,7 +40,7 @@ function BatchRecipientDetails({
         <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-3 py-2 font-medium">Recipient</th>
-            <th className="px-3 py-2 font-medium">Delivered</th>
+            <th className="px-3 py-2 font-medium">Sent</th>
             <th className="px-3 py-2 font-medium">Opened</th>
             <th className="px-3 py-2 font-medium">Clicked</th>
           </tr>
@@ -118,7 +118,7 @@ function BatchOverviewRow({ batch }: { batch: MarketingBatchOverview }) {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{formatDate(batch.sent_at)}</p>
           <div className="mt-3 flex flex-wrap gap-4 text-sm">
-            <span>{batch.delivered_count}/{batch.recipient_count} delivered</span>
+            <span>{batch.delivered_count}/{batch.recipient_count} sent</span>
             <span>{batch.opened_count} opened ({openRate}%)</span>
             <span>{batch.clicked_count} clicked ({clickRate}%)</span>
             {batch.failed_count > 0 ? <span className="text-red-600">{batch.failed_count} failed</span> : null}
@@ -176,7 +176,7 @@ export function EmailMarketingOverview() {
           <>
             <div className="grid gap-3 sm:grid-cols-4">
               <div className="rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">Delivered</p>
+                <p className="text-xs text-muted-foreground">Sent</p>
                 <p className="mt-1 text-2xl font-bold">{totals.delivered}</p>
               </div>
               <div className="rounded-lg border border-border p-3">
