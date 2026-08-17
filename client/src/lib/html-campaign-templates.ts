@@ -538,34 +538,25 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     name: 'Happy new week — inbox-friendly',
     category: 'account',
     description:
-      'Short weekly account note with SMS verification and services list. Plain layout for Primary inbox.',
-    defaultSubject: `Happy new week from ${APP_NAME}`,
+      'Short personal weekly greeting — no product list, no buy language. Best chance for Gmail Primary.',
+    defaultSubject: 'Happy new week',
     html: buildInboxFriendlyEmailHtml({
-      title: APP_NAME,
-      preheader: `A short account update from ${APP_NAME} — SMS verification, marketplace, and more.`,
+      title: 'Happy new week',
+      preheader: 'Hope this week starts well for you.',
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                Happy new week from <strong>${APP_NAME}</strong>. We hope this week goes well for you.
+                Happy new week. I hope your weekend went well and that this week starts on a good note.
               </p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                Here is what you can use on your account right now:
-              </p>
-              <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.8;color:#374151;">
-                <li><strong>SMS verification</strong> — reserve a number and receive codes on the website (Service 1 and Service 2)</li>
-                <li><strong>Marketplace</strong> — browse and buy digital products from your wallet</li>
-                <li><strong>Purchase RDP</strong> — Windows remote desktop plans</li>
-                <li><strong>My Purchases</strong> — view order history and delivery details</li>
-              </ul>
-              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                Need a verification number? Open Buy Numbers, pick your country and app, and pay from your wallet balance.
+                Just a short hello from ${APP_NAME}. Your account is here whenever you need it — no rush.
               </p>
               <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
-                Thank you,<br/>
+                Have a good week,<br/>
                 <strong style="color:#111827;">Team ${APP_NAME}</strong>
               </p>`,
-      linkLabel: 'Open Buy Numbers',
-      linkUrl: `${appUrl}/buy-numbers`,
+      linkLabel: `Open your ${APP_NAME} account`,
+      linkUrl: `${appUrl}/login`,
     }),
   },
   {

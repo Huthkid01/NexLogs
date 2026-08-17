@@ -1,3 +1,4 @@
+import { emailSendPacingSummary } from '@/lib/marketing-sequential-send';
 import {
   findRemainingSpamPhrases,
   scrubSpamFromText,
@@ -169,7 +170,7 @@ export function runDeliverabilityChecks(options: {
     id: 'rate-limit',
     level: 'pass',
     title: 'Send throttling enabled',
-    detail: 'Emails go out one by one: 2.5 seconds between each send, 10 per batch, then an 8 second pause before the next batch.',
+    detail: `Emails go out one by one: ${emailSendPacingSummary()} before the next batch.`,
   });
 
   const failures = checks.filter((check) => check.level === 'fail');
