@@ -13,7 +13,7 @@ import {
   getPurchasePlatformLabel,
 } from '@/lib/purchase-utils';
 import { isRdpProduct } from '@/lib/rdp-utils';
-import { getTelegramPendingDetailsMessage, isTelegramProduct } from '@/lib/telegram-utils';
+import { getTelegramPendingDetailsMessage, isTelegramProduct, TELEGRAM_MANUAL_FULFILLMENT_MARKER } from '@/lib/telegram-utils';
 import type { Order, Review } from '@/types';
 
 interface PurchaseCardProps {
@@ -40,8 +40,12 @@ export function PurchaseCard({
   const orderId = getDisplayOrderId(order.order_number);
   const pendingRdpDetails =
     product && isRdpProduct(product) && !orderItem?.delivered_details?.trim();
-  const isTelegram = Boolean(
-    product && isTelegramProduct(product) && product.supplier !== 'loggsplug',
+  const isTelegramPending = Boolean(
+    product
+    && isTelegramProduct(product)
+    && product.supplier !== 'loggsplug'
+    && (!orderItem?.delivered_details?.trim()
+      || orderItem.delivered_details.trim() === TELEGRAM_MANUAL_FULFILLMENT_MARKER),
   );
 
   useEffect(() => {
@@ -111,7 +115,7 @@ export function PurchaseCard({
               Details pending — check back within 5 to 10 minutes.
             </p>
           )}
-          {isTelegram && (
+          {isTelegramPending && (
             <p className="mt-3 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded-md px-2.5 py-2 leading-relaxed whitespace-pre-wrap">
               {getTelegramPendingDetailsMessage()}
             </p>

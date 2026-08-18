@@ -3,10 +3,14 @@ export const MIN_WALLET_DEPOSIT_NGN = 2000;
 /** Wallet credit amounts from NGN 2,000 through NGN 10,000 include a NGN 100 processing fee. */
 export const DEPOSIT_FEE_LOW_NGN = 100;
 
-/** Wallet credit amounts from NGN 20,000 upward include a NGN 200 processing fee. */
-export const DEPOSIT_FEE_HIGH_NGN = 200;
+/** Wallet credit amounts from NGN 10,001 through NGN 19,999 include a NGN 200 processing fee. */
+export const DEPOSIT_FEE_MID_NGN = 200;
+
+/** Wallet credit amounts from NGN 20,000 upward include a NGN 300 processing fee. */
+export const DEPOSIT_FEE_HIGH_NGN = 300;
 
 export const DEPOSIT_FEE_LOW_MAX_NGN = 10000;
+export const DEPOSIT_FEE_MID_MAX_NGN = 19999;
 export const DEPOSIT_FEE_HIGH_MIN_NGN = 20000;
 
 export function getDepositFeeNgn(walletAmountNgn: number): number {
@@ -22,7 +26,12 @@ export function getDepositFeeNgn(walletAmountNgn: number): number {
     return DEPOSIT_FEE_LOW_NGN;
   }
 
-  return DEPOSIT_FEE_LOW_NGN;
+  if (walletAmountNgn <= DEPOSIT_FEE_MID_MAX_NGN) {
+    return DEPOSIT_FEE_MID_NGN;
+  }
+
+  // Safety fallback (should be covered by >= DEPOSIT_FEE_HIGH_MIN_NGN above).
+  return DEPOSIT_FEE_HIGH_NGN;
 }
 
 export function getDepositChargeNgn(walletAmountNgn: number): number {

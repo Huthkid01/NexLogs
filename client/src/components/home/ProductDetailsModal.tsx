@@ -10,7 +10,7 @@ import { formatPurchaseDate } from '@/lib/purchase-utils';
 import { getLoggsplugDisplayDescription } from '@/lib/loggsplug-display';
 import { isLoggsplugProduct } from '@/lib/loggsplug-utils';
 import { isRdpProduct, RDP_PENDING_DETAILS_MESSAGE } from '@/lib/rdp-utils';
-import { getTelegramPendingDetailsMessage, isTelegramProduct } from '@/lib/telegram-utils';
+import { getTelegramPendingDetailsMessage, isTelegramProduct, TELEGRAM_MANUAL_FULFILLMENT_MARKER } from '@/lib/telegram-utils';
 import type { Product } from '@/types';
 
 interface ProductDetailsModalProps {
@@ -46,13 +46,17 @@ export function ProductDetailsModal({
   const isTelegram = Boolean(
     product && isTelegramProduct(product) && !isLoggsplugProduct(product),
   );
+  const hasTelegramDetails = isTelegram
+    && Boolean(deliveredDetails?.trim())
+    && deliveredDetails!.trim() !== TELEGRAM_MANUAL_FULFILLMENT_MARKER;
   const isPendingRdp =
     product && isRdpProduct(product) && !deliveredDetails?.trim();
-  const pendingMessage = isTelegram
-    ? getTelegramPendingDetailsMessage()
-    : isPendingRdp
-      ? RDP_PENDING_DETAILS_MESSAGE
-      : null;
+  const pendingMessage =
+    isTelegram && !hasTelegramDetails
+      ? getTelegramPendingDetailsMessage()
+      : isPendingRdp
+        ? RDP_PENDING_DETAILS_MESSAGE
+        : null;
 
   useModalLock(open, onClose);
 
@@ -131,7 +135,7 @@ export function ProductDetailsModal({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className="font-bold">Product details/Log:</span>
-              {!isTelegram && !isPendingRdp && (
+              {!(isTelegram && !hasTelegramDetails) && !isPendingRdp && (
                 <button
                   type="button"
                   onClick={handleCopyLog}
