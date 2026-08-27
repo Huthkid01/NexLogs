@@ -10,6 +10,7 @@ import { hasSupabaseConfig } from '@/lib/mock-mode';
 import { getFriendlyErrorMessage } from '@/lib/purchase-errors';
 import {
   getDepositChargeNgn,
+  getDepositFeeNgn,
   MIN_WALLET_DEPOSIT_NGN,
 } from '@/lib/wallet-deposit-fees';
 import {
@@ -21,6 +22,7 @@ import {
   verifyWalletDepositReference,
   type PendingWalletPaymentIntent,
 } from '@/services/payment.service';
+import { profileService } from '@/services';
 
 const inputClassName =
   'w-full h-10 rounded-md border border-gray-300 dark:border-dm-input-border bg-white dark:bg-dm-input px-3 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-0 focus:border-gray-300 dark:focus:border-dm-input-border';
@@ -47,12 +49,22 @@ export default function AddFundsPage() {
 
   const handleDepositCredited = useCallback(async () => {
     if (!user?.id) return;
-    await finalizeDepositSuccess(user.id, walletStats?.balance ?? 0, async () => {
+    const previousBalance = walletStats?.balance ?? 0;
+    await finalizeDepositSuccess(user.id, previousBalance, async () => {
       await queryClient.refetchQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.refetchQueries({ queryKey: ['profile-stats', user.id] });
     });
     await refreshPendingIntents(user.id);
-    toast.success('Payment successful. Funds added to your wallet.');
+
+    const latest = await profileService.getStats(user.id).catch(() => null);
+    if (latest && latest.balance > previousBalance) {
+      toast.success('Payment successful. Funds added to your wallet.');
+      return;
+    }
+
+    toast.message(
+      'Payment received. If your balance has not updated yet, tap Verify payment below or refresh this page.',
+    );
   }, [queryClient, user?.id, walletStats?.balance]);
 
   useEffect(() => {
@@ -91,7 +103,8 @@ export default function AddFundsPage() {
         }
         await refreshPendingIntents(user.id);
       } catch {
-        // Ignore background recovery errors; user can tap Verify payment.
+        toast.message('Could not check pending payments. If you already paid, tap Verify payment below.');
+        await refreshPendingIntents(user.id).catch(() => undefined);
       }
     })();
   }, [user?.id, searchParams, verifyingRedirect, handleDepositCredited]);
@@ -119,14 +132,22 @@ export default function AddFundsPage() {
   const depositPreview = useMemo(() => {
     const value = parseFloat(amount);
     if (!amount || Number.isNaN(value) || value <= 0) return null;
-    return `₦${value.toLocaleString('en-NG')} will be added to your wallet`;
+    if (value < MIN_WALLET_DEPOSIT_NGN) {
+      return `Minimum wallet credit is ₦${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`;
+    }
+    const fee = getDepositFeeNgn(value);
+    const total = getDepositChargeNgn(value);
+    return {
+      walletCredit: value,
+      fee,
+      total,
+    };
   }, [amount]);
 
   const totalPaymentPreview = useMemo(() => {
-    const value = parseFloat(amount);
-    if (!amount || Number.isNaN(value) || value < MIN_WALLET_DEPOSIT_NGN) return null;
-    return getDepositChargeNgn(value);
-  }, [amount]);
+    if (!depositPreview || typeof depositPreview === 'string') return null;
+    return depositPreview.total;
+  }, [depositPreview]);
 
   const openPaymentConfirm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,7 +164,7 @@ export default function AddFundsPage() {
     }
 
     if (value < MIN_WALLET_DEPOSIT_NGN) {
-      toast.error('Minimum deposit is 2000');
+      toast.error(`Minimum deposit is ₦${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`);
       return;
     }
     setConfirmOpen(true);
@@ -162,7 +183,7 @@ export default function AddFundsPage() {
     }
 
     if (value < MIN_WALLET_DEPOSIT_NGN) {
-      toast.error('Minimum deposit is 2000');
+      toast.error(`Minimum deposit is ₦${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`);
       return;
     }
 
@@ -294,8 +315,21 @@ export default function AddFundsPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
                 Minimum amount: {minimumAmountLabel}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {depositPreview ?? 'Enter an amount to see wallet credit'}
+              {depositPreview == null ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Enter an amount to see wallet credit, fee, and total to pay
+                </p>
+              ) : typeof depositPreview === 'string' ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{depositPreview}</p>
+              ) : (
+                <div className="mt-2 rounded-md border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row px-3 py-2 space-y-1 text-xs text-gray-700 dark:text-gray-200">
+                  <p>Wallet credit: <span className="font-semibold">₦{depositPreview.walletCredit.toLocaleString('en-NG')}</span></p>
+                  <p>Processing fee: <span className="font-semibold">₦{depositPreview.fee.toLocaleString('en-NG')}</span></p>
+                  <p>Total to pay: <span className="font-semibold text-[#f26522]">₦{depositPreview.total.toLocaleString('en-NG')}</span></p>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Fees: ₦100 (₦2,000–₦10,000) · ₦200 (₦10,001–₦19,999) · ₦300 (₦20,000+)
               </p>
             </div>
 
@@ -343,10 +377,12 @@ export default function AddFundsPage() {
             <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
               Paying less or more than the specified amount may result in delays or a failed transaction.
             </p>
-            {totalPaymentPreview != null ? (
-              <p className="mt-4 text-base font-bold text-gray-900 dark:text-gray-100">
-                You will pay NGN {totalPaymentPreview.toLocaleString('en-NG')} now.
-              </p>
+            {totalPaymentPreview != null && depositPreview && typeof depositPreview !== 'string' ? (
+              <div className="mt-4 rounded-md border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row px-3 py-3 text-sm text-gray-800 dark:text-gray-100 space-y-1 text-left">
+                <p>Wallet credit: <span className="font-semibold">₦{depositPreview.walletCredit.toLocaleString('en-NG')}</span></p>
+                <p>Processing fee: <span className="font-semibold">₦{depositPreview.fee.toLocaleString('en-NG')}</span></p>
+                <p>You will pay: <span className="font-bold text-[#f26522]">₦{depositPreview.total.toLocaleString('en-NG')}</span></p>
+              </div>
             ) : null}
             <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
               Thank you for your attention.

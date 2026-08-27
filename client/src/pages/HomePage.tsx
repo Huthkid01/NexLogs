@@ -103,9 +103,15 @@ export default function HomePage() {
   }, [location.hash]);
 
   useEffect(() => {
-    if (!user || !productSlug) {
+    if (!user) {
       setDeepLinkOpen(false);
       setDeepLinkProduct(null);
+      return;
+    }
+
+    if (!productSlug) {
+      // Keep product mounted so the post-purchase details popup can still show.
+      setDeepLinkOpen(false);
       return;
     }
 
@@ -127,7 +133,8 @@ export default function HomePage() {
 
   const closeDeepLink = () => {
     setDeepLinkOpen(false);
-    setDeepLinkProduct(null);
+    // Do not clear deepLinkProduct here — purchase success closes variants then opens
+    // ProductDetailsModal inside ProductVariantsModal, which must stay mounted.
     if (productSlug) {
       const next = new URLSearchParams(searchParams);
       next.delete('product');

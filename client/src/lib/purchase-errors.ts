@@ -85,5 +85,54 @@ export function getFriendlyErrorMessage(
     return 'Your session expired. Please log in again.';
   }
 
+  const message = getPurchaseErrorMessage(error).trim();
+  const normalized = message.toUpperCase();
+
+  if (
+    normalized.includes('MINIMUM DEPOSIT')
+    || normalized.includes('MIN DEPOSIT')
+    || normalized.includes('MINIMUM AMOUNT')
+  ) {
+    return message;
+  }
+
+  if (
+    normalized.includes('INVALID PAYMENT TOTAL')
+    || normalized.includes('INVALID PAYMENT AMOUNT')
+    || normalized.includes('PAYMENT TOTAL')
+    || normalized.includes('PROCESSING FEE')
+  ) {
+    return message;
+  }
+
+  if (
+    normalized.includes('EMAIL IS REQUIRED')
+    || normalized.includes('ACCOUNT EMAIL')
+  ) {
+    return 'Your account email is required for payment. Please update your profile or contact support.';
+  }
+
+  if (
+    normalized.includes('UNAUTHORIZED')
+    || normalized.includes('NOT AUTHENTICATED')
+  ) {
+    return 'Your session expired. Please log in again.';
+  }
+
+  // Prefer clear server messages for payment/deposit flows over a generic fallback.
+  if (
+    message
+    && message !== 'Purchase failed'
+    && (
+      normalized.includes('DEPOSIT')
+      || normalized.includes('PAYMENT')
+      || normalized.includes('KORA')
+      || normalized.includes('WALLET')
+      || normalized.includes('AMOUNT')
+    )
+  ) {
+    return message;
+  }
+
   return fallback;
 }

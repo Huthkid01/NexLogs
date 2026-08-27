@@ -23,8 +23,6 @@ interface ProductDetailsModalProps {
   fallbackDescription?: string;
   open: boolean;
   onClose: () => void;
-  /** When set, shows a countdown that My Purchases will open after copy time. */
-  redirectSecondsLeft?: number | null;
 }
 
 export function ProductDetailsModal({
@@ -36,7 +34,6 @@ export function ProductDetailsModal({
   fallbackDescription,
   open,
   onClose,
-  redirectSecondsLeft = null,
 }: ProductDetailsModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -162,22 +159,13 @@ export function ProductDetailsModal({
           </div>
         </div>
 
-        <div className="shrink-0 flex flex-col gap-3 px-6 py-4 border-t border-gray-200 dark:border-dm-border sm:flex-row sm:items-center sm:justify-between">
-          {redirectSecondsLeft != null ? (
-            <p className="text-xs text-gray-600 dark:text-gray-300 sm:pr-4">
-              Copy your details now. Taking you to <span className="font-semibold">My Purchases</span>
-              {' '}in <span className="font-semibold text-[#f26522]">{redirectSecondsLeft}s</span>
-              {' '}— you can reopen them there anytime.
-            </p>
-          ) : (
-            <span className="hidden sm:block" />
-          )}
+        <div className="shrink-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-dm-border">
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 self-end text-sm font-medium bg-gray-200 dark:bg-dm-border text-gray-800 dark:text-gray-200 px-5 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors sm:self-auto"
+            className="shrink-0 text-sm font-medium bg-gray-200 dark:bg-dm-border text-gray-800 dark:text-gray-200 px-5 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
-            {redirectSecondsLeft != null ? 'Go to My Purchases' : 'Close'}
+            Close
           </button>
         </div>
       </div>
