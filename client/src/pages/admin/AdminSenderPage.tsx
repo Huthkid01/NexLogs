@@ -64,6 +64,7 @@ export default function AdminSenderPage() {
   const {
     subject,
     customMessage,
+    templateName: broadcastTemplateName,
     selectedProductIds,
     selectedRecipientIds,
     selectedExternalEmails,
@@ -506,6 +507,8 @@ export default function AdminSenderPage() {
             onSubjectChange={(value) => updateBroadcast({ subject: value })}
             customMessage={customMessage}
             onCustomMessageChange={(value) => updateBroadcast({ customMessage: value })}
+            templateName={broadcastTemplateName}
+            onTemplateNameChange={(value) => updateBroadcast({ templateName: value })}
             selectedProductIds={selectedProductIds}
             onSelectedProductIdsChange={(ids) => updateBroadcast({ selectedProductIds: ids })}
             selectedRecipientIds={selectedRecipientIds}

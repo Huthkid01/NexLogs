@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { BroadcastInlineProductSelector } from '@/components/admin/BroadcastInlineProductSelector';
 import { BroadcastEmailPreview } from '@/components/admin/BroadcastEmailPreview';
+import { BroadcastTemplatePickerModal } from '@/components/admin/BroadcastTemplatePickerModal';
 import { BroadcastPreviewModal } from '@/components/admin/BroadcastPreviewModal';
 import { EmailComposeLauncher } from '@/components/admin/EmailComposeLauncher';
 import { EmailComposerModal } from '@/components/admin/EmailComposerModal';
@@ -29,6 +30,10 @@ import { useBroadcastDeliverability } from '@/components/admin/BroadcastEmailPre
 import { useEmailSenderState } from '@/contexts/EmailSenderStateContext';
 import { useTheme } from '@/hooks/useTheme';
 import { clearBroadcastDraft, saveBroadcastDraft } from '@/lib/broadcast-draft';
+import {
+  BROADCAST_MESSAGE_TEMPLATES,
+  getBroadcastMessageTemplate,
+} from '@/lib/broadcast-message-templates';
 import { runDeliverabilityChecks } from '@/lib/broadcast-email-deliverability';
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/constants';
@@ -36,9 +41,6 @@ import type { Product } from '@/types';
 
 const DEFAULT_SUBJECT = `New products available on ${APP_NAME}`;
 const DEFAULT_FROM = 'support@nexlogs.site';
-
-const DEFAULT_ANNOUNCEMENT_MESSAGE =
-  'We just added new products to the marketplace. Browse the list below and click any product to view details.';
 
 export interface BroadcastComposerProps {
   contacts: BroadcastContact[];
@@ -49,6 +51,8 @@ export interface BroadcastComposerProps {
   onSubjectChange: (value: string) => void;
   customMessage: string;
   onCustomMessageChange: (value: string) => void;
+  templateName: string;
+  onTemplateNameChange: (value: string) => void;
   selectedProductIds: string[];
   onSelectedProductIdsChange: (ids: string[]) => void;
   selectedRecipientIds: string[];
@@ -73,6 +77,8 @@ export function BroadcastComposer({
   onSubjectChange,
   customMessage,
   onCustomMessageChange,
+  templateName,
+  onTemplateNameChange,
   selectedProductIds,
   onSelectedProductIdsChange,
   selectedRecipientIds,
@@ -94,8 +100,14 @@ export function BroadcastComposer({
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const recipientPickerRef = useRef<BroadcastRecipientPickerHandle>(null);
+
+  const selectedTemplate = useMemo(
+    () => getBroadcastMessageTemplate(templateName) ?? BROADCAST_MESSAGE_TEMPLATES[0],
+    [templateName],
+  );
 
   const activeProducts = useMemo(
     () => products.filter((product) => product.is_active),
@@ -141,12 +153,37 @@ export function BroadcastComposer({
     const saved = saveBroadcastDraft({
       subject,
       customMessage,
+      templateName,
       selectedProductIds,
       selectedRecipientIds,
       selectedExternalEmails,
     });
     setDraftSavedAt(saved.savedAt);
     toast.success('Draft saved');
+  };
+
+  const applyTemplate = (nextTemplateId: string) => {
+    const template = getBroadcastMessageTemplate(nextTemplateId);
+    if (!template) return;
+
+    const cleaned = runDeliverabilityChecks({
+      subject: template.subject,
+      customMessage: template.message,
+      productCount: Math.max(selectedProductIds.length, 1),
+    });
+
+    onTemplateNameChange(template.id);
+    onSubjectChange(cleaned.sanitizedSubject || template.subject);
+    onCustomMessageChange(cleaned.sanitizedMessage || template.message);
+    setTemplateMenuOpen(false);
+
+    if (cleaned.filteredSpamPhrases?.length) {
+      toast.success(
+        `Template "${template.name}" loaded — spam words filtered (${cleaned.filteredSpamPhrases.slice(0, 3).join(', ')})`,
+      );
+    } else {
+      toast.success(`Template "${template.name}" loaded`);
+    }
   };
 
   const handleDiscard = () => {
@@ -321,6 +358,19 @@ export function BroadcastComposer({
           />
         </div>
 
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 dark:border-[#18263b]">
+          <span className="w-14 shrink-0 text-sm text-slate-500">Template</span>
+          <button
+            type="button"
+            onClick={() => setTemplateMenuOpen(true)}
+            className="inline-flex min-w-0 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-[#f26522]/40 hover:bg-orange-50 dark:border-[#22324a] dark:bg-[#06111f] dark:text-slate-200 dark:hover:border-[#f26522]/40"
+          >
+            <FileText className="h-4 w-4 shrink-0 text-[#f26522]" />
+            <span className="truncate">{selectedTemplate?.name ?? 'Choose template'}</span>
+          </button>
+          <p className="hidden text-xs text-slate-500 sm:block">Product links are added automatically below</p>
+        </div>
+
         <BroadcastInlineProductSelector
           open={productsPanelOpen}
           onToggleOpen={() => updateBroadcast({ productsPanelOpen: !productsPanelOpen })}
@@ -335,7 +385,7 @@ export function BroadcastComposer({
           <textarea
             value={customMessage}
             onChange={(event) => onCustomMessageChange(event.target.value)}
-            placeholder={`Optional. e.g. "${DEFAULT_ANNOUNCEMENT_MESSAGE}"`}
+            placeholder="Write your message here, or choose a template above. Selected products are listed automatically."
             className="min-h-[120px] w-full resize-none bg-transparent px-4 py-4 text-sm leading-relaxed outline-none placeholder:text-slate-400"
           />
 
@@ -432,8 +482,8 @@ export function BroadcastComposer({
 
             <ToolbarIcon
               icon={Sparkles}
-              label="Insert sample message"
-              onClick={() => onCustomMessageChange(DEFAULT_ANNOUNCEMENT_MESSAGE)}
+              label="Choose message template"
+              onClick={() => setTemplateMenuOpen(true)}
             />
             <ToolbarIcon icon={Type} label="Formatting" disabled title="Plain text announcement" />
             <ToolbarIcon icon={Paperclip} label="Attachments" disabled title="Not available for broadcasts" />
@@ -495,6 +545,14 @@ export function BroadcastComposer({
           slug: product.slug,
           price: product.price,
         }))}
+      />
+
+      <BroadcastTemplatePickerModal
+        open={templateMenuOpen}
+        isDark={isDark}
+        selectedTemplateId={templateName}
+        onClose={() => setTemplateMenuOpen(false)}
+        onSelect={applyTemplate}
       />
     </>
   );

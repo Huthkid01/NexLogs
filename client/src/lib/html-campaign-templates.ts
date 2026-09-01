@@ -588,6 +588,38 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
     }),
   },
   {
+    id: 'account-new-month-september-inbox',
+    name: 'Happy September — inbox-friendly',
+    category: 'account',
+    description:
+      'September new-month wish with a soft note to pick up logs before December. Plain Primary-inbox layout — pair with Product Announcement for best delivery.',
+    defaultSubject: `Happy September from ${APP_NAME}`,
+    html: buildInboxFriendlyEmailHtml({
+      title: APP_NAME,
+      preheader: `Welcome to September from ${APP_NAME}. Four months to 2027 — get set for December when you are ready.`,
+      bodyHtml: `
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Happy new month — welcome to <strong>September</strong>. We hope this month brings you good energy and strong results.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Only four months remain before 2027. If you want to be set for December, now is a good time to pick up the logs and accounts you need from the marketplace.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Sign in, add wallet funds if your balance is low, then choose what you need. Your details will appear under <strong>My Purchases</strong> after checkout.
+              </p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
+                Thank you for being with ${APP_NAME}. We wish you a calm and successful September.
+              </p>
+              <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
+                Warm regards,<br/>
+                <strong style="color:#111827;">Team ${APP_NAME}</strong>
+              </p>`,
+      linkLabel: `Open your ${APP_NAME} account`,
+      linkUrl: `${appUrl}/marketplace`,
+    }),
+  },
+  {
     id: 'account-new-month-inbox',
     name: 'Happy August — inbox-friendly',
     category: 'account',

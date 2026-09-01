@@ -3,6 +3,7 @@ const DRAFT_KEY = 'nexlogs_broadcast_draft';
 export interface BroadcastDraft {
   subject: string;
   customMessage: string;
+  templateName: string;
   selectedProductIds: string[];
   selectedRecipientIds: string[];
   selectedExternalEmails: string[];

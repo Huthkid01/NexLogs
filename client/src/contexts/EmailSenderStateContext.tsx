@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { APP_NAME } from '@/constants';
 import { loadBroadcastDraft } from '@/lib/broadcast-draft';
+import { DEFAULT_BROADCAST_TEMPLATE_ID } from '@/lib/broadcast-message-templates';
 import { loadHtmlCampaignDraft } from '@/lib/html-campaign-draft';
 import {
   DEFAULT_HTML_CAMPAIGN_SUBJECT,
@@ -23,6 +24,7 @@ export interface EmailSenderSessionState {
   broadcast: {
     subject: string;
     customMessage: string;
+    templateName: string;
     selectedProductIds: string[];
     selectedRecipientIds: string[];
     selectedExternalEmails: string[];
@@ -53,6 +55,8 @@ function buildInitialState(): EmailSenderSessionState {
     broadcast: {
       subject: broadcastDraft?.subject || stored?.broadcast.subject || DEFAULT_SUBJECT,
       customMessage: broadcastDraft?.customMessage || stored?.broadcast.customMessage || '',
+      templateName:
+        broadcastDraft?.templateName || stored?.broadcast.templateName || DEFAULT_BROADCAST_TEMPLATE_ID,
       selectedProductIds: broadcastDraft?.selectedProductIds || stored?.broadcast.selectedProductIds || [],
       selectedRecipientIds:
         broadcastDraft?.selectedRecipientIds || stored?.broadcast.selectedRecipientIds || [],
@@ -130,6 +134,7 @@ export function EmailSenderStateProvider({ children }: { children: ReactNode }) 
       broadcast: {
         subject: DEFAULT_SUBJECT,
         customMessage: '',
+        templateName: DEFAULT_BROADCAST_TEMPLATE_ID,
         selectedProductIds: [],
         selectedRecipientIds: [],
         selectedExternalEmails: [],
