@@ -102,32 +102,37 @@ export function buildNewProductsBroadcastEmail(options: {
   isAccountHolder?: boolean;
 }) {
   const intro = options.customMessage?.trim()
-    ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">${escapeHtml(options.customMessage.trim())}</p>`
+    ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">${escapeHtml(options.customMessage.trim().replace(/\n/g, '<br/>'))}</p>`
     : `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">We just added new products to the marketplace. Browse the latest listings below.</p>`;
 
-  const productsHtml = options.products
-    .map((product) => {
-      const productUrl = buildProductMarketplaceUrl(options.appUrl, product.slug);
-      return `<li style="margin:0 0 12px;font-size:15px;line-height:1.6;">
+  const productsHtml = options.products.length
+    ? `<ul style="margin:16px 0 0;padding-left:18px;">${options.products
+      .map((product) => {
+        const productUrl = buildProductMarketplaceUrl(options.appUrl, product.slug);
+        return `<li style="margin:0 0 12px;font-size:15px;line-height:1.6;">
         <a href="${escapeHtml(productUrl)}" style="color:#111827;font-weight:700;text-decoration:none;">${escapeHtml(product.title)}</a>
       </li>`;
-    })
-    .join('');
+      })
+      .join('')}</ul>`
+    : '';
 
   const productNames = options.products.map((product) => product.title).slice(0, 3).join(', ');
   const preheader = productNames
     ? `New on ${options.appName}: ${productNames}`
-    : `New products are now live on ${options.appName}`;
+    : options.customMessage?.trim().slice(0, 140)
+      || options.subject
+      || `A note from ${options.appName}`;
+  const title = options.products.length ? 'New products available' : options.appName;
 
   const html = emailLayout({
     appName: options.appName,
     appUrl: options.appUrl.replace(/\/$/, ''),
     preheader,
-    title: 'New products available',
+    title,
     bodyHtml: `
       <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi ${escapeHtml(options.fullName || 'there')},</p>
       ${intro}
-      <ul style="margin:16px 0 0;padding-left:18px;">${productsHtml}</ul>
+      ${productsHtml}
     `,
     ctaLabel: 'Browse marketplace',
     ctaUrl: `${options.appUrl.replace(/\/$/, '')}/marketplace`,
@@ -146,9 +151,13 @@ export function buildNewProductsBroadcastEmail(options: {
     })
     .join('\n');
 
+  const messageBody = options.customMessage?.trim() || (options.products.length
+    ? 'New products are available on our marketplace.'
+    : `A note from ${options.appName}.`);
+
   return {
     subject: options.subject,
     html,
-    text: `Hi ${options.fullName || 'there'},\n\n${options.customMessage?.trim() || 'New products are available on our marketplace.'}\n\n${textLines}\n\n${options.appUrl}/marketplace${textUnsubscribe}`,
+    text: `Hi ${options.fullName || 'there'},\n\n${messageBody}${textLines ? `\n\n${textLines}` : ''}\n\n${options.appUrl}/marketplace${textUnsubscribe}`,
   };
 }

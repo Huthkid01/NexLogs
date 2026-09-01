@@ -151,25 +151,20 @@ Deno.serve(async (req) => {
     );
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 
-    let productsQuery = adminClient
-      .from('products')
-      .select('id, title, price, description, slug')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    let products: Array<{ id: string; title: string; price: number; description: string | null; slug: string }> = [];
 
     if (productIds.length > 0) {
-      productsQuery = adminClient
+      const { data: selectedProducts, error: productsError } = await adminClient
         .from('products')
         .select('id, title, price, description, slug')
         .in('id', productIds)
         .eq('is_active', true);
-    }
 
-    const { data: products, error: productsError } = await productsQuery;
-    if (productsError) throw productsError;
-    if (!products?.length) {
-      return jsonResponse({ error: 'Select at least one active product to include in the email' }, 400);
+      if (productsError) throw productsError;
+      if (!selectedProducts?.length) {
+        return jsonResponse({ error: 'Select at least one active product to include in the email' }, 400);
+      }
+      products = selectedProducts;
     }
 
     const resolved = await resolveMarketingRecipients(adminClient, {

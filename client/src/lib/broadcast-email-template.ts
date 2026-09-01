@@ -91,32 +91,37 @@ export function buildBroadcastEmailPreview(options: {
   const subject = options.subject.trim() || `New products available on ${APP_NAME}`;
 
   const intro = options.customMessage?.trim()
-    ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">${escapeHtml(options.customMessage.trim())}</p>`
+    ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">${escapeHtml(options.customMessage.trim().replace(/\n/g, '<br/>'))}</p>`
     : `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">We just added new products to the marketplace. Browse the latest listings below.</p>`;
 
-  const productsHtml = options.products
-    .map((product) => {
-      const productUrl = buildProductMarketplaceUrl(appUrl, product.slug);
-      return `<li style="margin:0 0 12px;font-size:15px;line-height:1.6;">
+  const productsHtml = options.products.length
+    ? `<ul style="margin:16px 0 0;padding-left:18px;">${options.products
+      .map((product) => {
+        const productUrl = buildProductMarketplaceUrl(appUrl, product.slug);
+        return `<li style="margin:0 0 12px;font-size:15px;line-height:1.6;">
         <a href="${escapeHtml(productUrl)}" style="color:#111827;font-weight:700;text-decoration:none;">${escapeHtml(product.title)}</a>
       </li>`;
-    })
-    .join('');
+      })
+      .join('')}</ul>`
+    : '';
 
   const productNames = options.products.map((product) => product.title).slice(0, 3).join(', ');
   const preheader = productNames
     ? `New on ${APP_NAME}: ${productNames}`
-    : `New products are now live on ${APP_NAME}`;
+    : options.customMessage?.trim().slice(0, 140)
+      || subject
+      || `A note from ${APP_NAME}`;
+  const title = options.products.length ? 'New products available' : APP_NAME;
 
   const html = emailLayout({
     appName: APP_NAME,
     appUrl,
     preheader,
-    title: 'New products available',
+    title,
     bodyHtml: `
       <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hi ${escapeHtml(fullName)},</p>
       ${intro}
-      <ul style="margin:16px 0 0;padding-left:18px;">${productsHtml}</ul>
+      ${productsHtml}
     `,
     ctaLabel: 'Browse marketplace',
     ctaUrl: `${appUrl}/marketplace`,

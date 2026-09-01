@@ -11,6 +11,7 @@ interface BroadcastEmailPreviewProps {
   subject: string;
   customMessage: string;
   products: Array<{ title: string; slug: string; price: number }>;
+  requiresProducts?: boolean;
 }
 
 function CheckRow({ check }: { check: DeliverabilityCheck }) {
@@ -39,6 +40,7 @@ export function BroadcastEmailPreview({
   subject,
   customMessage,
   products,
+  requiresProducts = true,
 }: BroadcastEmailPreviewProps) {
   const preview = useMemo(
     () =>
@@ -56,11 +58,12 @@ export function BroadcastEmailPreview({
         subject,
         customMessage,
         productCount: products.length,
+        requiresProducts,
       }),
-    [subject, customMessage, products.length],
+    [subject, customMessage, products.length, requiresProducts],
   );
 
-  if (!products.length) {
+  if (requiresProducts && !products.length) {
     return (
       <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground text-center">
         Select products to preview how the email will look in a user inbox.
@@ -128,6 +131,7 @@ export function useBroadcastDeliverability(
   subject: string,
   customMessage: string,
   productCount: number,
+  requiresProducts = true,
 ) {
   return useMemo(
     () =>
@@ -135,7 +139,8 @@ export function useBroadcastDeliverability(
         subject,
         customMessage,
         productCount,
+        requiresProducts,
       }),
-    [subject, customMessage, productCount],
+    [subject, customMessage, productCount, requiresProducts],
   );
 }

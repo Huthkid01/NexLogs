@@ -32,6 +32,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { clearBroadcastDraft, saveBroadcastDraft } from '@/lib/broadcast-draft';
 import {
   BROADCAST_MESSAGE_TEMPLATES,
+  broadcastTemplateRequiresProducts,
   getBroadcastMessageTemplate,
 } from '@/lib/broadcast-message-templates';
 import { runDeliverabilityChecks } from '@/lib/broadcast-email-deliverability';
@@ -119,10 +120,13 @@ export function BroadcastComposer({
     [activeProducts, selectedProductIds],
   );
 
+  const requiresProducts = broadcastTemplateRequiresProducts(templateName);
+
   const deliverability = useBroadcastDeliverability(
     subject,
     customMessage,
     selectedProductIds.length,
+    requiresProducts,
   );
 
   const sendCount = selectedRecipientIds.length + selectedExternalEmails.length;
@@ -169,7 +173,8 @@ export function BroadcastComposer({
     const cleaned = runDeliverabilityChecks({
       subject: template.subject,
       customMessage: template.message,
-      productCount: Math.max(selectedProductIds.length, 1),
+      productCount: selectedProductIds.length,
+      requiresProducts: template.requiresProducts ?? true,
     });
 
     onTemplateNameChange(template.id);
@@ -198,7 +203,7 @@ export function BroadcastComposer({
   };
 
   const handlePreviewClick = () => {
-    if (!selectedProducts.length) {
+    if (requiresProducts && !selectedProducts.length) {
       updateBroadcast({ productsPanelOpen: true });
       toast.message('Select at least one product to preview the email.');
       return;
@@ -207,7 +212,7 @@ export function BroadcastComposer({
   };
 
   const handlePreviewFullscreen = () => {
-    if (!selectedProducts.length) {
+    if (requiresProducts && !selectedProducts.length) {
       updateBroadcast({ productsPanelOpen: true });
       toast.message('Select at least one product to preview the email.');
       return;
@@ -219,7 +224,8 @@ export function BroadcastComposer({
     const cleaned = runDeliverabilityChecks({
       subject,
       customMessage,
-      productCount: Math.max(selectedProductIds.length, 1),
+      productCount: selectedProductIds.length,
+      requiresProducts,
     });
     const phrases = cleaned.filteredSpamPhrases ?? [];
     let changed = false;
@@ -253,7 +259,7 @@ export function BroadcastComposer({
       toast.error('Add at least one recipient in the To field. Type an email and press Enter.');
       return;
     }
-    if (!selectedProductIds.length) {
+    if (requiresProducts && !selectedProductIds.length) {
       toast.error('Select at least one product to include.');
       return;
     }
@@ -389,7 +395,7 @@ export function BroadcastComposer({
             className="min-h-[120px] w-full resize-none bg-transparent px-4 py-4 text-sm leading-relaxed outline-none placeholder:text-slate-400"
           />
 
-          {!deliverability.canSend && selectedProductIds.length > 0 && (
+          {!deliverability.canSend && (requiresProducts || selectedProductIds.length > 0) && (
             <div className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-300">
               Fix inbox placement issues before sending — open preview for details.
             </div>
@@ -425,6 +431,7 @@ export function BroadcastComposer({
                 slug: product.slug,
                 price: product.price,
               }))}
+              requiresProducts={requiresProducts}
             />
           </div>
         )}

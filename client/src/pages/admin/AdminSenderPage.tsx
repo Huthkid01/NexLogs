@@ -5,6 +5,7 @@ import { History, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { broadcastTemplateRequiresProducts } from '@/lib/broadcast-message-templates';
 import { BroadcastComposer } from '@/components/admin/BroadcastComposer';
 import { BroadcastPreviewModal } from '@/components/admin/BroadcastPreviewModal';
 import {
@@ -140,7 +141,13 @@ export default function AdminSenderPage() {
   const htmlSendCount = htmlRecipientIds.length + htmlExternalEmails.length;
   const effectiveBroadcastRecipientCount = Math.max(sendCount, broadcastRecipientCount);
   const effectiveHtmlRecipientCount = Math.max(htmlSendCount, htmlRecipientCount);
-  const deliverability = useBroadcastDeliverability(subject, customMessage, selectedProductIds.length);
+  const broadcastRequiresProducts = broadcastTemplateRequiresProducts(broadcastTemplateName);
+  const deliverability = useBroadcastDeliverability(
+    subject,
+    customMessage,
+    selectedProductIds.length,
+    broadcastRequiresProducts,
+  );
   const htmlDeliverability = useHtmlCampaignDeliverability(
     htmlSubject,
     htmlBody,
@@ -158,9 +165,9 @@ export default function AdminSenderPage() {
   });
 
   const canSend =
-    selectedProductIds.length > 0 &&
     effectiveBroadcastRecipientCount > 0 &&
-    deliverability.canSend;
+    deliverability.canSend &&
+    (broadcastRequiresProducts ? selectedProductIds.length > 0 : true);
 
   const canSendHtml =
     effectiveHtmlRecipientCount > 0 &&

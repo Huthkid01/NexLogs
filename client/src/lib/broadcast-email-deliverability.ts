@@ -36,6 +36,7 @@ export function runDeliverabilityChecks(options: {
   subject: string;
   customMessage?: string;
   productCount: number;
+  requiresProducts?: boolean;
 }) {
   const subjectScrub = scrubSpamFromText(options.subject);
   const messageScrub = scrubSpamFromText(options.customMessage ?? '');
@@ -127,12 +128,19 @@ export function runDeliverabilityChecks(options: {
     });
   }
 
-  if (options.productCount < 1) {
+  if (options.requiresProducts !== false && options.productCount < 1) {
     checks.push({
       id: 'products',
       level: 'fail',
       title: 'No products selected',
       detail: 'Select at least one active product for the email body.',
+    });
+  } else if (options.productCount < 1) {
+    checks.push({
+      id: 'products',
+      level: 'pass',
+      title: 'Message-only send',
+      detail: 'No products selected — the email will send your message without a product list.',
     });
   } else {
     checks.push({
