@@ -10,7 +10,6 @@ import { hasSupabaseConfig } from '@/lib/mock-mode';
 import { getFriendlyErrorMessage } from '@/lib/purchase-errors';
 import {
   getDepositChargeNgn,
-  getDepositFeeNgn,
   MIN_WALLET_DEPOSIT_NGN,
 } from '@/lib/wallet-deposit-fees';
 import {
@@ -135,19 +134,14 @@ export default function AddFundsPage() {
     if (value < MIN_WALLET_DEPOSIT_NGN) {
       return `Minimum wallet credit is ₦${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`;
     }
-    const fee = getDepositFeeNgn(value);
-    const total = getDepositChargeNgn(value);
-    return {
-      walletCredit: value,
-      fee,
-      total,
-    };
+    return `₦${value.toLocaleString('en-NG')} will be added to your wallet`;
   }, [amount]);
 
   const totalPaymentPreview = useMemo(() => {
-    if (!depositPreview || typeof depositPreview === 'string') return null;
-    return depositPreview.total;
-  }, [depositPreview]);
+    const value = parseFloat(amount);
+    if (!amount || Number.isNaN(value) || value < MIN_WALLET_DEPOSIT_NGN) return null;
+    return getDepositChargeNgn(value);
+  }, [amount]);
 
   const openPaymentConfirm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,21 +309,14 @@ export default function AddFundsPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
                 Minimum amount: {minimumAmountLabel}
               </p>
-              {depositPreview == null ? (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Enter an amount to see wallet credit, fee, and total to pay
-                </p>
-              ) : typeof depositPreview === 'string' ? (
-                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">{depositPreview}</p>
-              ) : (
-                <div className="mt-2 rounded-md border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row px-3 py-2 space-y-1 text-xs text-gray-700 dark:text-gray-200">
-                  <p>Wallet credit: <span className="font-semibold">₦{depositPreview.walletCredit.toLocaleString('en-NG')}</span></p>
-                  <p>Processing fee: <span className="font-semibold">₦{depositPreview.fee.toLocaleString('en-NG')}</span></p>
-                  <p>Total to pay: <span className="font-semibold text-[#f26522]">₦{depositPreview.total.toLocaleString('en-NG')}</span></p>
-                </div>
-              )}
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Fees: ₦100 (₦2,000–₦10,000) · ₦200 (₦10,001–₦19,999) · ₦300 (₦20,000+)
+              <p
+                className={`text-xs mt-1 ${
+                  depositPreview?.startsWith('Minimum')
+                    ? 'text-amber-700 dark:text-amber-300'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`}
+              >
+                {depositPreview ?? 'Enter an amount to see wallet credit'}
               </p>
             </div>
 
@@ -377,12 +364,10 @@ export default function AddFundsPage() {
             <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
               Paying less or more than the specified amount may result in delays or a failed transaction.
             </p>
-            {totalPaymentPreview != null && depositPreview && typeof depositPreview !== 'string' ? (
-              <div className="mt-4 rounded-md border border-gray-200 dark:border-dm-border bg-gray-50 dark:bg-dm-product-row px-3 py-3 text-sm text-gray-800 dark:text-gray-100 space-y-1 text-left">
-                <p>Wallet credit: <span className="font-semibold">₦{depositPreview.walletCredit.toLocaleString('en-NG')}</span></p>
-                <p>Processing fee: <span className="font-semibold">₦{depositPreview.fee.toLocaleString('en-NG')}</span></p>
-                <p>You will pay: <span className="font-bold text-[#f26522]">₦{depositPreview.total.toLocaleString('en-NG')}</span></p>
-              </div>
+            {totalPaymentPreview != null ? (
+              <p className="mt-4 text-base font-bold text-gray-900 dark:text-gray-100">
+                You will pay NGN {totalPaymentPreview.toLocaleString('en-NG')} now.
+              </p>
             ) : null}
             <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
               Thank you for your attention.
