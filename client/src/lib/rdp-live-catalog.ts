@@ -38,23 +38,23 @@ export function buildLiveRdpCatalog(
     products.filter((product) => product.is_active).map((product) => [product.slug, product]),
   );
 
-  const plans = catalog.plans
-    .map((plan) => {
-      const slug = getRdpProductSlug(plan, duration);
-      const product = activeBySlug.get(slug);
-      if (!product) return null;
+  const plans: RdpPlan[] = catalog.plans.flatMap((plan) => {
+    const slug = getRdpProductSlug(plan, duration);
+    const product = activeBySlug.get(slug);
+    if (!product) return [];
 
-      const priceNgn = Number(product.price);
-      const priceUsdMonthly =
-        duration.months > 0 ? Math.round(priceNgn / duration.months) : priceNgn;
+    const priceNgn = Number(product.price);
+    const priceUsdMonthly =
+      duration.months > 0 ? Math.round(priceNgn / duration.months) : priceNgn;
 
-      return {
+    return [
+      {
         ...plan,
         priceUsdMonthly,
         chargeAmountNgn: priceNgn,
-      };
-    })
-    .filter((plan): plan is RdpPlan => plan !== null);
+      },
+    ];
+  });
 
   const locationIds = new Set(plans.map((plan) => plan.locationId));
 
