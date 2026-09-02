@@ -15,6 +15,8 @@ export interface RdpPlan {
   title: string;
   ramLabel: string;
   priceUsdMonthly: number;
+  /** Exact charge from products.price for the active duration (avoids monthly rounding drift). */
+  chargeAmountNgn?: number;
   productSlug: string;
   features: string[];
 }
@@ -242,7 +244,22 @@ export function getRdpProductSlug(plan: RdpPlan, duration: RdpDuration): string 
 }
 
 export function getPlanPriceNgn(plan: RdpPlan, duration: RdpDuration): number {
+  if (plan.chargeAmountNgn != null && Number.isFinite(plan.chargeAmountNgn) && plan.chargeAmountNgn > 0) {
+    return plan.chargeAmountNgn;
+  }
   return Math.round(plan.priceUsdMonthly * duration.months);
+}
+
+export function getRdpProductPriceNgn(
+  products: Array<{ slug: string; price: number }>,
+  plan: RdpPlan,
+  duration: RdpDuration,
+): number | null {
+  const slug = getRdpProductSlug(plan, duration);
+  const product = products.find((entry) => entry.slug === slug);
+  if (!product) return null;
+  const price = Number(product.price);
+  return Number.isFinite(price) && price > 0 ? price : null;
 }
 
 /** @deprecated Use getPlanPriceNgn — stored prices are NGN. */

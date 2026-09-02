@@ -51,6 +51,7 @@ export function buildLiveRdpCatalog(
       return {
         ...plan,
         priceUsdMonthly,
+        chargeAmountNgn: priceNgn,
       };
     })
     .filter((plan): plan is RdpPlan => plan !== null);

@@ -10,6 +10,7 @@ import { formatDisplayPriceWithPeriod } from '@/lib/display-currency';
 import {
   getPlanPriceNgn,
   getPlansForLocation,
+  getRdpProductPriceNgn,
   getRdpProductSlug,
   type RdpDuration,
   type RdpPlan,
@@ -79,7 +80,9 @@ export default function PurchaseRdpPage() {
     }
 
     const productSlug = getRdpProductSlug(plan, selectedDuration);
-    const priceNgn = getPlanPriceNgn(plan, selectedDuration);
+    const priceNgn =
+      getRdpProductPriceNgn(rdpProducts, plan, selectedDuration)
+      ?? getPlanPriceNgn(plan, selectedDuration);
     setPurchasingPlanId(plan.id);
 
     try {
@@ -87,8 +90,10 @@ export default function PurchaseRdpPage() {
       void queryClient.setQueryData(['wallet-balance', user.id], freshStats);
       void queryClient.setQueryData(['profile-stats', user.id], freshStats);
 
-      if (freshStats.balance < priceNgn) {
-        toast.error('Insufficient wallet balance. Please add funds.');
+      if (freshStats.balance + 0.001 < priceNgn) {
+        toast.error(
+          `Insufficient wallet balance. You need ₦${priceNgn.toLocaleString('en-NG')} but have ₦${freshStats.balance.toLocaleString('en-NG')}.`,
+        );
         navigate('/add-funds');
         return;
       }
