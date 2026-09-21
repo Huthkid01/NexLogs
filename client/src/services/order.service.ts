@@ -116,12 +116,26 @@ export const orderService = {
   },
 
   async getAllOrders(): Promise<Order[]> {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*, order_items(*, product:products(title, slug)), profile:profiles(full_name, email)')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data || []) as Order[];
+    const pageSize = 200;
+    const orders: Order[] = [];
+    let from = 0;
+
+    for (;;) {
+      const to = from + pageSize - 1;
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*, product:products(title, slug)), profile:profiles(full_name, email)')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+
+      const batch = (data || []) as Order[];
+      orders.push(...batch);
+      if (batch.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return orders;
   },
 
   async updateOrderStatus(orderId: string, status: string, paymentStatus?: string) {
