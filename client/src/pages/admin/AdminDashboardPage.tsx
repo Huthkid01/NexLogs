@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, DollarSign, FolderKanban, LifeBuoy, Mail, Package, RefreshCw, Settings, ShoppingBag, Trash2, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowRight, DollarSign, Eye, EyeOff, FolderKanban, LifeBuoy, Mail, Package, RefreshCw, Settings, ShoppingBag, Trash2, Users, Wallet } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,23 @@ import { formatPrice } from '@/lib/utils';
 import { ORDER_STATUS_LABELS } from '@/constants';
 import { toast } from 'sonner';
 
+const REVENUE_HIDDEN_KEY = 'nexlogs-admin-revenue-hidden';
+
+function readRevenueHidden(): boolean {
+  try {
+    return localStorage.getItem(REVENUE_HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function AdminDashboardPage() {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [clearOrdersOpen, setClearOrdersOpen] = useState(false);
+  const [revenueHidden, setRevenueHidden] = useState(readRevenueHidden);
   const { data: stats, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: adminService.getStats,
@@ -98,6 +109,18 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const toggleRevenueHidden = () => {
+    setRevenueHidden((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(REVENUE_HIDDEN_KEY, next ? '1' : '0');
+      } catch {
+        // Ignore storage failures (private mode, etc.).
+      }
+      return next;
+    });
+  };
+
   return (
     <div className={cn('space-y-8', isDark ? 'text-slate-100' : 'text-slate-900')}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -139,25 +162,50 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {statCards.map((s) => (
-          <Card
-            key={s.label}
-            className={cn(
-              'rounded-2xl',
-              isDark ? 'border-[#18263b] bg-[#0b1628] text-slate-100 shadow-[0_18px_50px_rgba(2,6,23,0.32)]' : 'border-slate-200 bg-white text-slate-900 shadow-sm'
-            )}
-          >
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${s.iconClass}`}>
-                <s.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>{s.label}</p>
-                <p className={cn('text-2xl font-semibold', isDark ? 'text-slate-50' : 'text-slate-900')}>{s.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {statCards.map((s) => {
+          const isRevenue = s.label === 'Revenue';
+          const displayValue = isRevenue && revenueHidden ? '••••••' : s.value;
+
+          return (
+            <Card
+              key={s.label}
+              className={cn(
+                'rounded-2xl',
+                isDark ? 'border-[#18263b] bg-[#0b1628] text-slate-100 shadow-[0_18px_50px_rgba(2,6,23,0.32)]' : 'border-slate-200 bg-white text-slate-900 shadow-sm'
+              )}
+            >
+              <CardContent className="relative flex items-center gap-4 p-6">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.iconClass}`}>
+                  <s.icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>{s.label}</p>
+                    {isRevenue && (
+                      <button
+                        type="button"
+                        onClick={toggleRevenueHidden}
+                        aria-label={revenueHidden ? 'Show revenue' : 'Hide revenue'}
+                        title={revenueHidden ? 'Show revenue' : 'Hide revenue'}
+                        className={cn(
+                          'rounded-md p-0.5 transition-colors',
+                          isDark
+                            ? 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700',
+                        )}
+                      >
+                        {revenueHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
+                  </div>
+                  <p className={cn('text-2xl font-semibold truncate', isDark ? 'text-slate-50' : 'text-slate-900')}>
+                    {displayValue}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
