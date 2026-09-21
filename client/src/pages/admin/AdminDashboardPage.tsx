@@ -174,31 +174,37 @@ export default function AdminDashboardPage() {
                 isDark ? 'border-[#18263b] bg-[#0b1628] text-slate-100 shadow-[0_18px_50px_rgba(2,6,23,0.32)]' : 'border-slate-200 bg-white text-slate-900 shadow-sm'
               )}
             >
-              <CardContent className="relative flex items-center gap-4 p-6">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.iconClass}`}>
-                  <s.icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>{s.label}</p>
-                    {isRevenue && (
-                      <button
-                        type="button"
-                        onClick={toggleRevenueHidden}
-                        aria-label={revenueHidden ? 'Show revenue' : 'Hide revenue'}
-                        title={revenueHidden ? 'Show revenue' : 'Hide revenue'}
-                        className={cn(
-                          'rounded-md p-0.5 transition-colors',
-                          isDark
-                            ? 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                            : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700',
-                        )}
-                      >
-                        {revenueHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      </button>
-                    )}
+              <CardContent className="flex flex-col gap-3 p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-2">
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.iconClass}`}>
+                    <s.icon className="h-5 w-5" />
                   </div>
-                  <p className={cn('text-2xl font-semibold truncate', isDark ? 'text-slate-50' : 'text-slate-900')}>
+                  {isRevenue && (
+                    <button
+                      type="button"
+                      onClick={toggleRevenueHidden}
+                      aria-label={revenueHidden ? 'Show revenue' : 'Hide revenue'}
+                      title={revenueHidden ? 'Show revenue' : 'Hide revenue'}
+                      className={cn(
+                        'rounded-md p-1 transition-colors',
+                        isDark
+                          ? 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700',
+                      )}
+                    >
+                      {revenueHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>{s.label}</p>
+                  <p
+                    className={cn(
+                      'mt-1 font-semibold leading-snug break-words',
+                      isRevenue ? 'text-xl sm:text-2xl' : 'text-2xl',
+                      isDark ? 'text-slate-50' : 'text-slate-900',
+                    )}
+                  >
                     {displayValue}
                   </p>
                 </div>
