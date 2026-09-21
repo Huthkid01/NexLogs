@@ -1,7 +1,5 @@
--- Hide unsold inventory (product_details) from public/authenticated REST reads.
--- Safe for buyers: after purchase they still get credentials via order_items.delivered_details
--- (shown in the buy success modal and My Purchases). Pre-buy they still see description /
--- login_instructions. Purchase RPCs and admin_list_products are SECURITY DEFINER.
+-- Strengthen 090: ensure product_details remains unreadable via public REST.
+-- Live DB already updated; this keeps migration history consistent.
 
 REVOKE SELECT ON TABLE public.products FROM PUBLIC;
 REVOKE SELECT ON TABLE public.products FROM anon;
@@ -37,8 +35,4 @@ GRANT SELECT (
 
 GRANT SELECT ON TABLE public.products TO service_role;
 GRANT EXECUTE ON FUNCTION public.admin_list_products() TO authenticated;
-
 NOTIFY pgrst, 'reload schema';
-
-COMMENT ON COLUMN public.products.product_details IS
-  'Unsold inventory. Not selectable by anon/authenticated. Readable via admin_list_products and purchase SECURITY DEFINER RPCs. Sold copies go to order_items.delivered_details.';
