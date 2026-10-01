@@ -25,6 +25,25 @@ export const BROADCAST_MESSAGE_TEMPLATE_CATEGORIES: {
 
 export const BROADCAST_MESSAGE_TEMPLATES: BroadcastMessageTemplate[] = [
   {
+    id: 'happy-october-independence-2026',
+    name: 'Happy New Month + Independence Day (inbox-friendly)',
+    category: 'new-month',
+    description:
+      'October 1 double greeting — Happy New Month and Nigeria Independence Day in one note. Use Product Announcement for Primary inbox.',
+    subject: `Happy new month and Independence Day from ${APP_NAME}`,
+    inboxFriendly: true,
+    requiresProducts: false,
+    message: `Happy new month and Happy Independence Day. Welcome to October — and a warm wish for Nigeria's Independence Day today. We hope you and your loved ones have a peaceful celebration, and that this month brings you calm focus and strong results.
+
+Three months remain before 2027. If you want to be set for the rest of the year, now is a good time to pick up the logs and accounts you need from the marketplace below.
+
+Browse the products listed, add wallet funds if your balance is low, and your details will appear in My Purchases after checkout. Or simply enjoy the day — your account is ready whenever you need it.
+
+From all of us at ${APP_NAME}, thank you for your trust.
+Wishing you a wonderful Independence Day and a successful October,
+Team ${APP_NAME}`,
+  },
+  {
     id: 'happy-september-2026',
     name: 'Happy September — December ready (inbox-friendly)',
     category: 'new-month',

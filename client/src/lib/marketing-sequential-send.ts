@@ -1,14 +1,13 @@
 import type { MarketingSendProgressItem, MarketingSendRecipient } from '@/lib/marketing-send-recipients';
 
 /** Send this many emails, then pause before the next batch. */
-export const EMAIL_SEND_BATCH_SIZE = 10;
-/** Pause between batches (after every 10 sends) — slower pace so Gmail treats the stream as human. */
-export const EMAIL_SEND_BATCH_PAUSE_MS = 30_000;
+export const EMAIL_SEND_BATCH_SIZE = 20;
+/** Pause between batches (after every 20 sends). */
+export const EMAIL_SEND_BATCH_PAUSE_MS = 10_000;
 /**
- * Gap between each individual email.
- * 4s looks like a person sending one-by-one; faster bursts can land in Promotions.
+ * Gap between each individual email within a batch.
  */
-export const EMAIL_SEND_BETWEEN_MS = 4_000;
+export const EMAIL_SEND_BETWEEN_MS = 2_000;
 
 export function emailSendPacingSummary() {
   const betweenSec = EMAIL_SEND_BETWEEN_MS / 1000;
@@ -130,7 +129,7 @@ export async function runSequentialEmailSend<TPayload>(options: {
       const batchNumber = Math.floor(index / batchSize) + 1;
       const indexInBatch = index % batchSize;
 
-      // After every full batch of 10, pause before starting the next batch.
+      // After every full batch, pause before starting the next batch.
       if (index > 0 && indexInBatch === 0 && batchPauseMs > 0) {
         let remaining = batchPauseMs;
         while (remaining > 0) {
