@@ -33,14 +33,11 @@ export const BROADCAST_MESSAGE_TEMPLATES: BroadcastMessageTemplate[] = [
     subject: `Happy new month and Independence Day from ${APP_NAME}`,
     inboxFriendly: true,
     requiresProducts: false,
-    message: `Happy new month and Happy Independence Day. Welcome to October — and a warm wish for Nigeria's Independence Day today. We hope you and your loved ones have a peaceful celebration, and that this month brings you calm focus and strong results.
+    message: `Happy new month and Happy Independence Day. Welcome to October — we hope you have a peaceful celebration and a strong month ahead.
 
-Three months remain before 2027. If you want to be set for the rest of the year, now is a good time to pick up the logs and accounts you need from the marketplace below.
+If you need logs or accounts this month, browse the marketplace below. Add wallet funds if your balance is low; details appear in My Purchases after checkout.
 
-Browse the products listed, add wallet funds if your balance is low, and your details will appear in My Purchases after checkout. Or simply enjoy the day — your account is ready whenever you need it.
-
-From all of us at ${APP_NAME}, thank you for your trust.
-Wishing you a wonderful Independence Day and a successful October,
+Thank you for trusting ${APP_NAME}. Enjoy the day,
 Team ${APP_NAME}`,
   },
   {

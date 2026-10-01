@@ -8,6 +8,37 @@ function escapeHtml(value: string) {
     .replaceAll('"', '&quot;');
 }
 
+/** Escape first, then turn newlines into real HTML breaks (never escape the <br/> tags). */
+function formatBroadcastMessageHtml(message: string) {
+  const paragraphs = message
+    .trim()
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!paragraphs.length) return '';
+
+  return paragraphs
+    .map((paragraph) => {
+      const html = escapeHtml(paragraph).replace(/\n/g, '<br/>');
+      return `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">${html}</p>`;
+    })
+    .join('');
+}
+
+function resolveBroadcastTitle(options: {
+  productCount: number;
+  subject: string;
+  appName: string;
+}) {
+  if (options.productCount > 0) return 'New products available';
+  const escapedName = options.appName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const cleaned = options.subject
+    .replace(new RegExp(`\\s+from\\s+${escapedName}\\s*$`, 'i'), '')
+    .trim();
+  return cleaned || 'A note for you';
+}
+
 function emailLayout(options: {
   appName: string;
   appUrl: string;
@@ -102,7 +133,7 @@ export function buildNewProductsBroadcastEmail(options: {
   isAccountHolder?: boolean;
 }) {
   const intro = options.customMessage?.trim()
-    ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">${escapeHtml(options.customMessage.trim().replace(/\n/g, '<br/>'))}</p>`
+    ? formatBroadcastMessageHtml(options.customMessage)
     : `<p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">We just added new products to the marketplace. Browse the latest listings below.</p>`;
 
   const productsHtml = options.products.length
@@ -122,7 +153,11 @@ export function buildNewProductsBroadcastEmail(options: {
     : options.customMessage?.trim().slice(0, 140)
       || options.subject
       || `A note from ${options.appName}`;
-  const title = options.products.length ? 'New products available' : options.appName;
+  const title = resolveBroadcastTitle({
+    productCount: options.products.length,
+    subject: options.subject,
+    appName: options.appName,
+  });
 
   const html = emailLayout({
     appName: options.appName,

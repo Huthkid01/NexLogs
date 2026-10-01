@@ -595,21 +595,18 @@ export const HTML_CAMPAIGN_TEMPLATES: HtmlCampaignTemplate[] = [
       'October 1 double greeting — Happy New Month and Nigeria Independence Day together. Prefer Product Announcement for Primary inbox.',
     defaultSubject: `Happy new month and Independence Day from ${APP_NAME}`,
     html: buildInboxFriendlyEmailHtml({
-      title: APP_NAME,
+      title: 'Happy new month and Independence Day',
       preheader: `Happy new month and Happy Independence Day from ${APP_NAME}. Wishing you a peaceful celebration and a strong October.`,
       bodyHtml: `
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Hello {{name}},</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                Happy new month and Happy Independence Day. Welcome to <strong>October</strong> — and a warm wish for Nigeria's Independence Day today. We hope you and your loved ones have a peaceful celebration, and that this month brings you calm focus and strong results.
+                Happy new month and Happy Independence Day. Welcome to <strong>October</strong> — we hope you have a peaceful celebration and a strong month ahead.
               </p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                Three months remain before 2027. If you want to be set for the rest of the year, now is a good time to pick up the logs and accounts you need from the marketplace.
+                If you need logs or accounts this month, browse the marketplace. Add wallet funds if your balance is low; details appear under <strong>My Purchases</strong> after checkout.
               </p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                Sign in, add wallet funds if your balance is low, then choose what you need. Your details will appear under <strong>My Purchases</strong> after checkout. Or simply enjoy the day — your account is ready whenever you need it.
-              </p>
-              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">
-                From all of us at ${APP_NAME}, thank you for your trust. Wishing you a wonderful Independence Day and a successful October.
+                Thank you for trusting ${APP_NAME}. Enjoy the day.
               </p>
               <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
                 Warm regards,<br/>
