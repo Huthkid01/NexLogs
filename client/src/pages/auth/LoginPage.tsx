@@ -16,8 +16,7 @@ import { APP_NAME } from '@/constants';
 import { getSupabaseConfigError } from '@/lib/mock-mode';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
-import { getUserLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
-import { openErrorReport } from '@/lib/error-report';
+import { getUserLoginMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { consumeAuthRedirect, getPostLoginPath, storeAuthRedirect } from '@/lib/auth-redirect';
 import { consumeSessionExpiredNotice, SESSION_EXPIRED_MESSAGE } from '@/lib/session-expired';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,15 +71,6 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const message = normalizeAuthErrorMessage(err);
       toast.error(getUserLoginMessage(message));
-
-      if (!isExpectedUserAuthError(message)) {
-        openErrorReport({
-          title: 'Error while signing in',
-          message: 'We could not sign you in.',
-          source: 'login',
-          errorMessage: message,
-        });
-      }
     } finally {
       setLoading(false);
     }
@@ -104,12 +94,6 @@ export default function LoginPage() {
         return;
       }
       toast.error('We could not sign you in with Google.');
-      openErrorReport({
-        title: 'Error while signing in',
-        message: 'We could not sign you in with Google.',
-        source: 'login',
-        errorMessage: message,
-      });
     }
   };
 

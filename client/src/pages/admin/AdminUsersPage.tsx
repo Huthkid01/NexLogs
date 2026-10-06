@@ -5,7 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
 import { AdminUserWalletPanel } from '@/components/admin/AdminUserWalletPanel';
+import { useAdminListPagination } from '@/hooks/useAdminListPagination';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { activityLogService, adminService, siteVisitService, SITE_ACTIVE_WINDOW_MINUTES } from '@/services';
@@ -43,15 +45,15 @@ export default function AdminUsersPage() {
     queryFn: siteVisitService.getStats,
   });
 
-  const { data: activeSessions, isLoading: activeLoading } = useQuery({
+  const { data: activeSessions = [], isLoading: activeLoading } = useQuery({
     queryKey: ['admin-active-sessions'],
     queryFn: siteVisitService.getActiveSessions,
     enabled: activeTab === 'active',
   });
 
-  const { data: recentVisits, isLoading: visitsLoading } = useQuery({
+  const { data: recentVisits = [], isLoading: visitsLoading } = useQuery({
     queryKey: ['admin-recent-visits'],
-    queryFn: () => siteVisitService.getRecentPageViews(100),
+    queryFn: () => siteVisitService.getRecentPageViews(500),
     enabled: activeTab === 'visits',
   });
 
@@ -142,6 +144,10 @@ export default function AdminUsersPage() {
     );
   }, [users, userSearch]);
 
+  const registeredPaging = useAdminListPagination(filteredUsers, { resetKey: `${activeTab}:${userSearch}` });
+  const activePaging = useAdminListPagination(activeSessions, { resetKey: activeTab });
+  const visitsPaging = useAdminListPagination(recentVisits, { resetKey: activeTab });
+
   const tabs: Array<{ id: UsersTab; label: string }> = [
     { id: 'registered', label: 'Registered Users' },
     { id: 'active', label: 'Active Visitors' },
@@ -212,7 +218,7 @@ export default function AdminUsersPage() {
             />
           </div>
 
-          {filteredUsers.map((user) => (
+          {registeredPaging.paginatedItems.map((user) => (
             <Card key={user.id}>
               <CardContent className="p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -261,12 +267,22 @@ export default function AdminUsersPage() {
             </Card>
           ))}
 
-          {!filteredUsers.length && (
+          {!filteredUsers.length ? (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 No users match your search.
               </CardContent>
             </Card>
+          ) : (
+            <AdminListPagination
+              page={registeredPaging.page}
+              totalPages={registeredPaging.totalPages}
+              totalItems={registeredPaging.totalItems}
+              pageStart={registeredPaging.pageStart}
+              pageEnd={registeredPaging.pageEnd}
+              onPageChange={registeredPaging.setPage}
+              isDark={isDark}
+            />
           )}
         </div>
       )}
@@ -295,8 +311,9 @@ export default function AdminUsersPage() {
           </div>
           {activeLoading ? (
             <Skeleton className="h-24" />
-          ) : activeSessions?.length ? (
-            activeSessions.map((session) => (
+          ) : activeSessions.length ? (
+            <>
+              {activePaging.paginatedItems.map((session) => (
               <Card key={session.id}>
                 <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -321,7 +338,17 @@ export default function AdminUsersPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              ))}
+              <AdminListPagination
+                page={activePaging.page}
+                totalPages={activePaging.totalPages}
+                totalItems={activePaging.totalItems}
+                pageStart={activePaging.pageStart}
+                pageEnd={activePaging.pageEnd}
+                onPageChange={activePaging.setPage}
+                isDark={isDark}
+              />
+            </>
           ) : (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -356,8 +383,9 @@ export default function AdminUsersPage() {
           </div>
           {visitsLoading ? (
             <Skeleton className="h-24" />
-          ) : recentVisits?.length ? (
-            recentVisits.map((visit) => (
+          ) : recentVisits.length ? (
+            <>
+              {visitsPaging.paginatedItems.map((visit) => (
               <Card key={visit.id}>
                 <CardContent className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -378,7 +406,17 @@ export default function AdminUsersPage() {
                   <p className="text-xs text-muted-foreground">{new Date(visit.created_at).toLocaleString()}</p>
                 </CardContent>
               </Card>
-            ))
+              ))}
+              <AdminListPagination
+                page={visitsPaging.page}
+                totalPages={visitsPaging.totalPages}
+                totalItems={visitsPaging.totalItems}
+                pageStart={visitsPaging.pageStart}
+                pageEnd={visitsPaging.pageEnd}
+                onPageChange={visitsPaging.setPage}
+                isDark={isDark}
+              />
+            </>
           ) : (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">

@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { User, Session } from '@supabase/supabase-js';
 import { authService } from '@/services/auth.service';
 import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
-import { queueQuickTourForUser } from '@/lib/quick-tour';
+import { clearLoginAnnouncementForUser } from '@/lib/login-announcement';
 import { clearSessionActivity, touchSessionActivity } from '@/lib/session-idle';
 import type { Profile } from '@/types';
 
@@ -81,9 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleSignedIn = (sess: Session | null) => {
       resetDisplayCurrencyForLogin();
       touchSessionActivity();
-      if (sess?.user?.id) {
-        queueQuickTourForUser(sess.user.id);
-      }
       void applySession(sess, true);
     };
 
@@ -101,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === 'SIGNED_OUT') {
         clearSessionActivity();
+        clearLoginAnnouncementForUser();
         setSession(null);
         setUser(null);
         setProfile(null);
@@ -129,10 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    const previousUserId = user?.id;
     try {
       await authService.signOut();
     } finally {
       clearSessionActivity();
+      clearLoginAnnouncementForUser(previousUserId);
       setUser(null);
       setProfile(null);
       setSession(null);

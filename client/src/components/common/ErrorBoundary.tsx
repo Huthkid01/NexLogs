@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { openErrorReport } from '@/lib/error-report';
 import {
   clearErrorBoundaryActive,
   markErrorBoundaryActive,
@@ -73,18 +73,30 @@ export class ErrorBoundary extends Component<Props, State> {
               <div className="space-y-4">
                 <h1 className="text-2xl font-bold">Something went wrong</h1>
                 <p className="max-w-2xl text-lg leading-9 text-[#e5d4c2]">
-                  An unexpected website error occurred. Try refreshing your browser, but if the issue persists, please report it so admin can review it.
+                  An unexpected error occurred. Please refresh the page or try again. If it continues, contact customer support.
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button
                     className="bg-[#f26522] hover:bg-[#d94e0f]"
-                    onClick={() => openErrorReport({
-                      title: 'Unexpected website error',
-                      message: 'An unexpected website error occurred. Please describe what happened before the crash.',
-                      source: 'website_error',
-                    })}
+                    onClick={() => {
+                      toast.error('Please try again or contact customer support.', {
+                        description: 'Unexpected website error',
+                        duration: 5_500,
+                      });
+                      clearErrorBoundaryActive();
+                      window.location.href = '/support';
+                    }}
                   >
-                    Report Error
+                    Contact Support
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      clearErrorBoundaryActive();
+                      this.setState({ hasError: false });
+                      window.location.reload();
+                    }}
+                  >
+                    Refresh
                   </Button>
                   <Button
                     onClick={() => {

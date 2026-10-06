@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronUp } from 'lucide-react';
 import { TelegramIcon } from '@/components/common/TelegramIcon';
 import { useSiteContent } from '@/hooks/useSiteContent';
@@ -9,7 +10,12 @@ const SCROLL_THRESHOLD = 200;
 export function FloatingActions() {
   const { content } = useSiteContent();
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const telegramUrl = getTelegramSupportUrl(content);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,14 +31,16 @@ export function FloatingActions() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  return (
-    <div className="fixed safe-bottom right-4 sm:right-6 z-40 flex flex-col items-center gap-3">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="pointer-events-none fixed bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] right-4 z-[60] flex flex-col items-center gap-3 sm:right-6">
       {showScrollTop && (
         <button
           type="button"
           onClick={scrollToTop}
           aria-label="Scroll to top"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f26522] text-white shadow-lg transition-colors hover:bg-[#d94e0f]"
+          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#f26522] text-white shadow-lg transition-colors hover:bg-[#d94e0f]"
         >
           <ChevronUp className="h-5 w-5" strokeWidth={2.5} />
         </button>
@@ -43,10 +51,16 @@ export function FloatingActions() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Open Telegram support"
-        className="flex h-12 w-12 items-center justify-center transition-transform hover:scale-105"
+        className="telegram-float-btn pointer-events-auto flex w-[4.5rem] flex-col items-center gap-1 transition-transform hover:scale-105"
       >
-        <TelegramIcon className="h-12 w-12 rounded-full shadow-lg" />
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#229ED9] shadow-xl">
+          <TelegramIcon className="h-14 w-14 rounded-full" />
+        </span>
+        <span className="max-w-[4.75rem] text-center text-[9px] font-semibold leading-tight text-gray-700 dark:text-gray-200">
+          Click here for support
+        </span>
       </a>
-    </div>
+    </div>,
+    document.body,
   );
 }

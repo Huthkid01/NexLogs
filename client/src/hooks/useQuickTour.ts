@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  hasCompletedQuickTour,
   markQuickTourCompleted,
   QUICK_TOUR_OPEN_EVENT,
 } from '@/lib/quick-tour';
@@ -15,6 +14,7 @@ const AUTH_PATHS = new Set([
   '/auth/callback',
 ]);
 
+/** Quick tour is menu/profile-only — never auto-opens after login. */
 export function useQuickTour() {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
@@ -22,6 +22,7 @@ export function useQuickTour() {
 
   useEffect(() => {
     const handleManualOpen = () => {
+      if (loading) return;
       if (!user?.id || profile?.role === 'admin' || AUTH_PATHS.has(location.pathname)) {
         return;
       }
@@ -30,30 +31,13 @@ export function useQuickTour() {
 
     window.addEventListener(QUICK_TOUR_OPEN_EVENT, handleManualOpen);
     return () => window.removeEventListener(QUICK_TOUR_OPEN_EVENT, handleManualOpen);
-  }, [user?.id, profile?.role, location.pathname]);
+  }, [loading, user?.id, profile?.role, location.pathname]);
 
   useEffect(() => {
-    if (loading) return;
-
-    if (!user?.id || profile?.role === 'admin') {
+    if (!user?.id || profile?.role === 'admin' || AUTH_PATHS.has(location.pathname)) {
       setOpen(false);
-      return;
     }
-
-    if (AUTH_PATHS.has(location.pathname)) {
-      return;
-    }
-
-    if (hasCompletedQuickTour(user.id)) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setOpen(true);
-    }, 700);
-
-    return () => window.clearTimeout(timer);
-  }, [loading, user?.id, profile?.role, location.pathname]);
+  }, [user?.id, profile?.role, location.pathname]);
 
   const completeTour = () => {
     if (user?.id) {

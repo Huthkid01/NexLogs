@@ -12,13 +12,19 @@ import {
  * (with a login button), instead of a generic crash/error screen.
  */
 export function useHandleSessionExpired() {
-  const { signOut } = useAuth();
+  const { signOut, isAdmin, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   return useCallback(async () => {
     const returnPath = `${location.pathname}${location.search}` || getCurrentReturnPath();
-    markSessionExpired(returnPath);
+    const adminSession =
+      isAdmin
+      || profile?.role === 'admin'
+      || returnPath.startsWith('/admin')
+      || location.pathname.startsWith('/admin');
+
+    markSessionExpired(returnPath, { admin: adminSession });
 
     try {
       await signOut();
@@ -27,5 +33,5 @@ export function useHandleSessionExpired() {
     }
 
     navigate(SESSION_EXPIRED_PATH, { replace: true });
-  }, [signOut, navigate, location.pathname, location.search]);
+  }, [signOut, navigate, location.pathname, location.search, isAdmin, profile?.role]);
 }

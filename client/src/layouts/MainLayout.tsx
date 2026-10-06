@@ -9,7 +9,7 @@ import { UserMenuDropdown } from '@/components/layout/UserMenuDropdown';
 import { FloatingActions } from '@/components/layout/FloatingActions';
 import { ReviewFomoWidget } from '@/components/layout/ReviewFomoWidget';
 import { useQuickTour } from '@/hooks/useQuickTour';
-import { useCommunityPromo } from '@/hooks/useCommunityPromo';
+import { useLoginAnnouncement } from '@/hooks/useLoginAnnouncement';
 import { useMaintenanceNotice } from '@/hooks/useMaintenanceNotice';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
@@ -21,9 +21,9 @@ const QuickTour = lazy(() =>
   })),
 );
 
-const CommunityPromoModal = lazy(() =>
-  import('@/components/layout/CommunityPromoModal').then((module) => ({
-    default: module.CommunityPromoModal,
+const LoginAnnouncementModal = lazy(() =>
+  import('@/components/layout/LoginAnnouncementModal').then((module) => ({
+    default: module.LoginAnnouncementModal,
   })),
 );
 
@@ -39,8 +39,7 @@ export function MainLayout() {
   const { content } = useSiteContent();
   const location = useLocation();
   const { open: quickTourOpen, completeTour, dismissTour } = useQuickTour();
-  const { open: communityPromoOpen, dismiss: dismissCommunityPromo, markJoined: markCommunityJoined } =
-    useCommunityPromo();
+  const { open: loginAnnouncementOpen, dismiss: dismissLoginAnnouncement } = useLoginAnnouncement();
   const {
     open: maintenanceOpen,
     title: maintenanceTitle,
@@ -155,7 +154,7 @@ export function MainLayout() {
         </footer>
       </div>
       {!hideFloatingActions ? <FloatingActions /> : null}
-      {!isAuthPage && !maintenanceOpen && !communityPromoOpen && !quickTourOpen ? (
+      {!isAuthPage && !maintenanceOpen && !loginAnnouncementOpen && !quickTourOpen ? (
         <ReviewFomoWidget />
       ) : null}
       {maintenanceOpen ? (
@@ -167,16 +166,12 @@ export function MainLayout() {
           />
         </Suspense>
       ) : null}
-      {!maintenanceOpen && communityPromoOpen ? (
+      {!maintenanceOpen && loginAnnouncementOpen ? (
         <Suspense fallback={null}>
-          <CommunityPromoModal
-            open={communityPromoOpen}
-            onClose={dismissCommunityPromo}
-            onJoined={markCommunityJoined}
-          />
+          <LoginAnnouncementModal open={loginAnnouncementOpen} onClose={dismissLoginAnnouncement} />
         </Suspense>
       ) : null}
-      {!maintenanceOpen && quickTourOpen ? (
+      {!maintenanceOpen && !loginAnnouncementOpen && quickTourOpen ? (
         <Suspense fallback={null}>
           <QuickTour open={quickTourOpen} onClose={dismissTour} onComplete={completeTour} />
         </Suspense>

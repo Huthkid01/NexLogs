@@ -9,10 +9,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { resetThemeForLogin } from '@/contexts/theme';
 import { NexLogsLogo } from '@/components/common/NexLogsLogo';
-import { getAdminLoginMessage, isExpectedUserAuthError, normalizeAuthErrorMessage } from '@/lib/auth-errors';
+import { getAdminLoginMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
 import { consumeSessionExpiredNotice, SESSION_EXPIRED_MESSAGE } from '@/lib/session-expired';
 import { Input } from '@/components/ui/input';
-import { openErrorReport } from '@/lib/error-report';
 
 const adminLoginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -86,15 +85,6 @@ export default function AdminLoginPage() {
     } catch (err: unknown) {
       const message = normalizeAuthErrorMessage(err);
       toast.error(getAdminLoginMessage(message));
-
-      if (!isExpectedUserAuthError(message)) {
-        openErrorReport({
-          title: 'Error while signing in',
-          message: 'We could not sign you in to the admin dashboard.',
-          source: 'login',
-          errorMessage: message,
-        });
-      }
     } finally {
       setLoading(false);
     }

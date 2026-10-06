@@ -9,10 +9,7 @@ import { PurchaseReviewModal } from '@/components/purchases/PurchaseReviewModal'
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { LoggsplugDescriptionView } from '@/components/home/LoggsplugDescriptionView';
-import { openErrorReport } from '@/lib/error-report';
 import {
-  getFriendlyErrorMessage,
-  getPurchaseErrorMessage,
   isAuthError,
   isInsufficientFundsError,
   isOutOfStockError,
@@ -203,22 +200,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
         return;
       }
 
-      const message = getPurchaseErrorMessage(err);
-      const friendly = isLoggsplug
-        ? 'We could not complete this purchase right now. Please contact support and we will help you.'
-        : getFriendlyErrorMessage(
-            err,
-            'We could not complete this purchase. Please try again or contact support.',
-          );
-
-      toast.error(friendly);
-      openErrorReport({
-        title: 'Error while purchasing',
-        message: friendly,
-        source: 'checkout',
-        errorMessage: message,
-        reasonOptions: ['Product purchase failed', 'Wallet payment problem', 'Insufficient funds', 'Other'],
-      });
+      toast.error('Error while purchasing. Please try again or contact customer support.');
     } finally {
       setPurchasing(false);
     }

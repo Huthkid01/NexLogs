@@ -3,6 +3,8 @@ import { Activity } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
+import { useAdminListPagination } from '@/hooks/useAdminListPagination';
 import { activityLogService } from '@/services';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
@@ -18,10 +20,20 @@ function isViolationLog(action: string) {
 export default function AdminActivityLogsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { data: logs, isLoading } = useQuery({
+  const { data: logs = [], isLoading } = useQuery({
     queryKey: ['admin-activity-logs'],
     queryFn: activityLogService.getAllAdmin,
   });
+
+  const {
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    pageStart,
+    pageEnd,
+    paginatedItems,
+  } = useAdminListPagination(logs);
 
   if (isLoading) {
     return <div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}</div>;
@@ -43,15 +55,15 @@ export default function AdminActivityLogsPage() {
               <Activity className="h-6 w-6" />
             </div>
             <div>
-              <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>Recent Logs</p>
-              <p className="text-2xl font-semibold">{logs?.length ?? 0}</p>
+              <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>Total Logs</p>
+              <p className="text-2xl font-semibold">{logs.length}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="space-y-4">
-        {logs?.map((log) => (
+        {paginatedItems.map((log) => (
           <Card key={log.id} className={cn(isDark ? 'border-[#18263b] bg-[#0a1527] text-slate-100' : 'border-slate-200 bg-white text-slate-900')}>
             <CardContent className="space-y-3 p-5">
               {isViolationLog(log.action) && (
@@ -97,7 +109,7 @@ export default function AdminActivityLogsPage() {
           </Card>
         ))}
 
-        {!logs?.length && (
+        {!logs.length ? (
           <Card className={cn(isDark ? 'border-[#18263b] bg-[#0a1527] text-slate-100' : 'border-slate-200 bg-white text-slate-900')}>
             <CardContent className="py-12 text-center">
               <Activity className={cn('mx-auto h-10 w-10', isDark ? 'text-slate-600' : 'text-slate-400')} />
@@ -107,6 +119,16 @@ export default function AdminActivityLogsPage() {
               </p>
             </CardContent>
           </Card>
+        ) : (
+          <AdminListPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            onPageChange={setPage}
+            isDark={isDark}
+          />
         )}
       </div>
     </div>

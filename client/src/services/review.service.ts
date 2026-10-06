@@ -121,32 +121,46 @@ export const reviewService = {
   },
 
   async getAllAdmin(): Promise<AdminReview[]> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
-        *,
-        profile:profiles(full_name, email),
-        product:products(id, title, slug),
-        order:orders(id, order_number, created_at)
-      `)
-      .order('created_at', { ascending: false });
+    const pageSize = 200;
+    const reviews: AdminReview[] = [];
+    let from = 0;
 
-    if (error) throw error;
+    for (;;) {
+      const to = from + pageSize - 1;
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          profile:profiles(full_name, email),
+          product:products(id, title, slug),
+          order:orders(id, order_number, created_at)
+        `)
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-    return (data ?? []).map((row) => {
-      const review = row as AdminReview & {
-        profile?: AdminReview['profile'] | AdminReview['profile'][];
-        product?: AdminReview['product'] | AdminReview['product'][];
-        order?: AdminReview['order'] | AdminReview['order'][];
-      };
+      if (error) throw error;
 
-      return {
-        ...review,
-        profile: Array.isArray(review.profile) ? review.profile[0] ?? null : review.profile ?? null,
-        product: Array.isArray(review.product) ? review.product[0] ?? null : review.product ?? null,
-        order: Array.isArray(review.order) ? review.order[0] ?? null : review.order ?? null,
-      };
-    });
+      const batch = (data ?? []).map((row) => {
+        const review = row as AdminReview & {
+          profile?: AdminReview['profile'] | AdminReview['profile'][];
+          product?: AdminReview['product'] | AdminReview['product'][];
+          order?: AdminReview['order'] | AdminReview['order'][];
+        };
+
+        return {
+          ...review,
+          profile: Array.isArray(review.profile) ? review.profile[0] ?? null : review.profile ?? null,
+          product: Array.isArray(review.product) ? review.product[0] ?? null : review.product ?? null,
+          order: Array.isArray(review.order) ? review.order[0] ?? null : review.order ?? null,
+        };
+      });
+
+      reviews.push(...batch);
+      if ((data ?? []).length < pageSize) break;
+      from += pageSize;
+    }
+
+    return reviews;
   },
 
   async setApproved(reviewId: string, isApproved: boolean): Promise<void> {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Ban,
   Banknote,
   ChevronLeft,
   ChevronRight,
@@ -63,9 +64,31 @@ const COUNTRIES_DROPDOWN_LIMIT = 12;
 const ACTIVE_SYNC_INTERVAL_MS = 5_000;
 
 const SMS_NUMBER_PROVIDERS = [
-  { id: 'service-1', label: 'Service 1', enabled: true },
+  { id: 'service-1', label: 'Service 1', enabled: false },
   { id: 'service-2', label: 'Service 2', enabled: true },
 ] as const;
+
+const BUY_NUMBERS_TIP =
+  'WhatsApp codes succeed about 90% of the time — use the Recommended option for the fastest code.';
+
+function BuyNumbersTipBanner() {
+  return (
+    <div
+      className="border-b border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100"
+      role="status"
+      aria-label={BUY_NUMBERS_TIP}
+    >
+      <div className="overflow-hidden py-2.5">
+        <div className="buy-numbers-marquee-track gap-12 px-4 text-sm font-medium sm:text-[15px]">
+          <span className="whitespace-nowrap">{BUY_NUMBERS_TIP}</span>
+          <span className="whitespace-nowrap" aria-hidden>
+            {BUY_NUMBERS_TIP}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type SmsProviderId = (typeof SMS_NUMBER_PROVIDERS)[number]['id'];
 
@@ -420,7 +443,7 @@ export default function BuyNumbersPage() {
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   const activeProvider = SMS_NUMBER_PROVIDERS.find((provider) => provider.id === providerId);
-  const isBuyFlow = providerId === 'service-1' || providerId === 'service-2';
+  const isBuyFlow = Boolean(activeProvider?.enabled);
   const smsProvider = resolveSmsProvider(providerId);
 
   const [selectedCountry, setSelectedCountry] = useState<SmsPoolCountry | null>(null);
@@ -486,11 +509,11 @@ export default function BuyNumbersPage() {
   useEffect(() => {
     if (!providerId) return;
 
-    if (!isBuyFlow) {
+    if (!isBuyFlow || (activeProvider && !activeProvider.enabled)) {
       toast.message('This service is not available yet.');
       navigate('/buy-numbers', { replace: true });
     }
-  }, [isBuyFlow, navigate, providerId]);
+  }, [activeProvider, isBuyFlow, navigate, providerId]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -1146,6 +1169,7 @@ export default function BuyNumbersPage() {
   if (!isBuyFlow) {
     return (
       <div className="bg-gray-50 dark:bg-dm-bg min-h-full">
+        <BuyNumbersTipBanner />
         <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-lg flex-col justify-center px-4 py-12 sm:px-6">
           <section className="w-full rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-dm-border dark:bg-dm-surface sm:p-8">
             <div className="text-center">
@@ -1160,14 +1184,28 @@ export default function BuyNumbersPage() {
                   type="button"
                   onClick={() => handleSelectProvider(provider)}
                   disabled={!provider.enabled}
+                  aria-disabled={!provider.enabled}
+                  title={provider.enabled ? provider.label : `${provider.label} is unavailable`}
                   className={cn(
                     'w-full rounded-xl border px-4 py-5 text-base font-semibold transition-colors',
                     provider.enabled
                       ? 'border-gray-200 bg-gray-50 text-gray-800 hover:border-[#f26522] hover:bg-[#fff7f2] dark:border-dm-border dark:bg-dm-bg dark:text-gray-100 dark:hover:border-[#f26522]'
-                      : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-dm-border dark:bg-dm-bg/60 dark:text-gray-500',
+                      : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 opacity-70 dark:border-dm-border dark:bg-dm-bg/60 dark:text-gray-500',
                   )}
                 >
-                  {provider.label}
+                  <span className="flex items-center justify-center gap-2">
+                    {provider.enabled ? (
+                      <Smartphone className="h-5 w-5 text-[#f26522]" aria-hidden />
+                    ) : (
+                      <Ban className="h-5 w-5 text-gray-400 dark:text-gray-500" aria-hidden />
+                    )}
+                    <span className={cn(!provider.enabled && 'line-through decoration-2')}>{provider.label}</span>
+                    {!provider.enabled && (
+                      <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                        Unavailable
+                      </span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -1179,6 +1217,7 @@ export default function BuyNumbersPage() {
 
   return (
     <div className="bg-[#f3f4f6] dark:bg-dm-bg min-h-full">
+      <BuyNumbersTipBanner />
       <div className="w-full px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         {catalogError && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">

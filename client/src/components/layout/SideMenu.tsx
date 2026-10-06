@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { X, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { getTelegramSupportUrl } from '@/lib/telegram-url';
+import { openQuickTourNow, resetQuickTourForUser } from '@/lib/quick-tour';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +18,7 @@ const MENU_ITEMS = [
   { label: 'Purchase RDP', emoji: '🖥️', href: '/purchase-rdp', auth: true },
   { label: 'My Purchases', emoji: '🛒', href: '/purchases', auth: true },
   { label: 'Buy Numbers for SMS Verification', emoji: '📱', href: '/buy-numbers', auth: true },
+  { label: 'Website quick tour', emoji: '🗺️', action: 'quick-tour' as const, auth: true },
   { label: 'FAQ', emoji: '❓', href: '/faq', auth: false },
   { label: 'Need help?', emoji: '👨‍💻', href: '/support', auth: false },
 ] as const;
@@ -29,6 +32,12 @@ const GUEST_MENU_ITEMS = [
 type AuthMenuItem = (typeof MENU_ITEMS)[number];
 type GuestMenuItem = (typeof GUEST_MENU_ITEMS)[number];
 type VisibleMenuItem = AuthMenuItem | GuestMenuItem;
+
+function isHrefMenuItem(
+  item: VisibleMenuItem,
+): item is (AuthMenuItem & { href: string }) | GuestMenuItem {
+  return 'href' in item && typeof item.href === 'string';
+}
 
 function TelegramPromoCard({
   href,
@@ -66,13 +75,26 @@ export function SideMenu({ open, onClose }: SideMenuProps) {
 
   useScrollLock(open);
 
-  const getHref = (item: AuthMenuItem) => {
+  const getHref = (item: AuthMenuItem & { href: string }) => {
     if (item.auth && !user) return '/login';
     return item.href;
   };
 
   const handleItemClick = (item: VisibleMenuItem) => {
     onClose();
+
+    if ('action' in item && item.action === 'quick-tour') {
+      if (!user?.id) {
+        navigate('/login');
+        return;
+      }
+      resetQuickTourForUser(user.id);
+      openQuickTourNow();
+      toast.message('Starting website quick tour...');
+      return;
+    }
+
+    if (!isHrefMenuItem(item)) return;
     navigate('auth' in item ? getHref(item) : item.href);
   };
 

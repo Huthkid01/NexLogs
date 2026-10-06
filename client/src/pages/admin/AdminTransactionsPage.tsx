@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
+import { useAdminListPagination } from '@/hooks/useAdminListPagination';
 import { useTheme } from '@/hooks/useTheme';
 import { adminService, isRecoveredKoraDeposit } from '@/services/misc.service';
 import { cn, formatPrice } from '@/lib/utils';
@@ -51,7 +53,7 @@ export default function AdminTransactionsPage() {
 
   const { data: transactions, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['admin-wallet-transactions'],
-    queryFn: () => adminService.getWalletFundTransactions(250),
+    queryFn: () => adminService.getWalletFundTransactions(),
   });
 
   const filtered = useMemo(() => {
@@ -71,6 +73,16 @@ export default function AdminTransactionsPage() {
       );
     });
   }, [transactions, search]);
+
+  const {
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    pageStart,
+    pageEnd,
+    paginatedItems,
+  } = useAdminListPagination(filtered, { resetKey: search });
 
   const stats = useMemo(() => {
     const completed = filtered.filter((tx) => tx.status === 'completed');
@@ -168,7 +180,7 @@ export default function AdminTransactionsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filtered.map((tx) => {
+          {paginatedItems.map((tx) => {
             const paid = formatPaidAmount(tx);
             const paymentRef = getPaymentRef(tx);
             const recovered = isRecoveredKoraDeposit(tx);
@@ -218,6 +230,16 @@ export default function AdminTransactionsPage() {
               </Card>
             );
           })}
+
+          <AdminListPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            onPageChange={setPage}
+            isDark={isDark}
+          />
         </div>
       )}
     </div>

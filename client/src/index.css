@@ -435,3 +435,48 @@ textarea {
     width: 100%;
   }
 }
+
+@keyframes telegram-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.telegram-float-btn {
+  animation: telegram-float 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .telegram-float-btn {
+    animation: none;
+  }
+}
+
+@keyframes buy-numbers-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.buy-numbers-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: buy-numbers-marquee 28s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buy-numbers-marquee-track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+  }
+}

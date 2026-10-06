@@ -3,11 +3,13 @@ import { Navigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Save, Smartphone, Wallet, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { defaultSiteContent } from '@/contexts/site-content';
+import { useAdminListPagination } from '@/hooks/useAdminListPagination';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useTheme } from '@/hooks/useTheme';
 import {
@@ -139,6 +141,16 @@ function AdminSmsPricingPageContent({ provider }: { provider: SmsPricingProvider
   });
 
   const selectedService = services.find((service) => service.id === serviceId);
+
+  const priceRows = servicePrices?.rows ?? [];
+  const historyRows = providerHistory?.rows ?? [];
+
+  const pricePaging = useAdminListPagination(priceRows, {
+    resetKey: `${provider}:${serviceId}:${priceRows.length}`,
+  });
+  const historyPaging = useAdminListPagination(historyRows, {
+    resetKey: `${provider}:${historyRows.length}`,
+  });
 
   const savePricing = () => {
     const normalized = normalizeSmsPricing(pricingDraft);
@@ -343,7 +355,7 @@ function AdminSmsPricingPageContent({ provider }: { provider: SmsPricingProvider
             </Button>
           </div>
 
-          {!servicePrices?.rows.length ? (
+          {!priceRows.length ? (
             <p className={`text-sm ${adminMutedTextClass(isDark)}`}>
               {pricesLoading
                 ? `Loading ${providerMeta.label} prices...`
@@ -352,39 +364,50 @@ function AdminSmsPricingPageContent({ provider }: { provider: SmsPricingProvider
                   : 'No prices returned for this service.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className={`border-b ${isDark ? 'border-dm-border' : 'border-gray-200'} ${adminMutedTextClass(isDark)}`}>
-                    <th className="px-3 py-2 font-medium">Country</th>
-                    <th className="px-3 py-2 font-medium">{providerMeta.costColumnLabel}</th>
-                    <th className="px-3 py-2 font-medium">Your price</th>
-                    <th className="px-3 py-2 font-medium">Profit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {servicePrices.rows.map((row) => (
-                    <tr
-                      key={`${row.country_id}-${row.pool ?? 'default'}`}
-                      className={`border-b ${isDark ? 'border-dm-border/70' : 'border-gray-100'}`}
-                    >
-                      <td className="px-3 py-3">
-                        <div className={`font-medium ${adminStrongTextClass(isDark)}`}>{row.country_name}</div>
-                        {row.country_code && (
-                          <div className={`text-xs ${adminMutedTextClass(isDark)}`}>{row.country_code}</div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">{formatUsd(row.cost_usd)}</td>
-                      <td className="px-3 py-3 font-medium text-[#f26522]">
-                        {formatDisplayPrice(row.charged_ngn)}
-                      </td>
-                      <td className="px-3 py-3 text-green-600 dark:text-green-400">
-                        {formatDisplayPrice(row.profit_ngn)}
-                      </td>
+            <div className="space-y-4">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className={`border-b ${isDark ? 'border-dm-border' : 'border-gray-200'} ${adminMutedTextClass(isDark)}`}>
+                      <th className="px-3 py-2 font-medium">Country</th>
+                      <th className="px-3 py-2 font-medium">{providerMeta.costColumnLabel}</th>
+                      <th className="px-3 py-2 font-medium">Your price</th>
+                      <th className="px-3 py-2 font-medium">Profit</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {pricePaging.paginatedItems.map((row) => (
+                      <tr
+                        key={`${row.country_id}-${row.pool ?? 'default'}`}
+                        className={`border-b ${isDark ? 'border-dm-border/70' : 'border-gray-100'}`}
+                      >
+                        <td className="px-3 py-3">
+                          <div className={`font-medium ${adminStrongTextClass(isDark)}`}>{row.country_name}</div>
+                          {row.country_code && (
+                            <div className={`text-xs ${adminMutedTextClass(isDark)}`}>{row.country_code}</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">{formatUsd(row.cost_usd)}</td>
+                        <td className="px-3 py-3 font-medium text-[#f26522]">
+                          {formatDisplayPrice(row.charged_ngn)}
+                        </td>
+                        <td className="px-3 py-3 text-green-600 dark:text-green-400">
+                          {formatDisplayPrice(row.profit_ngn)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <AdminListPagination
+                page={pricePaging.page}
+                totalPages={pricePaging.totalPages}
+                totalItems={pricePaging.totalItems}
+                pageStart={pricePaging.pageStart}
+                pageEnd={pricePaging.pageEnd}
+                onPageChange={pricePaging.setPage}
+                isDark={isDark}
+              />
             </div>
           )}
         </CardContent>
@@ -415,50 +438,62 @@ function AdminSmsPricingPageContent({ provider }: { provider: SmsPricingProvider
           </div>
         </CardHeader>
         <CardContent>
-          {!providerHistory?.rows.length ? (
+          {!historyRows.length ? (
             <p className={`text-sm ${adminMutedTextClass(isDark)}`}>
               {providerHistoryLoading
                 ? `Loading ${providerMeta.label} history...`
                 : 'No completed SMS orders with a verification code yet.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <p className={`mb-3 text-sm ${adminMutedTextClass(isDark)}`}>
-                Showing {providerHistory.rows.length} order{providerHistory.rows.length === 1 ? '' : 's'} with a code.
-              </p>
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className={`border-b ${isDark ? 'border-dm-border' : 'border-gray-200'} ${adminMutedTextClass(isDark)}`}>
-                    <th className="px-3 py-2 font-medium">Order ID</th>
-                    <th className="px-3 py-2 font-medium">Phone</th>
-                    <th className="px-3 py-2 font-medium">Service</th>
-                    <th className="px-3 py-2 font-medium">Country</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 font-medium">Code</th>
-                    <th className="px-3 py-2 font-medium">Cost</th>
-                    <th className="px-3 py-2 font-medium">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {providerHistory.rows.slice(0, 100).map((row) => (
-                    <tr
-                      key={row.orderId}
-                      className={`border-b ${isDark ? 'border-dm-border/70' : 'border-gray-100'}`}
-                    >
-                      <td className="px-3 py-3 font-mono text-xs">{row.orderId}</td>
-                      <td className="px-3 py-3">{row.phoneNumber ?? '—'}</td>
-                      <td className="px-3 py-3">{row.service ?? '—'}</td>
-                      <td className="px-3 py-3">{row.countryCode ?? '—'}</td>
-                      <td className="px-3 py-3 capitalize">{row.status ?? '—'}</td>
-                      <td className="px-3 py-3 font-medium text-green-600 dark:text-green-400">
-                        {row.code ?? '—'}
-                      </td>
-                      <td className="px-3 py-3">{row.costUsd != null ? formatUsd(row.costUsd) : '—'}</td>
-                      <td className="px-3 py-3 whitespace-nowrap">{row.createdAt ?? '—'}</td>
+            <div className="space-y-4">
+              <div className="overflow-x-auto">
+                <p className={`mb-3 text-sm ${adminMutedTextClass(isDark)}`}>
+                  Showing {historyPaging.pageStart} to {historyPaging.pageEnd} of {historyRows.length} order
+                  {historyRows.length === 1 ? '' : 's'} with a code.
+                </p>
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className={`border-b ${isDark ? 'border-dm-border' : 'border-gray-200'} ${adminMutedTextClass(isDark)}`}>
+                      <th className="px-3 py-2 font-medium">Order ID</th>
+                      <th className="px-3 py-2 font-medium">Phone</th>
+                      <th className="px-3 py-2 font-medium">Service</th>
+                      <th className="px-3 py-2 font-medium">Country</th>
+                      <th className="px-3 py-2 font-medium">Status</th>
+                      <th className="px-3 py-2 font-medium">Code</th>
+                      <th className="px-3 py-2 font-medium">Cost</th>
+                      <th className="px-3 py-2 font-medium">Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {historyPaging.paginatedItems.map((row) => (
+                      <tr
+                        key={row.orderId}
+                        className={`border-b ${isDark ? 'border-dm-border/70' : 'border-gray-100'}`}
+                      >
+                        <td className="px-3 py-3 font-mono text-xs">{row.orderId}</td>
+                        <td className="px-3 py-3">{row.phoneNumber ?? '—'}</td>
+                        <td className="px-3 py-3">{row.service ?? '—'}</td>
+                        <td className="px-3 py-3">{row.countryCode ?? '—'}</td>
+                        <td className="px-3 py-3 capitalize">{row.status ?? '—'}</td>
+                        <td className="px-3 py-3 font-medium text-green-600 dark:text-green-400">
+                          {row.code ?? '—'}
+                        </td>
+                        <td className="px-3 py-3">{row.costUsd != null ? formatUsd(row.costUsd) : '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">{row.createdAt ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <AdminListPagination
+                page={historyPaging.page}
+                totalPages={historyPaging.totalPages}
+                totalItems={historyPaging.totalItems}
+                pageStart={historyPaging.pageStart}
+                pageEnd={historyPaging.pageEnd}
+                onPageChange={historyPaging.setPage}
+                isDark={isDark}
+              />
             </div>
           )}
         </CardContent>

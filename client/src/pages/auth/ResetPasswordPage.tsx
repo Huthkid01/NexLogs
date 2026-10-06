@@ -9,8 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authService } from '@/services/auth.service';
-import { openErrorReport } from '@/lib/error-report';
-
 const schema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
@@ -36,15 +34,8 @@ export default function ResetPasswordPage() {
       await authService.updatePassword(data.password);
       toast.success('Password updated successfully');
       navigate('/login');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to reset password';
+    } catch {
       toast.error('We could not reset your password.');
-      openErrorReport({
-        title: 'Error while resetting password',
-        message: 'We could not reset your password.',
-        source: 'login',
-        errorMessage: message,
-      });
     } finally {
       setLoading(false);
     }

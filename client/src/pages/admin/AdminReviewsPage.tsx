@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StarRating } from '@/components/common/StarRating';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
+import { useAdminListPagination } from '@/hooks/useAdminListPagination';
 import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 import { reviewService } from '@/services/review.service';
@@ -16,13 +18,23 @@ export default function AdminReviewsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const { data: reviews, isLoading } = useQuery({
+  const { data: reviews = [], isLoading } = useQuery({
     queryKey: ['admin-reviews'],
     queryFn: reviewService.getAllAdmin,
   });
 
+  const {
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    pageStart,
+    pageEnd,
+    paginatedItems,
+  } = useAdminListPagination(reviews);
+
   const averageRating = useMemo(() => {
-    if (!reviews?.length) return 0;
+    if (!reviews.length) return 0;
     const total = reviews.reduce((sum, review) => sum + review.rating, 0);
     return Math.round((total / reviews.length) * 10) / 10;
   }, [reviews]);
@@ -56,7 +68,7 @@ export default function AdminReviewsPage() {
     );
   }
 
-  const pendingCount = reviews?.filter((review) => !review.is_approved).length ?? 0;
+  const pendingCount = reviews.filter((review) => !review.is_approved).length;
 
   return (
     <div className={cn('space-y-6', isDark ? 'text-slate-100' : 'text-slate-900')}>
@@ -86,7 +98,7 @@ export default function AdminReviewsPage() {
             </div>
             <div>
               <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>Total reviews</p>
-              <p className="text-2xl font-semibold">{reviews?.length ?? 0}</p>
+              <p className="text-2xl font-semibold">{reviews.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -104,8 +116,9 @@ export default function AdminReviewsPage() {
       </div>
 
       <div className="space-y-4">
-        {reviews?.length ? (
-          reviews.map((review) => (
+        {reviews.length ? (
+          <>
+            {paginatedItems.map((review) => (
             <Card
               key={review.id}
               className={cn(isDark ? 'border-[#18263b] bg-[#0a1527]' : 'border-slate-200 bg-white')}
@@ -180,7 +193,17 @@ export default function AdminReviewsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))
+            ))}
+            <AdminListPagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageStart={pageStart}
+              pageEnd={pageEnd}
+              onPageChange={setPage}
+              isDark={isDark}
+            />
+          </>
         ) : (
           <Card className={cn(isDark ? 'border-[#18263b] bg-[#0a1527]' : 'border-slate-200 bg-white')}>
             <CardContent className="p-10 text-center">

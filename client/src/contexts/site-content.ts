@@ -125,24 +125,34 @@ const LEGACY_DEFAULT_SLIDE_CTA = 'Shop Now';
 export const defaultSiteContent: SiteContent = {
   slides: [
     {
-      id: 'slide-telegram-support',
-      imageUrl: '/images/hero-telegram-support.jpg',
-      title: 'Experiencing Any Issues?',
-      description: "Contact our support team anytime — we're here to help.",
-      ctaLabel: 'Join Our Telegram',
-      linkUrl: 'https://telegram.me/nexlogs',
+      id: 'slide-nexlogs-own-website',
+      imageUrl: '/images/hero-nexlogs-marketplace.svg',
+      title: '',
+      description: '',
+      ctaLabel: '',
+      linkUrl: DEFAULT_TELEGRAM_SUPPORT_URL,
       order: 0,
       active: true,
     },
     {
-      id: 'default-slide-1',
-      imageUrl: '/images/hero-banner.png',
-      title: DEFAULT_SLIDE_TITLE,
-      description: DEFAULT_SLIDE_DESCRIPTION,
+      id: 'slide-nexlogs-sms',
+      imageUrl: '/images/hero-nexlogs-sms.svg',
+      title: '',
+      description: '',
       ctaLabel: '',
-      linkUrl: '/marketplace',
+      linkUrl: '/buy-numbers',
       order: 1,
-      active: true,
+      active: false,
+    },
+    {
+      id: 'slide-nexlogs-support',
+      imageUrl: '/images/hero-nexlogs-support.svg',
+      title: '',
+      description: '',
+      ctaLabel: '',
+      linkUrl: DEFAULT_TELEGRAM_SUPPORT_URL,
+      order: 2,
+      active: false,
     },
   ],
   home: {
@@ -163,7 +173,7 @@ export const defaultSiteContent: SiteContent = {
   about: {
     title: `About ${APP_NAME}`,
     paragraphs: [
-      `${APP_NAME} is the premier marketplace for buying and selling verified social media accounts. We connect buyers with high-quality digital assets across Instagram, TikTok, YouTube, X, Facebook, and Snapchat.`,
+      `${APP_NAME} (nexlogs.site) is an online digital marketplace for buying verified social media accounts, SMS verification numbers, and RDP plans. Shop Instagram, TikTok, YouTube, X, Facebook, Snapchat, and more with secure wallet checkout.`,
       'Our mission is to make social media account transactions safe, transparent, and efficient. Every listing on our platform undergoes rigorous verification to ensure authenticity and quality.',
       `Founded with a vision to revolutionize the digital asset marketplace, ${APP_NAME} has helped thousands of entrepreneurs, agencies, and content creators acquire the social presence they need to grow their businesses.`,
     ],
@@ -171,6 +181,10 @@ export const defaultSiteContent: SiteContent = {
   faq: {
     title: 'Frequently Asked Questions',
     items: [
+      {
+        question: `What is ${APP_NAME}?`,
+        answer: `${APP_NAME} (nexlogs.site) is a digital marketplace where you can buy verified social media accounts, SMS verification numbers, and RDP plans. Create an account, fund your wallet, and purchase from the marketplace or Buy Numbers page.`,
+      },
       {
         question: 'Where is the main menu and wallet?',
         answer:
@@ -432,10 +446,43 @@ export interface SiteContentContextType {
 
 export const SiteContentContext = createContext<SiteContentContextType | undefined>(undefined);
 
+function usesNexlogsHeroArt(imageUrl?: string | null) {
+  return /hero-nexlogs-/i.test(imageUrl?.trim() || '');
+}
+
 function normalizeSlides(slides?: SiteContent['slides'] | null): SiteContent['slides'] {
   if (!slides?.length) return defaultSiteContent.slides;
 
+  // Ship the orange Nexlogs hero set until admin slides already use it.
+  const hasNewHeroArt = slides.some((slide) => usesNexlogsHeroArt(slide.imageUrl));
+  if (!hasNewHeroArt) {
+    return defaultSiteContent.slides;
+  }
+
   return slides.map((slide) => {
+    if (usesNexlogsHeroArt(slide.imageUrl)) {
+      const isOwnWebsiteHero =
+        /hero-nexlogs-marketplace\.svg/i.test(slide.imageUrl) ||
+        slide.id === 'slide-nexlogs-own-website' ||
+        slide.id === 'slide-nexlogs-marketplace';
+      const isSecondaryHero =
+        /hero-nexlogs-(sms|support)\.svg/i.test(slide.imageUrl) ||
+        slide.id === 'slide-nexlogs-sms' ||
+        slide.id === 'slide-nexlogs-support';
+
+      // Designed banners already include title/CTA artwork — keep overlay text empty.
+      // Only the first "own a website" hero should show for now.
+      return {
+        ...slide,
+        id: isOwnWebsiteHero ? 'slide-nexlogs-own-website' : slide.id,
+        title: '',
+        description: '',
+        ctaLabel: '',
+        linkUrl: isOwnWebsiteHero ? DEFAULT_TELEGRAM_SUPPORT_URL : slide.linkUrl,
+        active: isOwnWebsiteHero ? true : isSecondaryHero ? false : slide.active,
+      };
+    }
+
     if (slide.id !== 'default-slide-1') {
       return {
         ...slide,

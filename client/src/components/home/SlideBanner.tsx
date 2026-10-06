@@ -14,7 +14,7 @@ interface SlideBannerProps {
 }
 
 const variantClass: Record<SlideBannerVariant, string> = {
-  // Match AffordableLogs ImageSlider: h-40 mobile, md:h-64 desktop.
+  // Match AffordableLogs-style ImageSlider: compact mobile banner, taller desktop.
   live: 'h-40 w-full md:h-64',
   'mobile-preview': 'h-40 w-full',
   'desktop-preview': 'h-64 w-full',
@@ -44,7 +44,7 @@ export function SlideBanner({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl bg-black/5 ${variantClass[variant]} ${className}`}
+      className={`relative overflow-hidden rounded-2xl bg-[#f26522] ${variantClass[variant]} ${className}`}
     >
       <img
         src={src}

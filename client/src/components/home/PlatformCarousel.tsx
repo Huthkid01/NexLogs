@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SlideBanner } from '@/components/home/SlideBanner';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
@@ -38,6 +39,7 @@ export function PlatformCarousel() {
   const hasCta = Boolean(slide.ctaLabel?.trim() && slide.linkUrl?.trim());
   const hasOverlayContent = hasTextOverlay || hasCta;
   const isWholeSlideLink = Boolean(slide.linkUrl?.trim()) && !hasCta;
+  const showNavigation = slides.length > 1;
 
   const handleSlideAction = () => {
     const target = slide.linkUrl.trim();
@@ -56,7 +58,8 @@ export function PlatformCarousel() {
     navigate(target);
   };
 
-  const showNavigation = slides.length > 1;
+  const goPrev = () => setCurrent((c) => (c - 1 + slides.length) % slides.length);
+  const goNext = () => setCurrent((c) => (c + 1) % slides.length);
 
   return (
     <div className="relative w-full">
@@ -65,9 +68,9 @@ export function PlatformCarousel() {
         alt={slide.title || 'Homepage banner slide'}
         variant="live"
         priority={safeCurrent === 0}
-        imagePosition="left"
+        imagePosition="center"
+        className="rounded-none lg:rounded-2xl"
       >
-        {/* Only dim designed photos that also have text overlays — skip for full artwork banners */}
         {hasOverlayContent && (
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent sm:from-black/70 sm:via-black/35" />
         )}
@@ -112,19 +115,37 @@ export function PlatformCarousel() {
         )}
 
         {showNavigation && (
-          <div className="absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setCurrent(i)}
-                className={`h-1.5 w-1.5 rounded-full shadow-sm transition-colors ${
-                  i === safeCurrent ? 'bg-white' : 'bg-white/40'
-                }`}
-                aria-label={`Go to slide ${i + 1}`}
-              />
-            ))}
-          </div>
+          <>
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label="Previous slide"
+              className="absolute left-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-white transition hover:bg-black/35 sm:left-2 sm:h-9 sm:w-9"
+            >
+              <ChevronLeft className="h-6 w-6" strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label="Next slide"
+              className="absolute right-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-white transition hover:bg-black/35 sm:right-2 sm:h-9 sm:w-9"
+            >
+              <ChevronRight className="h-6 w-6" strokeWidth={2.5} />
+            </button>
+            <div className="absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setCurrent(i)}
+                  className={`h-1.5 w-1.5 rounded-full shadow-sm transition-colors ${
+                    i === safeCurrent ? 'bg-white' : 'bg-white/40'
+                  }`}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
+              ))}
+            </div>
+          </>
         )}
       </SlideBanner>
     </div>

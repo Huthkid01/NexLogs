@@ -8,12 +8,19 @@ import {
 } from '@/lib/session-expired';
 
 export function SessionIdleGuard() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut, isAdmin } = useAuth();
 
   useIdleSessionTimeout({
     enabled: Boolean(user),
     onIdle: async () => {
-      markSessionExpired(getCurrentReturnPath());
+      const returnPath = getCurrentReturnPath();
+      const adminSession =
+        isAdmin
+        || profile?.role === 'admin'
+        || returnPath.startsWith('/admin')
+        || window.location.pathname.startsWith('/admin');
+
+      markSessionExpired(returnPath, { admin: adminSession });
       clearSessionActivity();
 
       try {

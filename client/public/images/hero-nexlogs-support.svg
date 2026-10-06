@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="400" viewBox="0 0 1600 400" role="img" aria-label="Nexlogs support">
+  <rect width="1600" height="400" fill="#f26522"/>
+  <circle cx="1420" cy="60" r="120" fill="#ff7a3d" opacity="0.35"/>
+  <circle cx="150" cy="360" r="90" fill="#e25515" opacity="0.45"/>
+  <text x="64" y="145" fill="#ffffff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="78" font-weight="900">NEED HELP?</text>
+  <text x="64" y="210" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">CHAT WITH NEXLOGS SUPPORT ON TELEGRAM</text>
+  <text x="64" y="252" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">ANYTIME YOU GET STUCK</text>
+  <text x="1185" y="345" fill="#111111" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="46" font-weight="900">CLICK HERE</text>
+</svg>

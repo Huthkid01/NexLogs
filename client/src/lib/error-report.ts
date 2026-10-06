@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 export type ErrorReportSource = 'website_error' | 'login' | 'checkout' | 'dashboard' | 'other';
 
 export interface ErrorReportRequest {
@@ -8,8 +10,6 @@ export interface ErrorReportRequest {
   reasonOptions?: string[];
 }
 
-const EVENT_NAME = 'nexlogs:error-report';
-
 const DEFAULT_REASON_OPTIONS: Record<ErrorReportSource, string[]> = {
   website_error: ['Page not loading', 'Button not working', 'Unexpected popup', 'Other'],
   login: ['Wrong login details', 'Account access problem', 'Google sign-in problem', 'Other'],
@@ -19,19 +19,28 @@ const DEFAULT_REASON_OPTIONS: Record<ErrorReportSource, string[]> = {
 };
 
 const DEFAULT_USER_MESSAGES: Record<ErrorReportSource, string> = {
-  website_error: 'Something went wrong on this page. Tell us what you were trying to do and select the closest reason below.',
-  login: 'We could not complete your sign-in request. Select the reason that best matches what happened.',
-  checkout: 'We could not complete this purchase or payment step. Select the reason that best matches what happened.',
-  dashboard: 'Something went wrong in your dashboard. Select the reason that best matches what happened.',
-  other: 'Something went wrong. Select the reason that best matches what happened.',
+  website_error: 'Something went wrong. Please try again or contact customer support.',
+  login: 'We could not complete your sign-in. Please try again or contact customer support.',
+  checkout: 'Error while purchasing. Please try again or contact customer support.',
+  dashboard: 'Something went wrong. Please try again or contact customer support.',
+  other: 'Something went wrong. Please try again or contact customer support.',
 };
 
+/** Simple toast only — the old report-error modal is permanently disabled. */
 export function openErrorReport(request: ErrorReportRequest) {
-  window.dispatchEvent(new CustomEvent<ErrorReportRequest>(EVENT_NAME, { detail: request }));
+  const title = request.title?.trim() || 'Something went wrong';
+  const message =
+    request.message?.trim() ||
+    getFriendlyErrorMessage(request.source ?? 'website_error');
+
+  toast.error(title, {
+    description: message,
+    duration: 5_500,
+  });
 }
 
 export function getErrorReportEventName() {
-  return EVENT_NAME;
+  return 'nexlogs:error-report';
 }
 
 export function getDefaultErrorReasons(source: ErrorReportSource = 'website_error') {

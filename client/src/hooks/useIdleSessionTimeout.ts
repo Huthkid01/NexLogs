@@ -9,7 +9,18 @@ import {
 
 const ACTIVITY_THROTTLE_MS = 15_000;
 
-const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'touchstart', 'click', 'scroll', 'mousemove'] as const;
+/** Broad activity signals so idle works across desktop + mobile browsers. */
+const ACTIVITY_EVENTS = [
+  'mousedown',
+  'mousemove',
+  'keydown',
+  'touchstart',
+  'touchmove',
+  'pointerdown',
+  'click',
+  'scroll',
+  'wheel',
+] as const;
 
 interface UseIdleSessionTimeoutOptions {
   enabled: boolean;
@@ -40,7 +51,12 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
       touchSessionActivity();
     }
 
-    const hasStoredActivity = localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY) != null;
+    let hasStoredActivity = false;
+    try {
+      hasStoredActivity = localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY) != null;
+    } catch {
+      hasStoredActivity = false;
+    }
 
     const clearScheduledCheck = () => {
       if (timeoutIdRef.current) {
@@ -71,6 +87,7 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
         return;
       }
 
+      // Browsers throttle long timers in background tabs — resume checks below cover that.
       timeoutIdRef.current = setTimeout(() => {
         void handleIdle();
       }, remaining);
@@ -85,26 +102,31 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
       scheduleCheck();
     };
 
-    const onVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return;
-
+    const checkOnResume = () => {
       if (isSessionIdle()) {
         void handleIdle();
         return;
       }
-
       scheduleCheck();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      checkOnResume();
+    };
+
+    const onPageShow = () => {
+      // Safari/iOS bfcache restore
+      checkOnResume();
+    };
+
+    const onFocus = () => {
+      checkOnResume();
     };
 
     const onStorage = (event: StorageEvent) => {
       if (event.key !== LAST_ACTIVITY_STORAGE_KEY) return;
-
-      if (isSessionIdle()) {
-        void handleIdle();
-        return;
-      }
-
-      scheduleCheck();
+      checkOnResume();
     };
 
     if (hasStoredActivity && isSessionIdle() && !justAuthenticated) {
@@ -120,6 +142,8 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
       window.addEventListener(event, recordActivity, { passive: true });
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('focus', onFocus);
     window.addEventListener('storage', onStorage);
 
     scheduleCheck();
@@ -130,6 +154,8 @@ export function useIdleSessionTimeout({ enabled, onIdle }: UseIdleSessionTimeout
         window.removeEventListener(event, recordActivity);
       }
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('focus', onFocus);
       window.removeEventListener('storage', onStorage);
     };
   }, [enabled]);

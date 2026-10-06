@@ -90,24 +90,33 @@ export const activityLogService = {
   async getAllAdmin(): Promise<ActivityLog[]> {
     const { data: adminRows } = await supabase.from('profiles').select('id').eq('role', 'admin');
     const adminIds = (adminRows ?? []).map((row) => row.id);
+    const pageSize = 200;
+    const logs: ActivityLog[] = [];
+    let from = 0;
 
-    let query = supabase
-      .from('activity_logs')
-      .select('*, profile:profiles(full_name, email, role)')
-      .not('user_id', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(200);
+    for (;;) {
+      const to = from + pageSize - 1;
+      let query = supabase
+        .from('activity_logs')
+        .select('*, profile:profiles(full_name, email, role)')
+        .not('user_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-    if (adminIds.length > 0) {
-      query = query.not('user_id', 'in', `(${adminIds.join(',')})`);
+      if (adminIds.length > 0) {
+        query = query.not('user_id', 'in', `(${adminIds.join(',')})`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const batch = ((data || []) as ActivityLog[]).filter((log) => log.profile?.role !== 'admin');
+      logs.push(...batch);
+      if ((data || []).length < pageSize) break;
+      from += pageSize;
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
-
-    return ((data || []) as ActivityLog[]).filter(
-      (log) => log.profile?.role !== 'admin',
-    );
+    return logs;
   },
 };
 
@@ -308,22 +317,36 @@ export const adminService = {
   },
 
   async getUsersWithWallets(): Promise<Profile[]> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*, wallet:wallets(balance)')
-      .order('created_at', { ascending: false });
+    const pageSize = 200;
+    const users: Profile[] = [];
+    let from = 0;
 
-    if (error) throw error;
+    for (;;) {
+      const to = from + pageSize - 1;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*, wallet:wallets(balance)')
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-    return ((data || []) as Array<Profile & { wallet?: { balance: number } | { balance: number }[] | null }>).map(
-      (row) => {
-        const wallet = Array.isArray(row.wallet) ? row.wallet[0] : row.wallet;
-        return {
-          ...row,
-          wallet_balance: wallet?.balance != null ? Number(wallet.balance) : 0,
-        };
-      },
-    );
+      if (error) throw error;
+
+      const batch = ((data || []) as Array<Profile & { wallet?: { balance: number } | { balance: number }[] | null }>).map(
+        (row) => {
+          const wallet = Array.isArray(row.wallet) ? row.wallet[0] : row.wallet;
+          return {
+            ...row,
+            wallet_balance: wallet?.balance != null ? Number(wallet.balance) : 0,
+          };
+        },
+      );
+
+      users.push(...batch);
+      if ((data || []).length < pageSize) break;
+      from += pageSize;
+    }
+
+    return users;
   },
 
   async getUserWalletTransactions(userId: string, limit = 15): Promise<AdminWalletTransaction[]> {
@@ -349,51 +372,64 @@ export const adminService = {
     }));
   },
 
-  async getWalletFundTransactions(limit = 200): Promise<AdminWalletDepositRecord[]> {
-    const { data, error } = await supabase
-      .from('wallet_transactions')
-      .select(`
-        id,
-        user_id,
-        ref,
-        kind,
-        payment_method,
-        amount,
-        currency,
-        status,
-        metadata,
-        created_at,
-        profile:profiles(email, full_name, role)
-      `)
-      .in('kind', ['deposit', 'adjustment'])
-      .order('created_at', { ascending: false })
-      .limit(limit);
+  async getWalletFundTransactions(): Promise<AdminWalletDepositRecord[]> {
+    const pageSize = 200;
+    const records: AdminWalletDepositRecord[] = [];
+    let from = 0;
 
-    if (error) throw error;
+    for (;;) {
+      const to = from + pageSize - 1;
+      const { data, error } = await supabase
+        .from('wallet_transactions')
+        .select(`
+          id,
+          user_id,
+          ref,
+          kind,
+          payment_method,
+          amount,
+          currency,
+          status,
+          metadata,
+          created_at,
+          profile:profiles(email, full_name, role)
+        `)
+        .in('kind', ['deposit', 'adjustment'])
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-    return (data || [])
-      .map((row) => {
-        const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
-        if (profile?.role === 'admin') return null;
+      if (error) throw error;
 
-        const record = {
-          id: row.id as string,
-          user_id: row.user_id as string,
-          ref: row.ref as string,
-          kind: row.kind as string,
-          payment_method: row.payment_method as string,
-          amount: Number(row.amount || 0),
-          currency: row.currency as string,
-          status: row.status as AdminWalletTransaction['status'],
-          metadata: (row.metadata as Record<string, unknown> | null) ?? null,
-          created_at: row.created_at as string,
-          user_email: (profile?.email as string) ?? 'Unknown',
-          user_name: (profile?.full_name as string) ?? 'Unknown',
-        } satisfies AdminWalletDepositRecord;
+      const batch = (data || [])
+        .map((row) => {
+          const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+          if (profile?.role === 'admin') return null;
 
-        return isKoraWalletDeposit(record) ? record : null;
-      })
-      .filter((row): row is AdminWalletDepositRecord => row !== null);
+          const record = {
+            id: row.id as string,
+            user_id: row.user_id as string,
+            ref: row.ref as string,
+            kind: row.kind as string,
+            payment_method: row.payment_method as string,
+            amount: Number(row.amount || 0),
+            currency: row.currency as string,
+            status: row.status as AdminWalletTransaction['status'],
+            metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+            created_at: row.created_at as string,
+            user_email: (profile?.email as string) ?? 'Unknown',
+            user_name: (profile?.full_name as string) ?? 'Unknown',
+          } satisfies AdminWalletDepositRecord;
+
+          return isKoraWalletDeposit(record) ? record : null;
+        })
+        .filter((row): row is AdminWalletDepositRecord => row !== null);
+
+      records.push(...batch);
+      if ((data || []).length < pageSize) break;
+      from += pageSize;
+    }
+
+    return records;
   },
 
   async creditUserWallet(input: {
@@ -439,12 +475,26 @@ export const supportTicketService = {
   },
 
   async getAllAdmin() {
-    const { data, error } = await supabase
-      .from('support_tickets')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data || []) as SupportTicket[];
+    const pageSize = 200;
+    const tickets: SupportTicket[] = [];
+    let from = 0;
+
+    for (;;) {
+      const to = from + pageSize - 1;
+      const { data, error } = await supabase
+        .from('support_tickets')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+
+      const batch = (data || []) as SupportTicket[];
+      tickets.push(...batch);
+      if (batch.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return tickets;
   },
 
   async update(id: string, updates: Partial<SupportTicket>) {

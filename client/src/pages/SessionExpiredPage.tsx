@@ -56,7 +56,7 @@ export default function SessionExpiredPage() {
             replace
             className="rounded-lg bg-[#f26522] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#d94e0f]"
           >
-            Home
+            {isAdminLogin ? 'Admin sign in' : 'Sign in again'}
           </Link>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Redirecting automatically in {secondsLeft}s…

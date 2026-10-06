@@ -552,7 +552,7 @@ export async function cancelFiveSimOrder(orderId: string) {
 
 export async function fetchFiveSimOrderHistory() {
   const payload = await fiveSimRequest<Record<string, unknown> | Record<string, unknown>[]>(
-    '/user/orders?category=activation&limit=50',
+    '/user/orders?category=activation&limit=200',
   );
 
   const rows = Array.isArray(payload)

@@ -14,8 +14,6 @@ import { APP_NAME } from '@/constants';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { getSignUpVerificationToast, getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
-import { openErrorReport } from '@/lib/error-report';
-
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email'),
@@ -49,12 +47,6 @@ export default function RegisterPage() {
       const rawMessage = normalizeAuthErrorMessage(err);
       const message = getUserSignUpMessage(rawMessage);
       toast.error(message);
-      openErrorReport({
-        title: 'Error while creating account',
-        message: 'We could not create your account.',
-        source: 'login',
-        errorMessage: rawMessage,
-      });
     } finally {
       setLoading(false);
     }
@@ -64,16 +56,9 @@ export default function RegisterPage() {
     setGoogleLoading(true);
     try {
       await completeGoogleAuth(idToken);
-    } catch (err: unknown) {
+    } catch (_err: unknown) {
       setGoogleLoading(false);
-      const message = normalizeAuthErrorMessage(err);
       toast.error('We could not create your account with Google.');
-      openErrorReport({
-        title: 'Error while creating account',
-        message: 'We could not create your account with Google.',
-        source: 'login',
-        errorMessage: message,
-      });
     }
   };
 

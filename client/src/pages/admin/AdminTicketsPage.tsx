@@ -3,6 +3,8 @@ import { AlertTriangle, LifeBuoy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
+import { useAdminListPagination } from '@/hooks/useAdminListPagination';
 import { supportTicketService } from '@/services';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/useTheme';
@@ -14,10 +16,20 @@ export default function AdminTicketsPage() {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { data: tickets, isLoading } = useQuery({
+  const { data: tickets = [], isLoading } = useQuery({
     queryKey: ['admin-tickets'],
     queryFn: supportTicketService.getAllAdmin,
   });
+
+  const {
+    page,
+    setPage,
+    totalPages,
+    totalItems,
+    pageStart,
+    pageEnd,
+    paginatedItems,
+  } = useAdminListPagination(tickets);
 
   const updateTicket = useMutation({
     mutationFn: ({ id, status }: { id: string; status: 'open' | 'in_progress' | 'resolved' }) =>
@@ -33,7 +45,7 @@ export default function AdminTicketsPage() {
     return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}</div>;
   }
 
-  const openCount = tickets?.filter((ticket) => ticket.status !== 'resolved').length ?? 0;
+  const openCount = tickets.filter((ticket) => ticket.status !== 'resolved').length;
 
   return (
     <div className={cn('space-y-6', isDark ? 'text-slate-100' : 'text-slate-900')}>
@@ -63,14 +75,14 @@ export default function AdminTicketsPage() {
             </div>
             <div>
               <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>Total Tickets</p>
-              <p className="text-2xl font-semibold">{tickets?.length ?? 0}</p>
+              <p className="text-2xl font-semibold">{tickets.length}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="space-y-4">
-        {tickets?.map((ticket) => (
+        {paginatedItems.map((ticket) => (
           <Card key={ticket.id} className={cn(isDark ? 'border-[#18263b] bg-[#0a1527] text-slate-100' : 'border-slate-200 bg-white text-slate-900')}>
             <CardContent className="space-y-4 p-5">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -126,7 +138,7 @@ export default function AdminTicketsPage() {
           </Card>
         ))}
 
-        {!tickets?.length && (
+        {!tickets.length ? (
           <Card className={cn(isDark ? 'border-[#18263b] bg-[#0a1527] text-slate-100' : 'border-slate-200 bg-white text-slate-900')}>
             <CardContent className="py-12 text-center">
               <LifeBuoy className={cn('mx-auto h-10 w-10', isDark ? 'text-slate-600' : 'text-slate-400')} />
@@ -136,6 +148,16 @@ export default function AdminTicketsPage() {
               </p>
             </CardContent>
           </Card>
+        ) : (
+          <AdminListPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageStart={pageStart}
+            pageEnd={pageEnd}
+            onPageChange={setPage}
+            isDark={isDark}
+          />
         )}
       </div>
     </div>

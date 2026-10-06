@@ -144,7 +144,9 @@ export default function HomePage() {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-8 space-y-5">
-      <PlatformCarousel />
+      <div className="-mx-4 sm:-mx-6 lg:mx-0">
+        <PlatformCarousel />
+      </div>
 
       {user && (
         <section id="subscriptions">
