@@ -37,10 +37,10 @@ export function SlideBanner({
   const position = imagePositionClass[imagePosition];
 
   const imageClass: Record<SlideBannerVariant, string> = {
-    // object-contain keeps designed banner text (like CLICK HERE) visible on mobile.
-    live: `absolute inset-0 h-full w-full object-contain ${position}`,
-    'mobile-preview': `absolute inset-0 h-full w-full object-contain ${position}`,
-    'desktop-preview': `absolute inset-0 h-full w-full object-contain object-center`,
+    // Full-bleed like AffordableLogs — SVG art is composed for the mobile crop.
+    live: `absolute inset-0 h-full w-full object-cover ${position}`,
+    'mobile-preview': `absolute inset-0 h-full w-full object-cover ${position}`,
+    'desktop-preview': `absolute inset-0 h-full w-full object-cover object-center`,
   };
 
   return (
