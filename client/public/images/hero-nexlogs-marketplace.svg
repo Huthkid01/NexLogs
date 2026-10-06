@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-label="Own a website like Nexlogs">
   <rect width="1200" height="400" fill="#f26522"/>
-  <text x="600" y="95" text-anchor="middle" fill="#f6c343" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="54" font-weight="900" letter-spacing="1">OWN A WEBSITE (100K)</text>
-  <text x="600" y="165" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">DO YOU WANT TO OWN A WEBSITE LIKE NEXLOGS</text>
-  <text x="600" y="205" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">WHERE YOU CAN SELL LOGS AND</text>
-  <text x="600" y="245" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">VERIFICATION NUMBERS</text>
+  <text x="600" y="88" text-anchor="middle" fill="#f6c343" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="52" font-weight="900" letter-spacing="1">OWN A WEBSITE (100K)</text>
+  <text x="600" y="155" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">DO YOU WANT TO OWN A WEBSITE LIKE NEXLOGS</text>
+  <text x="600" y="200" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">WHERE YOU CAN SELL LOGS AND</text>
+  <text x="600" y="245" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">VERIFICATION NUMBERS</text>
   <!-- Bottom-right CTA — placed inside the mobile object-cover safe zone -->
   <text x="930" y="345" text-anchor="middle" fill="#111111" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="38" font-weight="900" font-style="italic" transform="rotate(-6 930 345)">CLICK HERE</text>
 </svg>
