@@ -37,9 +37,10 @@ export function SlideBanner({
   const position = imagePositionClass[imagePosition];
 
   const imageClass: Record<SlideBannerVariant, string> = {
-    live: `absolute inset-0 h-full w-full object-cover ${position} lg:object-center`,
-    'mobile-preview': `absolute inset-0 h-full w-full object-cover ${position}`,
-    'desktop-preview': `absolute inset-0 h-full w-full object-cover object-center`,
+    // object-contain keeps designed banner text (like CLICK HERE) visible on mobile.
+    live: `absolute inset-0 h-full w-full object-contain ${position}`,
+    'mobile-preview': `absolute inset-0 h-full w-full object-contain ${position}`,
+    'desktop-preview': `absolute inset-0 h-full w-full object-contain object-center`,
   };
 
   return (

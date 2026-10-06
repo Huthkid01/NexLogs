@@ -126,7 +126,7 @@ export const defaultSiteContent: SiteContent = {
   slides: [
     {
       id: 'slide-nexlogs-own-website',
-      imageUrl: '/images/hero-nexlogs-marketplace.svg',
+      imageUrl: '/images/hero-nexlogs-marketplace.svg?v=2',
       title: '',
       description: '',
       ctaLabel: '',
@@ -475,6 +475,9 @@ function normalizeSlides(slides?: SiteContent['slides'] | null): SiteContent['sl
       return {
         ...slide,
         id: isOwnWebsiteHero ? 'slide-nexlogs-own-website' : slide.id,
+        imageUrl: isOwnWebsiteHero
+          ? '/images/hero-nexlogs-marketplace.svg?v=2'
+          : slide.imageUrl,
         title: '',
         description: '',
         ctaLabel: '',
