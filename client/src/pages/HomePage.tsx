@@ -53,7 +53,6 @@ export default function HomePage() {
   const { data: featured, isLoading: featuredLoading } = useQuery({
     queryKey: ['featured-products'],
     queryFn: () => productService.getFeatured(6),
-    enabled: !!user,
   });
 
   const { data: products, isLoading } = useQuery({
@@ -176,34 +175,36 @@ export default function HomePage() {
         </ul>
       </section>
 
-      {user && (
-        <section id="subscriptions">
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-gray-100 mb-4">{content.home.subscriptionsTitle}</h2>
-          {featuredLoading ? (
-            <div className="flex gap-4 overflow-hidden">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-64 w-[min(82vw,300px)] shrink-0 rounded-xl sm:w-[300px]" />
-              ))}
-            </div>
-          ) : (
-            <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
-              {featured?.map((product) => (
-                <SubscriptionCard key={product.id} product={product} />
-              ))}
-              <div className="flex w-[min(82vw,300px)] shrink-0 snap-start flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center dark:border-dm-input-border dark:bg-dm-surface sm:w-[300px]">
-                <div className="w-10 h-10 rounded-full border border-gray-300 dark:border-dm-input-border flex items-center justify-center mb-3">
-                  <Plus className="h-5 w-5 text-gray-400" />
-                </div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">View more</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Browse all subscription products</p>
-                <Link to="/marketplace" className="w-full py-2 text-sm font-medium bg-[#1e293b] text-white rounded-md text-center hover:bg-[#0f172a]">
-                  See all
-                </Link>
+      <section id="subscriptions">
+        <h2 className="text-[17px] font-bold text-gray-900 dark:text-gray-100 mb-4">{content.home.subscriptionsTitle}</h2>
+        {featuredLoading ? (
+          <div className="flex gap-4 overflow-hidden">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-64 w-[min(82vw,300px)] shrink-0 rounded-xl sm:w-[300px]" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+            {featured?.map((product) => (
+              <SubscriptionCard key={product.id} product={product} />
+            ))}
+            <div className="flex w-[min(82vw,300px)] shrink-0 snap-start flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center dark:border-dm-input-border dark:bg-dm-surface sm:w-[300px]">
+              <div className="w-10 h-10 rounded-full border border-gray-300 dark:border-dm-input-border flex items-center justify-center mb-3">
+                <Plus className="h-5 w-5 text-gray-400" />
               </div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">View more</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Browse all subscription products</p>
+              <Link
+                to={user ? '/marketplace' : '/login'}
+                state={user ? undefined : { from: { pathname: '/marketplace' } }}
+                className="w-full py-2 text-sm font-medium bg-[#1e293b] text-white rounded-md text-center hover:bg-[#0f172a]"
+              >
+                See all
+              </Link>
             </div>
-          )}
-        </section>
-      )}
+          </div>
+        )}
+      </section>
 
       <div id="quick-actions" className="flex gap-3 justify-center flex-wrap">
         <Link

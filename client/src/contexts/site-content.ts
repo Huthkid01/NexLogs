@@ -122,6 +122,20 @@ const LEGACY_DEFAULT_SLIDE_DESCRIPTION = 'Featured platforms and marketplace hig
 const DEFAULT_SLIDE_DESCRIPTION = 'Featured platforms and marketplace';
 const LEGACY_DEFAULT_SLIDE_CTA = 'Shop Now';
 
+/** Shown to guests only — previous support-style hero (not the own-website ad). */
+export const GUEST_HOME_SLIDES: SiteContent['slides'] = [
+  {
+    id: 'slide-telegram-support',
+    imageUrl: '/images/hero-telegram-support.jpg',
+    title: 'Experiencing Any Issues?',
+    description: "Contact our support team anytime — we're here to help.",
+    ctaLabel: 'Join Our Telegram',
+    linkUrl: DEFAULT_TELEGRAM_SUPPORT_URL,
+    order: 0,
+    active: true,
+  },
+];
+
 export const defaultSiteContent: SiteContent = {
   slides: [
     {

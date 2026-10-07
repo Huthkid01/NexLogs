@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SlideBanner } from '@/components/home/SlideBanner';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
+import { useAuth } from '@/contexts/AuthContext';
+import { GUEST_HOME_SLIDES } from '@/contexts/site-content';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
 function resolveSlideImageUrl(imageUrl: string) {
@@ -16,11 +18,21 @@ function resolveSlideImageUrl(imageUrl: string) {
 
 export function PlatformCarousel() {
   const { content } = useSiteContent();
+  const { user } = useAuth();
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
-  const slides = content.slides
-    .filter((slide) => slide.active)
-    .sort((a, b) => a.order - b.order);
+
+  // Guests see the previous support hero; signed-in users see the advertising slides.
+  const slides = useMemo(() => {
+    const source = user ? content.slides : GUEST_HOME_SLIDES;
+    return source
+      .filter((slide) => slide.active)
+      .sort((a, b) => a.order - b.order);
+  }, [user, content.slides]);
+
+  useEffect(() => {
+    setCurrent(0);
+  }, [user?.id]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -68,7 +80,7 @@ export function PlatformCarousel() {
         alt={slide.title || 'Homepage banner slide'}
         variant="live"
         priority={safeCurrent === 0}
-        imagePosition="center"
+        imagePosition={user ? 'center' : 'left'}
         className="rounded-none lg:rounded-2xl"
       >
         {hasOverlayContent && (

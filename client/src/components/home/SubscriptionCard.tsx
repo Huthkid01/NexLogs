@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { buildProductMarketplacePath } from '@/lib/product-deep-link';
 import { ProductIcon } from '@/components/common/ProductIcon';
+import { useAuth } from '@/contexts/AuthContext';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import type { Product } from '@/types';
 
@@ -9,7 +10,9 @@ interface SubscriptionCardProps {
 }
 
 export function SubscriptionCard({ product }: SubscriptionCardProps) {
+  const { user } = useAuth();
   const { formatProductPrice } = useFormatDisplayPrice();
+  const purchasePath = buildProductMarketplacePath(product.slug);
 
   return (
     <div className="flex w-[min(82vw,300px)] shrink-0 snap-start flex-col rounded-xl border border-gray-200 bg-white p-4 transition-colors dark:border-dm-border dark:bg-dm-surface dark:hover:bg-dm-product-row-hover sm:w-[300px]">
@@ -24,7 +27,8 @@ export function SubscriptionCard({ product }: SubscriptionCardProps) {
 
       <p className="mt-4 text-sm font-semibold text-[#1b5e20]">{formatProductPrice(product.price)}</p>
       <Link
-        to={buildProductMarketplacePath(product.slug)}
+        to={user ? purchasePath : '/login'}
+        state={user ? undefined : { from: { pathname: purchasePath } }}
         className="btn-orange mt-3 w-full py-2 text-center text-sm"
       >
         Purchase
