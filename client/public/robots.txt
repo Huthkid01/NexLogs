@@ -1,17 +1,38 @@
+# Nexlogs robots.txt — v3 2026-10-07
+# Commercial pages must stay crawlable for Google/AEO.
 User-agent: *
-Allow: /
+Allow: /buy-numbers
+Allow: /buy-numbers/
+Allow: /purchase-rdp
+Allow: /purchase-rdp/
+Allow: /$
+Allow: /about
+Allow: /faq
+Allow: /support
+Allow: /privacy
+Allow: /terms
+Allow: /refund
+Allow: /images/
+Allow: /sitemap.xml
+Allow: /llms.txt
 
+# Private / thin pages only
 Disallow: /admin
 Disallow: /admin/
 Disallow: /profile
-Disallow: /purchases
+Disallow: /profile/
+Disallow: /purchases$
+Disallow: /purchases/
 Disallow: /add-funds
+Disallow: /add-funds/
 Disallow: /auth/
 Disallow: /reset-password
 Disallow: /forgot-password
 Disallow: /suspended
 Disallow: /dashboard/
 Disallow: /login
+Disallow: /login/
 Disallow: /register
+Disallow: /register/
 
 Sitemap: https://www.nexlogs.site/sitemap.xml
