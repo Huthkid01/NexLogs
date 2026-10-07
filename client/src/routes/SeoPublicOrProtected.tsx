@@ -9,7 +9,7 @@ interface SeoPublicOrProtectedProps {
     title: string;
     headline: string;
     description: string;
-    bullets: string[];
+    bullets: readonly string[];
   };
   seo: {
     title: string;
