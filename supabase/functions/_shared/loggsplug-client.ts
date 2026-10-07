@@ -4,6 +4,7 @@ const PUBLIC_API_BASE = 'https://loggsplug.online/api';
 export interface LoggsplugProductRow {
   id: number;
   name: string;
+  /** Supplier category label (API may send string or `{ name }`). */
   category: string;
   base_price: number;
   reseller_price: number;
@@ -125,7 +126,12 @@ export async function fetchLoggsplugProducts(): Promise<LoggsplugProductRow[]> {
   });
 
   const payload = await parseJsonResponse<{ success?: boolean; data?: LoggsplugProductRow[] }>(response);
-  return Array.isArray(payload.data) ? payload.data : [];
+  if (!Array.isArray(payload.data)) return [];
+
+  return payload.data.map((row) => ({
+    ...row,
+    category: normalizeLoggsplugCategoryLabel(row.category) || String(row.category ?? '').trim(),
+  }));
 }
 
 export async function hydrateLoggsplugProducts(
@@ -147,8 +153,9 @@ async function enrichLoggsplugProduct(product: LoggsplugProductRow): Promise<Log
   if (detail.in_stock != null && Number.isFinite(Number(detail.in_stock))) {
     merged.in_stock = Number(detail.in_stock);
   }
-  if (typeof detail.category === 'string' && detail.category.trim()) {
-    merged.category = detail.category;
+  const detailCategory = normalizeLoggsplugCategoryLabel(detail.category);
+  if (detailCategory) {
+    merged.category = detailCategory;
   }
 
   return merged;
@@ -755,6 +762,44 @@ export function buildLoggsplugProductDescription(name: string, category: string)
   return 'Digital account';
 }
 
+/** Normalize LOGGSPLUG category from string or `{ name }` objects. */
+export function normalizeLoggsplugCategoryLabel(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    if (typeof record.name === 'string') return record.name.trim();
+    if (typeof record.title === 'string') return record.title.trim();
+  }
+  return '';
+}
+
+const LOGGSPLUG_EXACT_CATEGORY_SLUGS: Record<string, string> = {
+  instagram: 'instagram',
+  ig: 'instagram',
+  facebook: 'facebook',
+  fb: 'facebook',
+  tiktok: 'tiktok',
+  twitter: 'x-twitter',
+  x: 'x-twitter',
+  'x-twitter': 'x-twitter',
+  snapchat: 'snapchat',
+  snap: 'snapchat',
+  telegram: 'telegram',
+  youtube: 'youtube',
+  rdp: 'rdp',
+  tools: 'tools',
+  tutorials: 'tutorials',
+  accounts: 'accounts',
+};
+
+function slugifyCategoryLabel(label: string) {
+  return label
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'digital-products';
+}
+
 export function mapLoggsplugCategoryToPlatform(category: string):
   | 'instagram'
   | 'facebook'
@@ -762,37 +807,31 @@ export function mapLoggsplugCategoryToPlatform(category: string):
   | 'x'
   | 'youtube'
   | 'snapchat' {
-  const normalized = category.toLowerCase();
-  if (normalized.includes('instagram') || normalized.includes('ig')) return 'instagram';
-  if (normalized.includes('facebook') || normalized.includes('fb')) return 'facebook';
-  if (normalized.includes('tiktok')) return 'tiktok';
-  if (normalized.includes('twitter') || normalized === 'x' || normalized.includes('x ')) return 'x';
-  if (normalized.includes('youtube')) return 'youtube';
-  if (normalized.includes('snap')) return 'snapchat';
-  if (normalized.includes('telegram')) return 'snapchat';
-  if (normalized.includes('tool') || normalized.includes('tutorial') || normalized.includes('guide')) {
-    return 'youtube';
-  }
-  if (normalized.includes('account')) return 'instagram';
+  const label = normalizeLoggsplugCategoryLabel(category) || category.trim();
+  const normalized = label.toLowerCase();
+  if (!normalized) return 'snapchat';
+
+  if (normalized === 'instagram' || normalized === 'ig') return 'instagram';
+  if (normalized === 'facebook' || normalized === 'fb') return 'facebook';
+  if (normalized === 'tiktok') return 'tiktok';
+  if (normalized === 'twitter' || normalized === 'x' || normalized === 'x-twitter') return 'x';
+  if (normalized === 'youtube') return 'youtube';
+  if (normalized === 'snapchat' || normalized === 'snap') return 'snapchat';
+
+  // New supplier categories: keep a stable platform bucket without collapsing names.
   return 'snapchat';
 }
 
+/** Map supplier category to Nexlogs category slug — create distinct slugs for new names. */
 export function mapLoggsplugCategoryToSlug(category: string): string {
-  const normalized = category.toLowerCase().trim();
-  if (normalized.includes('instagram')) return 'instagram';
-  if (normalized.includes('facebook')) return 'facebook';
-  if (normalized.includes('tiktok')) return 'tiktok';
-  if (normalized.includes('twitter') || normalized === 'x') return 'x-twitter';
-  if (normalized.includes('snap')) return 'snapchat';
-  if (normalized.includes('telegram')) return 'telegram';
-  if (normalized.includes('youtube')) return 'youtube';
-  if (normalized.includes('tool')) return 'tools';
-  if (normalized.includes('tutorial') || normalized.includes('guide')) return 'tutorials';
-  if (normalized.includes('account')) return 'accounts';
+  const label = normalizeLoggsplugCategoryLabel(category) || category.trim();
+  const normalized = label.toLowerCase().trim();
+  if (!normalized) return 'digital-products';
 
-  return normalized
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'digital-products';
+  const exact = LOGGSPLUG_EXACT_CATEGORY_SLUGS[normalized];
+  if (exact) return exact;
+
+  return slugifyCategoryLabel(label);
 }
 
 export function formatDeliveredDetails(items: LoggsplugDeliveredItem[]) {

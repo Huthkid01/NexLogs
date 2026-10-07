@@ -95,6 +95,8 @@ export default function AdminLoggsplugPage() {
       setSettingsDraft(result.settings);
       void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
       void refetchOverview();
       if (result.failed && result.failed > 0) {
         const sample = result.failures?.[0];

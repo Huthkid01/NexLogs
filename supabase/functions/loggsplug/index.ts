@@ -8,6 +8,7 @@ import {
   isWeakLoggsplugDescription,
   mapLoggsplugCategoryToPlatform,
   mapLoggsplugCategoryToSlug,
+  normalizeLoggsplugCategoryLabel,
   placeLoggsplugOrder,
   resolveLoggsplugProductIconUrl,
   resolveLoggsplugProductDescription,
@@ -158,18 +159,44 @@ async function resolveCategoryId(
       return created.id as string;
     }
 
-    if (createError && slug) {
-      const { data: raced } = await admin
-        .from('categories')
-        .select('id, image_url')
-        .eq('slug', slug)
-        .maybeSingle();
+    if (createError) {
+      console.warn(`LOGGSPLUG category create failed for "${label}" (${slug}): ${createError.message}`);
 
-      if (raced?.id) {
-        await maybeUpdateCategoryIcon(admin, raced.id as string, raced.image_url as string | null, categoryIconUrl);
-        return raced.id as string;
+      if (slug) {
+        const { data: raced } = await admin
+          .from('categories')
+          .select('id, image_url')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (raced?.id) {
+          await maybeUpdateCategoryIcon(admin, raced.id as string, raced.image_url as string | null, categoryIconUrl);
+          return raced.id as string;
+        }
+      }
+
+      if (label) {
+        const { data: racedByName } = await admin
+          .from('categories')
+          .select('id, image_url')
+          .ilike('name', label)
+          .maybeSingle();
+
+        if (racedByName?.id) {
+          await maybeUpdateCategoryIcon(
+            admin,
+            racedByName.id as string,
+            racedByName.image_url as string | null,
+            categoryIconUrl,
+          );
+          return racedByName.id as string;
+        }
       }
     }
+  }
+
+  if (label) {
+    throw new Error(`Could not create or resolve category "${label}" during LOGGSPLUG sync.`);
   }
 
   for (const fallbackSlug of ['accounts', 'instagram', 'tools']) {
@@ -247,17 +274,18 @@ async function syncSingleLoggsplugProduct(
   const stock = Math.max(Number(remote.in_stock ?? 0), 0);
   const retailPrice = calculateRetailPriceNgn(costNgn, settings.defaultMarkupPercent);
   const iconUrl = resolveLoggsplugProductIconUrl(remote);
-  const categoryId = await resolveCategoryId(admin, remote.category || '', iconUrl);
+  const remoteCategory = normalizeLoggsplugCategoryLabel(remote.category)
+    || String(remote.category ?? '').trim();
+  const categoryId = await resolveCategoryId(admin, remoteCategory, iconUrl);
   const remoteDescription = resolveLoggsplugProductDescription(remote);
   const remoteLoginInstructions = resolveLoggsplugLoginInstructions(remote);
   const remoteName = remote.name.trim();
-  const remoteCategory = remote.category?.trim() || '';
 
   const payload = {
     title: remoteName,
     slug: slugifyLoggsplugProduct(remote.name, remote.id),
     description: remoteDescription,
-    platform: mapLoggsplugCategoryToPlatform(remote.category || ''),
+    platform: mapLoggsplugCategoryToPlatform(remoteCategory),
     price: retailPrice,
     stock,
     supplier: 'loggsplug',
@@ -265,7 +293,7 @@ async function syncSingleLoggsplugProduct(
     supplier_cost_ngn: costNgn,
     markup_percent_override: null,
     category_id: categoryId,
-    niche: remote.category?.trim() || null,
+    niche: remoteCategory || null,
     login_instructions: remoteLoginInstructions,
     preview_url: iconUrl,
     is_active: stock > 0,
