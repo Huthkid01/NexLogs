@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Mail, Send } from 'lucide-react';
+import { SeoHead } from '@/components/seo/SeoHead';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
+import { SEO_PAGES } from '@/lib/seo';
 import { DEFAULT_TELEGRAM_SUPPORT_URL, normalizeTelegramUrl } from '@/lib/telegram-url';
 
 const SUPPORT_CHANNELS = [
@@ -28,6 +30,11 @@ export default function SupportPage() {
 
   return (
     <div className="bg-gray-50 dark:bg-dm-bg min-h-full">
+      <SeoHead
+        title={SEO_PAGES.support.title}
+        description={SEO_PAGES.support.description}
+        path={SEO_PAGES.support.path}
+      />
       <div className="w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <div className="max-w-3xl mx-auto text-center space-y-8">
           <Link

@@ -186,9 +186,24 @@ export const defaultSiteContent: SiteContent = {
         answer: `${APP_NAME} (nexlogs.site) is a digital marketplace where you can buy verified social media accounts, SMS verification numbers, and RDP plans. Create an account, fund your wallet, and purchase from the marketplace or Buy Numbers page.`,
       },
       {
+        question: 'How do I buy SMS verification numbers on Nexlogs?',
+        answer:
+          'Sign in, open Buy Numbers, choose a country and service, pay from your wallet, then receive the OTP/verification code in your Nexlogs account. This is ideal for virtual SMS verification in Nigeria and other supported countries.',
+      },
+      {
+        question: 'How do I buy an RDP plan on Nexlogs?',
+        answer:
+          'Sign in, open Purchase RDP, compare available plans, checkout with your wallet, then view fulfillment details in My Purchases after payment succeeds.',
+      },
+      {
         question: 'Where is the main menu and wallet?',
         answer:
           'Use the menu icon (☰) on the top left for Marketplace, Buy Numbers for SMS Verification, My Purchases, and Support. Your wallet balance is in the orange button on the top right — open it to add funds, view your profile, or sign out. Watch the walkthrough above for a 30-second visual guide.',
+      },
+      {
+        question: 'How do I fund my wallet?',
+        answer:
+          'Sign in, open the wallet button at the top right, choose Add Funds, and complete checkout. After the payment confirms, your Nexlogs wallet balance updates and you can buy marketplace products, SMS numbers, or RDP plans.',
       },
       {
         question: 'How fast are orders delivered?',
@@ -196,15 +211,17 @@ export const defaultSiteContent: SiteContent = {
       },
       {
         question: 'Can I request a refund?',
-        answer: 'Refunds and replacements are reviewed based on the issue reported, order status, and evidence provided through support.',
+        answer: 'Refunds and replacements are reviewed based on the issue reported, order status, and evidence provided through support. See the Refund Policy page for details.',
       },
       {
         question: 'Do I need an account to buy products?',
-        answer: 'Yes. You need to sign in before viewing protected marketplace inventory and completing purchases.',
+        answer:
+          'Yes. You need to sign in before completing purchases. Guests can still read About, FAQ, Support, and service overview pages for SMS numbers and RDP plans.',
       },
       {
         question: 'How do I contact support?',
-        answer: 'You can reach support through the support page by email or Telegram, depending on the available channels you configure.',
+        answer:
+          'Use the Support page for Telegram (https://telegram.me/nexlogs) or email support@nexlogs.site. Include your order details so the team can help faster.',
       },
     ],
   },

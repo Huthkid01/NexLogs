@@ -2,8 +2,37 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { ProtectedRoute, GuestRoute, AdminGuestRoute, AdminRedirectGate } from '@/routes/ProtectedRoute';
+import { SeoPublicOrProtected } from '@/routes/SeoPublicOrProtected';
 import { lazyPage } from '@/routes/lazyPage';
 import { RouterErrorPage } from '@/routes/RouterErrorPage';
+import { SEO_PAGES } from '@/lib/seo';
+
+const SMS_SEO_LANDING = {
+  title: 'SMS verification',
+  headline: 'Buy SMS verification numbers on Nexlogs',
+  description:
+    'Nexlogs is a digital marketplace where you can buy virtual SMS verification numbers for OTPs and account verification. Fund your wallet, choose a country and service, then receive codes in your Nexlogs dashboard.',
+  bullets: [
+    'Virtual numbers for popular apps and verification flows',
+    'Wallet checkout in Naira with fast delivery after payment',
+    'Order history and code delivery inside your account',
+    'Human support via Telegram and email when you need help',
+  ],
+} as const;
+
+const RDP_SEO_LANDING = {
+  title: 'RDP plans',
+  headline: 'Buy RDP plans on Nexlogs',
+  description:
+    'Purchase remote desktop (RDP) plans from the Nexlogs marketplace. Compare plan options, pay from your wallet, and get fulfillment details after checkout.',
+  bullets: [
+    'Multiple RDP plan options for different workloads',
+    'Secure wallet-based checkout on nexlogs.site',
+    'Order tracking in My Purchases after you buy',
+    'Support team available for setup and delivery questions',
+  ],
+} as const;
+
 
 const HomePage = lazyPage(() => import('@/pages/HomePage'));
 const AboutPage = lazyPage(() => import('@/pages/AboutPage'));
@@ -80,9 +109,30 @@ const router = createBrowserRouter([
       { path: 'profile', element: <ProtectedRoute><ProfilePage /></ProtectedRoute> },
       { path: 'purchases', element: <ProtectedRoute><MyPurchasesPage /></ProtectedRoute> },
       { path: 'add-funds', element: <ProtectedRoute><AddFundsPage /></ProtectedRoute> },
-      { path: 'purchase-rdp', element: <ProtectedRoute><PurchaseRdpPage /></ProtectedRoute> },
-      { path: 'buy-numbers', element: <ProtectedRoute><BuyNumbersPage /></ProtectedRoute> },
-      { path: 'buy-numbers/:providerId', element: <ProtectedRoute><BuyNumbersPage /></ProtectedRoute> },
+      {
+        path: 'purchase-rdp',
+        element: (
+          <SeoPublicOrProtected landing={RDP_SEO_LANDING} seo={SEO_PAGES.purchaseRdp}>
+            <PurchaseRdpPage />
+          </SeoPublicOrProtected>
+        ),
+      },
+      {
+        path: 'buy-numbers',
+        element: (
+          <SeoPublicOrProtected landing={SMS_SEO_LANDING} seo={SEO_PAGES.buyNumbers}>
+            <BuyNumbersPage />
+          </SeoPublicOrProtected>
+        ),
+      },
+      {
+        path: 'buy-numbers/:providerId',
+        element: (
+          <SeoPublicOrProtected landing={SMS_SEO_LANDING} seo={SEO_PAGES.buyNumbers}>
+            <BuyNumbersPage />
+          </SeoPublicOrProtected>
+        ),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

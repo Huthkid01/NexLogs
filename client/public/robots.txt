@@ -6,12 +6,12 @@ Disallow: /admin/
 Disallow: /profile
 Disallow: /purchases
 Disallow: /add-funds
-Disallow: /purchase-rdp
-Disallow: /buy-numbers
 Disallow: /auth/
 Disallow: /reset-password
 Disallow: /forgot-password
 Disallow: /suspended
 Disallow: /dashboard/
+Disallow: /login
+Disallow: /register
 
 Sitemap: https://www.nexlogs.site/sitemap.xml

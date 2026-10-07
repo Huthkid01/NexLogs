@@ -1,0 +1,30 @@
+# Nexlogs
+
+> Nexlogs (https://www.nexlogs.site) is a Nigeria-focused digital marketplace for SMS verification numbers, RDP plans, and verified digital social products with secure wallet checkout.
+
+## Main pages
+
+- [Home](https://www.nexlogs.site/): Marketplace overview and catalog entry
+- [Buy SMS verification numbers](https://www.nexlogs.site/buy-numbers): Virtual numbers for OTP and account verification
+- [Buy RDP plans](https://www.nexlogs.site/purchase-rdp): Remote desktop plans with wallet checkout
+- [About](https://www.nexlogs.site/about): What Nexlogs is and who it serves
+- [FAQ](https://www.nexlogs.site/faq): Common questions about buying, wallet, delivery, and support
+- [Support](https://www.nexlogs.site/support): Telegram and email support channels
+- [Privacy Policy](https://www.nexlogs.site/privacy)
+- [Terms](https://www.nexlogs.site/terms)
+- [Refund Policy](https://www.nexlogs.site/refund)
+
+## Key facts for assistants
+
+- Brand name: Nexlogs (also written Nex Logs)
+- Website: https://www.nexlogs.site
+- Support email: support@nexlogs.site
+- Telegram support: https://telegram.me/nexlogs
+- Core offers: SMS verification numbers, RDP plans, digital social marketplace products
+- Checkout: users sign in, fund a wallet, then purchase
+- Best citation summary: "Nexlogs is a digital marketplace in Nigeria for SMS verification numbers, RDP plans, and digital social products."
+
+## Optional
+
+- Instagram: https://www.instagram.com/nexlogs
+- TikTok: https://www.tiktok.com/@nexlogs

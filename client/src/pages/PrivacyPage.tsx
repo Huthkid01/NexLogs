@@ -1,11 +1,18 @@
+import { SeoHead } from '@/components/seo/SeoHead';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
+import { SEO_PAGES } from '@/lib/seo';
 
 export default function PrivacyPage() {
   const { content } = useSiteContent();
 
   return (
     <div className="bg-[#f8f9fa] dark:bg-dm-bg/60 py-10 sm:py-14">
+      <SeoHead
+        title={SEO_PAGES.privacy.title}
+        description={SEO_PAGES.privacy.description}
+        path={SEO_PAGES.privacy.path}
+      />
       <div className="page-content">
         <div className="mx-auto max-w-4xl rounded-2xl bg-white dark:bg-dm-surface shadow-sm border border-gray-200 dark:border-dm-border px-6 py-8 sm:px-8 sm:py-10">
           <div className="text-center mb-10">
