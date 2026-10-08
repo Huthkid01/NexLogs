@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { GuestHeroBanner } from '@/components/home/GuestHeroBanner';
 import { SlideBanner } from '@/components/home/SlideBanner';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { useAuth } from '@/contexts/AuthContext';
-import { GUEST_HOME_SLIDES } from '@/contexts/site-content';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
 function resolveSlideImageUrl(imageUrl: string) {
@@ -18,14 +18,14 @@ function resolveSlideImageUrl(imageUrl: string) {
 
 export function PlatformCarousel() {
   const { content } = useSiteContent();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
 
-  // Guests see marketplace intro ad; signed-in users see the own-website promo slides.
+  // Guests get a fixed HTML marketplace intro; signed-in users get admin/promo slides.
   const slides = useMemo(() => {
-    const source = user ? content.slides : GUEST_HOME_SLIDES;
-    return source
+    if (!user) return [];
+    return content.slides
       .filter((slide) => slide.active)
       .sort((a, b) => a.order - b.order);
   }, [user, content.slides]);
@@ -41,6 +41,16 @@ export function PlatformCarousel() {
     }, 5000);
     return () => clearInterval(timer);
   }, [slides.length]);
+
+  if (loading) {
+    return (
+      <div className="h-40 w-full animate-pulse rounded-none bg-[#f26522]/80 lg:rounded-2xl md:h-64" />
+    );
+  }
+
+  if (!user) {
+    return <GuestHeroBanner />;
+  }
 
   if (!slides.length) return null;
 
