@@ -22,7 +22,7 @@ export function PlatformCarousel() {
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
 
-  // Guests see the previous support hero; signed-in users see the advertising slides.
+  // Guests see marketplace intro ad; signed-in users see the own-website promo slides.
   const slides = useMemo(() => {
     const source = user ? content.slides : GUEST_HOME_SLIDES;
     return source
@@ -80,7 +80,7 @@ export function PlatformCarousel() {
         alt={slide.title || 'Homepage banner slide'}
         variant="live"
         priority={safeCurrent === 0}
-        imagePosition={user ? 'center' : 'left'}
+        imagePosition="center"
         className="rounded-none lg:rounded-2xl"
       >
         {hasOverlayContent && (

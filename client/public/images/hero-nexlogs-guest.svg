@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-label="Nexlogs marketplace for social logs, RDP and SMS numbers">
+  <rect width="1200" height="400" fill="#f26522"/>
+  <circle cx="1080" cy="50" r="110" fill="#ff7a3d" opacity="0.35"/>
+  <circle cx="90" cy="350" r="80" fill="#e25515" opacity="0.45"/>
+  <text x="600" y="88" text-anchor="middle" fill="#f6c343" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="46" font-weight="900" letter-spacing="1">GET EVERYTHING ON NEXLOGS</text>
+  <text x="600" y="155" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">SOCIAL LOGS · RDP PLANS · SMS VERIFICATION</text>
+  <text x="600" y="205" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">BUY NUMBERS FOR ALL APP VERIFICATION</text>
+  <text x="600" y="250" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">FAST WALLET CHECKOUT · INSTANT DELIVERY</text>
+  <text x="930" y="345" text-anchor="middle" fill="#111111" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="38" font-weight="900" font-style="italic" transform="rotate(-6 930 345)">CLICK HERE</text>
+</svg>
