@@ -147,9 +147,9 @@ function createFormFromProduct(product: Product): ProductFormState {
     product_details:
       isTelegram && isTelegramPlaceholderInventory(normalizedDetails) ? '' : normalizedDetails,
     preview_url: product.preview_url ?? '',
-    featured: product.featured,
-    verified: product.verified,
-    is_active: product.is_active,
+    featured: Boolean(product.featured),
+    verified: Boolean(product.verified),
+    is_active: product.is_active !== false,
   };
 }
 
@@ -200,7 +200,7 @@ function buildProductPayload(
     platform: form.platform,
     category_id: form.category_id,
     price: Number(form.price),
-    stock: stockValue,
+    stock: Number.isFinite(stockValue) ? stockValue : 0,
     country: form.country.trim() || null,
     niche: form.niche.trim() || null,
     account_age: form.account_age.trim() || null,
@@ -208,29 +208,37 @@ function buildProductPayload(
     following: form.following ? Number(form.following) : null,
     description: form.description.trim(),
     login_instructions: form.login_instructions.trim() || null,
-    product_details: productDetails,
     preview_url: form.preview_url.trim() || null,
-    featured: form.featured,
-    verified: form.verified,
-    is_active: form.is_active,
+    featured: Boolean(form.featured),
+    verified: Boolean(form.verified),
+    is_active: Boolean(form.is_active),
   };
 
   if (!isLoggsplug || !editingProduct) {
-    return basePayload;
+    return {
+      ...basePayload,
+      product_details: productDetails,
+    };
   }
 
+  // LOGGSPLUG: never rewrite product_details/stock inventory via this form.
+  // Keep featured/visibility/markup edits durable across sync.
   const overrideRaw = form.markup_percent_override.trim();
-  const markupOverride = overrideRaw === '' ? null : Number(overrideRaw);
+  const parsedOverride = overrideRaw === '' ? null : Number(overrideRaw);
+  const markupOverride =
+    parsedOverride == null || !Number.isFinite(parsedOverride) ? null : parsedOverride;
   const costNgn = Number(editingProduct.supplier_cost_ngn ?? 0);
   const effectiveMarkup = resolveLoggsplugMarkup(
     { enabled: true, defaultMarkupPercent: defaultLoggsplugMarkup, lastSyncedAt: null },
     markupOverride,
   );
+  const retailPrice = calculateLoggsplugRetailPrice(costNgn, effectiveMarkup);
 
   return {
     ...basePayload,
+    stock: Number(editingProduct.stock ?? basePayload.stock),
     markup_percent_override: markupOverride,
-    price: calculateLoggsplugRetailPrice(costNgn, effectiveMarkup),
+    price: Number.isFinite(retailPrice) ? retailPrice : basePayload.price,
   };
 }
 
@@ -502,10 +510,17 @@ export default function AdminProductsPage() {
         ? await productService.update(editingProduct.id, payload)
         : await productService.create(payload);
 
+      // Icon sync is best-effort — never block featured/visibility saves.
       if (iconUrl) {
-        await supabase.from('product_images').delete().eq('product_id', saved.id).eq('sort_order', 0);
-        const { error } = await supabase.from('product_images').insert({ product_id: saved.id, image_url: iconUrl, sort_order: 0 } as never);
-        if (error) throw error;
+        try {
+          await supabase.from('product_images').delete().eq('product_id', saved.id).eq('sort_order', 0);
+          const { error } = await supabase
+            .from('product_images')
+            .insert({ product_id: saved.id, image_url: iconUrl, sort_order: 0 } as never);
+          if (error) console.warn('Product icon sync failed:', error.message);
+        } catch (error) {
+          console.warn('Product icon sync failed:', error);
+        }
       }
 
       return saved;
@@ -524,6 +539,9 @@ export default function AdminProductsPage() {
       toast.success(editingProduct ? 'Product updated' : 'Product created');
       setIsModalOpen(false);
       setEditingProduct(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Could not save product');
     },
   });
 
@@ -1213,23 +1231,48 @@ export default function AdminProductsPage() {
                   </div>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    {[
-                      { key: 'featured', label: 'Featured listing' },
-                      { key: 'verified', label: 'Verified account' },
-                      { key: 'is_active', label: 'Visible on site' },
-                    ].map((option) => (
-                      <label key={option.key} className={cn(
-                        'flex items-center gap-3 rounded-xl border px-4 py-3',
-                        isDark ? 'border-[#18263b] bg-[#081624]' : 'border-slate-200 bg-white',
-                      )}>
-                        <input
-                          type="checkbox"
-                          checked={form[option.key as keyof ProductFormState] as boolean}
-                          onChange={(event) => setForm((current) => ({ ...current, [option.key]: event.target.checked }))}
-                          className={cn('h-4 w-4 rounded', isDark ? 'border-[#22324a] bg-[#06101d]' : 'border-slate-300 bg-white')}
-                        />
-                        <span className={cn('text-sm', isDark ? 'text-slate-200' : 'text-slate-700')}>{option.label}</span>
-                      </label>
+                    {([
+                      { key: 'featured' as const, label: 'Featured listing' },
+                      { key: 'verified' as const, label: 'Verified account' },
+                      { key: 'is_active' as const, label: 'Visible on site' },
+                    ]).map((option) => (
+                      <button
+                        key={option.key}
+                        type="button"
+                        onClick={() =>
+                          setForm((current) => ({
+                            ...current,
+                            [option.key]: !current[option.key],
+                          }))
+                        }
+                        className={cn(
+                          'flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
+                          form[option.key]
+                            ? isDark
+                              ? 'border-[#f26522]/60 bg-[#f26522]/15'
+                              : 'border-[#f26522]/50 bg-[#fff4ee]'
+                            : isDark
+                              ? 'border-[#18263b] bg-[#081624]'
+                              : 'border-slate-200 bg-white',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[11px] font-bold',
+                            form[option.key]
+                              ? 'border-[#f26522] bg-[#f26522] text-white'
+                              : isDark
+                                ? 'border-[#22324a] bg-[#06101d] text-transparent'
+                                : 'border-slate-300 bg-white text-transparent',
+                          )}
+                          aria-hidden
+                        >
+                          ✓
+                        </span>
+                        <span className={cn('text-sm', isDark ? 'text-slate-200' : 'text-slate-700')}>
+                          {option.label}
+                        </span>
+                      </button>
                     ))}
                   </div>
                 </section>

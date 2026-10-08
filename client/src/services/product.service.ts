@@ -148,15 +148,34 @@ export const productService = {
 
   async create(product: Partial<Product>) {
     const sort_order = await getNextProductSortOrder();
-    const { data, error } = await supabase.from('products').insert({ ...product, sort_order } as never).select().single();
+    const { data, error } = await supabase
+      .from('products')
+      .insert({ ...product, sort_order } as never)
+      .select(PUBLIC_PRODUCT_COLUMNS)
+      .single();
     if (error) throw error;
     return data as unknown as Product;
   },
 
   async update(id: string, updates: Partial<Product>) {
-    const safeUpdates = { ...updates };
+    const safeUpdates: Record<string, unknown> = { ...updates };
     delete safeUpdates.sort_order;
-    const { data, error } = await supabase.from('products').update(safeUpdates as never).eq('id', id).select().single();
+    delete safeUpdates.id;
+    delete safeUpdates.created_at;
+    delete safeUpdates.updated_at;
+    delete safeUpdates.category;
+    delete safeUpdates.product_images;
+    delete safeUpdates.reviews;
+
+    // product_details is not selectable via REST for authenticated roles (090/091).
+    // Sending it on UPDATE + bare .select() can fail the whole request.
+    // Admins still update inventory when explicitly provided; return safe columns only.
+    const { data, error } = await supabase
+      .from('products')
+      .update(safeUpdates as never)
+      .eq('id', id)
+      .select(PUBLIC_PRODUCT_COLUMNS)
+      .single();
     if (error) throw error;
     return data as unknown as Product;
   },
