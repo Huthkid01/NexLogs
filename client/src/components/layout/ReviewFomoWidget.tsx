@@ -11,8 +11,9 @@ export function ReviewFomoWidget() {
   const { data: purchases = [] } = useQuery({
     queryKey: ['daily-order-fomo'],
     queryFn: orderFomoService.getDailyPurchases,
-    staleTime: 5 * 60_000,
-    refetchInterval: 15 * 60_000,
+    // Refresh often so new marketplace + SMS purchases enter the rotation.
+    staleTime: 60_000,
+    refetchInterval: 2 * 60_000,
     retry: 1,
   });
   const [index, setIndex] = useState(0);

@@ -11,6 +11,13 @@ export const orderFomoService = {
     const { data, error } = await supabase.rpc('get_public_order_fomo_feed');
 
     if (error) throw error;
-    return (data ?? []) as PublicOrderFomo[];
+
+    const rows = (data ?? []) as PublicOrderFomo[];
+    // Shuffle per fetch so visitors don't all see the same rotation order.
+    for (let i = rows.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rows[i], rows[j]] = [rows[j], rows[i]];
+    }
+    return rows;
   },
 };
