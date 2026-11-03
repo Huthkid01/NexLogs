@@ -6,7 +6,8 @@ import {
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-loggsplug-cron-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -69,7 +70,12 @@ export async function getAuthenticatedUser(req: Request) {
   return { supabase, user: data.user };
 }
 
-export async function requireAdmin(supabase: ReturnType<typeof createClient>, userId: string) {
+export async function requireAdmin(
+  // Keep loose: esm.sh createClient generics drift and break call sites across functions.
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  userId: string,
+) {
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('role')

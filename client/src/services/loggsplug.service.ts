@@ -98,6 +98,7 @@ export const loggsplugService = {
   async syncProducts(
     defaultMarkupPercent?: number,
     onProgress?: (progress: { synced: number; total: number; complete: boolean }) => void,
+    mode: 'stock' | 'full' = 'stock',
   ): Promise<LoggsplugSyncResult> {
     let offset = 0;
     let synced = 0;
@@ -107,13 +108,16 @@ export const loggsplugService = {
     let settings: LoggsplugSettings | null = null;
     let total = 0;
     let guard = 0;
+    const maxGuards = mode === 'stock' ? 8 : 40;
+    const syncLimit = mode === 'stock' ? 250 : 12;
 
-    while (guard < 40) {
+    while (guard < maxGuards) {
       guard += 1;
       const chunk = await invokeLoggsplug<LoggsplugSyncChunkResult>({
         action: 'sync_products',
+        sync_mode: mode,
         sync_offset: offset,
-        sync_limit: 18,
+        sync_limit: syncLimit,
         ...(defaultMarkupPercent != null ? { default_markup_percent: defaultMarkupPercent } : {}),
       });
 

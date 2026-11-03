@@ -34,8 +34,9 @@ verify_jwt = true
 [functions.fivesim]
 verify_jwt = true
 
+# JWT checked inside the function (admin) so pg_cron can call with x-loggsplug-cron-secret.
 [functions.loggsplug]
-verify_jwt = true
+verify_jwt = false
 
 # Opt-in live support calls. Frontend flag must also be enabled.
 [functions.live-support-call]

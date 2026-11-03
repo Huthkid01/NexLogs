@@ -5,6 +5,7 @@ import {
   fetchLoggsplugProfile,
   formatDeliveredDetails,
   hydrateLoggsplugProducts,
+  isLoggsplugIpBlockedMessage,
   isWeakLoggsplugDescription,
   mapLoggsplugCategoryToPlatform,
   mapLoggsplugCategoryToSlug,
@@ -24,6 +25,7 @@ import {
 } from '../_shared/sms-number-handler.ts';
 
 type LoggsplugAction = 'overview' | 'sync_products' | 'purchase';
+type LoggsplugSyncMode = 'stock' | 'full';
 
 interface RequestBody {
   action?: LoggsplugAction;
@@ -32,8 +34,17 @@ interface RequestBody {
   default_markup_percent?: number;
   /** Resume catalog sync from this index (chunked to stay under free-tier wall clock). */
   sync_offset?: number;
-  /** Products to process per invoke (default 18, max 30). */
+  /** Products to process per invoke. Stock mode allows larger batches. */
   sync_limit?: number;
+  /** stock = reseller list only (default). full = also hydrate descriptions (slow, can IP-block). */
+  sync_mode?: LoggsplugSyncMode;
+}
+
+function isCronAuthorized(req: Request): boolean {
+  const expected = Deno.env.get('LOGGSPLUG_CRON_SECRET')?.trim();
+  if (!expected) return false;
+  const provided = req.headers.get('x-loggsplug-cron-secret')?.trim();
+  return Boolean(provided && provided === expected);
 }
 
 interface LoggsplugSettings {
@@ -385,25 +396,30 @@ async function syncSingleLoggsplugProduct(
 async function syncProducts(
   admin: ReturnType<typeof getServiceRoleClient>,
   settings: LoggsplugSettings,
-  options: { offset?: number; limit?: number } = {},
+  options: { offset?: number; limit?: number; mode?: LoggsplugSyncMode } = {},
 ) {
-  // Reseller list is fast. Description hydration is slow on free tier (150s wall clock),
-  // so each invoke only processes one chunk; the admin UI loops until complete.
+  // Default "stock" uses the authenticated reseller /products list only.
+  // That updates stock/price/category without scraping public pages (which triggers IP blocks).
+  // "full" optionally hydrates descriptions, gently, and falls back to list data if blocked.
+  const mode: LoggsplugSyncMode = options.mode === 'full' ? 'full' : 'stock';
   const startedAt = Date.now();
   const TIME_BUDGET_MS = 110_000;
   const remoteProducts = (await fetchLoggsplugProducts()).filter((product) => product?.id && product?.name);
   const total = remoteProducts.length;
   const offset = Math.max(0, Math.floor(options.offset ?? 0));
-  // Cap each request so free-tier wall clock (150s) is not exceeded.
-  // Client auto-loops with sync_offset until complete.
-  const requestedLimit = options.limit == null ? 18 : Math.floor(options.limit);
-  const limit = Math.min(30, Math.max(1, requestedLimit));
+  const requestedLimit = options.limit == null
+    ? (mode === 'stock' ? 250 : 12)
+    : Math.floor(options.limit);
+  const limit = mode === 'stock'
+    ? Math.min(500, Math.max(1, requestedLimit))
+    : Math.min(20, Math.max(1, requestedLimit));
   const slice = remoteProducts.slice(offset, offset + limit);
 
   let upserted = 0;
   let processed = 0;
+  let hydrateBlocked = false;
   const failures: { product_id: number; name: string; error: string }[] = [];
-  const BATCH_SIZE = 6;
+  const BATCH_SIZE = mode === 'stock' ? 25 : 4;
 
   for (let batchStart = 0; batchStart < slice.length; batchStart += BATCH_SIZE) {
     if (Date.now() - startedAt > TIME_BUDGET_MS) {
@@ -411,9 +427,24 @@ async function syncProducts(
     }
 
     const batch = slice.slice(batchStart, batchStart + BATCH_SIZE);
-    const hydratedBatch = await hydrateLoggsplugProducts(batch);
+    let workingBatch = batch;
 
-    for (const remote of hydratedBatch) {
+    if (mode === 'full' && !hydrateBlocked) {
+      try {
+        workingBatch = await hydrateLoggsplugProducts(batch);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (isLoggsplugIpBlockedMessage(message)) {
+          hydrateBlocked = true;
+          console.warn(`[loggsplug] description hydrate stopped (IP blocked): ${message}`);
+          workingBatch = batch;
+        } else {
+          workingBatch = batch;
+        }
+      }
+    }
+
+    for (const remote of workingBatch) {
       if (!remote?.id || !remote.name) continue;
       processed += 1;
 
@@ -422,6 +453,12 @@ async function syncProducts(
         upserted += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown sync error.';
+        if (isLoggsplugIpBlockedMessage(message)) {
+          throw new Error(
+            'LOGGSPLUG temporarily blocked this server IP after too many detail requests. '
+            + 'Use Sync stock (default) — it only calls the reseller product list. Try full sync later.',
+          );
+        }
         failures.push({
           product_id: remote.id,
           name: remote.name.trim(),
@@ -489,6 +526,8 @@ async function syncProducts(
     processed,
     total,
     complete,
+    mode,
+    hydrate_blocked: hydrateBlocked,
     settings: nextSettings,
   };
 }
@@ -708,8 +747,11 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'sync_products') {
-      const { supabase, user } = await getAuthenticatedUser(req);
-      await requireAdmin(supabase, user.id);
+      const cronOk = isCronAuthorized(req);
+      if (!cronOk) {
+        const { supabase, user } = await getAuthenticatedUser(req);
+        await requireAdmin(supabase, user.id);
+      }
 
       const admin = getServiceRoleClient();
       const settings = normalizeSettings({
@@ -719,13 +761,19 @@ Deno.serve(async (req) => {
           : {}),
       });
 
-      if (body.default_markup_percent != null) {
+      if (body.default_markup_percent != null && !cronOk) {
         await saveSettings(admin, settings);
       }
+
+      // Cron always uses stock mode to avoid IP blocks.
+      const mode: LoggsplugSyncMode = cronOk
+        ? 'stock'
+        : (body.sync_mode === 'full' ? 'full' : 'stock');
 
       const result = await syncProducts(admin, settings, {
         offset: body.sync_offset,
         limit: body.sync_limit,
+        mode,
       });
       return jsonResponse({ success: true, ...result });
     }

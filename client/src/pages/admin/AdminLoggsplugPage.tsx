@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Package, RefreshCw, Save, Wallet } from 'lucide-react';
+import { Clock3, Package, RefreshCw, Save, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,8 +22,34 @@ import {
   normalizeLoggsplugSettings,
   type LoggsplugSettings,
 } from '@/lib/loggsplug-pricing';
-import { formatPrice } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { loggsplugService } from '@/services/loggsplug.service';
+
+function formatRelativeSyncTime(iso: string | null | undefined): string {
+  if (!iso) return 'Never';
+  const at = new Date(iso).getTime();
+  if (!Number.isFinite(at)) return 'Never';
+
+  const diffMs = Date.now() - at;
+  if (diffMs < 0) return 'Just now';
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes === 1) return '1 minute ago';
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return '1 hour ago';
+  if (hours < 48) return `${hours} hours ago`;
+  return new Date(iso).toLocaleString();
+}
+
+function syncHealth(iso: string | null | undefined): 'ok' | 'stale' | 'never' {
+  if (!iso) return 'never';
+  const at = new Date(iso).getTime();
+  if (!Number.isFinite(at)) return 'never';
+  const ageMin = (Date.now() - at) / 60_000;
+  // Auto sync is every ~15 minutes; allow a small buffer.
+  return ageMin <= 25 ? 'ok' : 'stale';
+}
 
 export default function AdminLoggsplugPage() {
   const queryClient = useQueryClient();
@@ -43,11 +69,37 @@ export default function AdminLoggsplugPage() {
     isLoading: overviewLoading,
     error: overviewError,
     refetch: refetchOverview,
+    dataUpdatedAt,
   } = useQuery({
     queryKey: ['admin-loggsplug-overview'],
     queryFn: () => loggsplugService.getOverview(),
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
+
+  // Keep site content in sync with DB lastSyncedAt from overview / auto-sync.
+  useEffect(() => {
+    const remote = overview?.settings;
+    if (!remote?.lastSyncedAt) return;
+    if (remote.lastSyncedAt === content.loggsplug.lastSyncedAt) return;
+    setContent({
+      ...content,
+      loggsplug: normalizeLoggsplugSettings({
+        ...content.loggsplug,
+        lastSyncedAt: remote.lastSyncedAt,
+        defaultMarkupPercent: remote.defaultMarkupPercent ?? content.loggsplug.defaultMarkupPercent,
+        enabled: remote.enabled ?? content.loggsplug.enabled,
+      }),
+    });
+    // Intentionally depend on remote timestamp only to avoid setContent loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overview?.settings?.lastSyncedAt]);
+
+  const lastSyncedAt =
+    overview?.settings?.lastSyncedAt
+    ?? content.loggsplug.lastSyncedAt
+    ?? null;
+  const health = syncHealth(lastSyncedAt);
 
   const saveSettings = () => {
     const normalized = normalizeLoggsplugSettings(settingsDraft);
@@ -68,7 +120,7 @@ export default function AdminLoggsplugPage() {
     toast.success('LOGGSPLUG settings reset to defaults.');
   };
 
-  const syncCatalog = async () => {
+  const syncCatalog = async (mode: 'stock' | 'full' = 'stock') => {
     const normalized = normalizeLoggsplugSettings(settingsDraft);
     if (normalized.defaultMarkupPercent < 0) {
       toast.error('Markup cannot be negative.');
@@ -76,7 +128,7 @@ export default function AdminLoggsplugPage() {
     }
 
     setSyncing(true);
-    setSyncProgress('Starting sync…');
+    setSyncProgress(mode === 'stock' ? 'Syncing stock & prices…' : 'Starting full sync…');
     try {
       const result = await loggsplugService.syncProducts(
         normalized.defaultMarkupPercent,
@@ -84,9 +136,12 @@ export default function AdminLoggsplugPage() {
           setSyncProgress(
             complete
               ? `Finishing sync (${synced}/${total})…`
-              : `Syncing descriptions ${synced}/${total}…`,
+              : mode === 'stock'
+                ? `Updating stock ${synced}/${total}…`
+                : `Syncing descriptions ${synced}/${total}…`,
           );
         },
+        mode,
       );
       setContent({
         ...content,
@@ -108,9 +163,13 @@ export default function AdminLoggsplugPage() {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Catalog sync failed.';
-      if (/timeout|504|546|wall clock|failed to fetch|network|HTTP 54/i.test(message)) {
+      if (/ip.*(temporarily\s+)?blocked|temporarily\s+blocked/i.test(message)) {
         toast.error(
-          'Sync timed out on Supabase free tier (150s limit). Deploy the latest loggsplug function, then click Sync again — it now runs in smaller chunks.',
+          'LOGGSPLUG blocked this server IP. Use “Sync stock & prices” (avoids their public pages). Wait a bit before full sync.',
+        );
+      } else if (/timeout|504|546|wall clock|failed to fetch|network|HTTP 54/i.test(message)) {
+        toast.error(
+          'Sync timed out on Supabase free tier (150s limit). Use Sync stock & prices, or retry full sync in smaller runs.',
         );
       } else {
         toast.error(message);
@@ -188,16 +247,64 @@ export default function AdminLoggsplugPage() {
               Active synced products currently listed on your marketplace.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-3">
             <p className={`text-3xl font-bold ${adminStrongTextClass(isDark)}`}>
               {overviewLoading ? '...' : overview?.active_products ?? 0}
             </p>
-            <p className={`text-sm ${adminMutedTextClass(isDark)}`}>
-              Last synced:{' '}
-              {content.loggsplug.lastSyncedAt
-                ? new Date(content.loggsplug.lastSyncedAt).toLocaleString()
-                : 'Never'}
-            </p>
+            <div
+              className={cn(
+                'rounded-xl border px-3 py-2.5',
+                health === 'ok'
+                  ? isDark
+                    ? 'border-emerald-800/60 bg-emerald-950/30'
+                    : 'border-emerald-200 bg-emerald-50'
+                  : health === 'stale'
+                    ? isDark
+                      ? 'border-amber-800/60 bg-amber-950/30'
+                      : 'border-amber-200 bg-amber-50'
+                    : isDark
+                      ? 'border-dm-border bg-dm-surface'
+                      : 'border-slate-200 bg-slate-50',
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <Clock3
+                  className={cn(
+                    'mt-0.5 h-4 w-4 shrink-0',
+                    health === 'ok'
+                      ? 'text-emerald-600'
+                      : health === 'stale'
+                        ? 'text-amber-600'
+                        : isDark
+                          ? 'text-slate-400'
+                          : 'text-slate-500',
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className={cn('text-sm font-semibold', adminStrongTextClass(isDark))}>
+                    Last refreshed:{' '}
+                    {overviewLoading ? '…' : formatRelativeSyncTime(lastSyncedAt)}
+                  </p>
+                  <p className={`mt-0.5 text-xs ${adminMutedTextClass(isDark)}`}>
+                    {lastSyncedAt
+                      ? new Date(lastSyncedAt).toLocaleString()
+                      : 'No successful sync recorded yet'}
+                  </p>
+                  <p className={`mt-1 text-xs ${adminMutedTextClass(isDark)}`}>
+                    {health === 'ok'
+                      ? 'Auto sync looks healthy (updates about every 15 minutes).'
+                      : health === 'stale'
+                        ? 'Sync is older than expected — click Refresh or Sync stock & prices.'
+                        : 'Run Sync stock & prices once, then auto sync should keep this updated.'}
+                  </p>
+                  {dataUpdatedAt ? (
+                    <p className={`mt-1 text-[11px] ${adminMutedTextClass(isDark)}`}>
+                      Status checked {formatRelativeSyncTime(new Date(dataUpdatedAt).toISOString())}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -249,17 +356,26 @@ export default function AdminLoggsplugPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => void syncCatalog()} disabled={syncing}>
+            <Button type="button" onClick={() => void syncCatalog('stock')} disabled={syncing}>
               <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? (syncProgress ?? 'Syncing...') : 'Sync catalog & apply markup'}
+              {syncing ? (syncProgress ?? 'Syncing...') : 'Sync stock & prices'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void syncCatalog('full')}
+              disabled={syncing}
+            >
+              Full sync (descriptions)
             </Button>
             {syncProgress ? (
               <p className={`text-xs ${adminMutedTextClass(isDark)}`}>{syncProgress}</p>
             ) : null}
           </div>
           <p className={`text-xs ${adminMutedTextClass(isDark)}`}>
-            Sync pulls stock, costs, and product descriptions from LOGGSPLUG in small chunks (needed on Supabase free
-            tier&apos;s 150s limit), then recalculates retail prices. Keep this tab open until progress finishes.
+            Stock sync uses LOGGSPLUG&apos;s reseller product list only (stock, cost, category, prices) — this avoids IP
+            blocks. Full sync also refreshes descriptions and is slower. Auto stock sync runs about every 15 minutes
+            once cron is configured.
           </p>
         </CardContent>
       </Card>

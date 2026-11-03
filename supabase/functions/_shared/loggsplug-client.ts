@@ -60,6 +60,11 @@ function getBaseUrl() {
   return (Deno.env.get('LOGGSPLUG_API_BASE') || DEFAULT_BASE_URL).replace(/\/$/, '');
 }
 
+export function isLoggsplugIpBlockedMessage(message: string): boolean {
+  return /ip.*(temporarily\s+)?blocked|temporarily\s+blocked|blocked.*ip|too many requests|rate.?limit|cloudflare/i
+    .test(message);
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -71,6 +76,9 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
     const code = typeof record.code === 'string' ? record.code : undefined;
     const error = new Error(message) as Error & { code?: string };
     if (code) error.code = code;
+    if (isLoggsplugIpBlockedMessage(message) || response.status === 429 || response.status === 403) {
+      error.code = error.code || 'IP_BLOCKED';
+    }
     throw error;
   }
   return payload as T;
@@ -84,38 +92,13 @@ function authHeaders(apiKey: string) {
   };
 }
 
-const DETAIL_FETCH_CONCURRENCY = 2;
-const DETAIL_FETCH_RETRIES = 3;
+/** Keep public detail fetches gentle — aggressive scraping triggers LOGGSPLUG/Cloudflare IP blocks. */
+const DETAIL_FETCH_RETRIES = 1;
 const DETAIL_PREFIX_MAX_CHARS = 200_000;
+const DETAIL_GAP_MS = 750;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  concurrency: number,
-  mapper: (item: T) => Promise<R>,
-): Promise<R[]> {
-  if (items.length === 0) return [];
-
-  const results = new Array<R>(items.length);
-  let nextIndex = 0;
-
-  async function worker() {
-    while (true) {
-      const index = nextIndex;
-      nextIndex += 1;
-      if (index >= items.length) return;
-      results[index] = await mapper(items[index]);
-    }
-  }
-
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
-  );
-
-  return results;
 }
 
 export async function fetchLoggsplugProducts(): Promise<LoggsplugProductRow[]> {
@@ -137,42 +120,55 @@ export async function fetchLoggsplugProducts(): Promise<LoggsplugProductRow[]> {
 export async function hydrateLoggsplugProducts(
   products: LoggsplugProductRow[],
 ): Promise<LoggsplugProductRow[]> {
-  return mapWithConcurrency(products, DETAIL_FETCH_CONCURRENCY, enrichLoggsplugProduct);
+  // Sequential + gap: concurrent public scrapes are what trigger LOGGSPLUG IP blocks.
+  const results: LoggsplugProductRow[] = [];
+  for (let i = 0; i < products.length; i += 1) {
+    results.push(await enrichLoggsplugProduct(products[i]));
+    if (i < products.length - 1) {
+      await sleep(DETAIL_GAP_MS);
+    }
+  }
+  return results;
 }
 
 async function enrichLoggsplugProduct(product: LoggsplugProductRow): Promise<LoggsplugProductRow> {
-  const detail = await fetchLoggsplugProductDetail(product.id);
-  const merged: LoggsplugProductRow = { ...product };
+  try {
+    const detail = await fetchLoggsplugProductDetail(product.id);
+    const merged: LoggsplugProductRow = { ...product };
 
-  if (typeof detail.description === 'string' && detail.description.trim()) {
-    merged.description = detail.description;
-  }
-  if (typeof detail.image === 'string' && detail.image.trim()) {
-    merged.image = detail.image;
-  }
-  if (detail.in_stock != null && Number.isFinite(Number(detail.in_stock))) {
-    merged.in_stock = Number(detail.in_stock);
-  }
-  const detailCategory = normalizeLoggsplugCategoryLabel(detail.category);
-  if (detailCategory) {
-    merged.category = detailCategory;
-  }
+    if (typeof detail.description === 'string' && detail.description.trim()) {
+      merged.description = detail.description;
+    }
+    if (typeof detail.image === 'string' && detail.image.trim()) {
+      merged.image = detail.image;
+    }
+    if (detail.in_stock != null && Number.isFinite(Number(detail.in_stock))) {
+      merged.in_stock = Number(detail.in_stock);
+    }
+    const detailCategory = normalizeLoggsplugCategoryLabel(detail.category);
+    if (detailCategory) {
+      merged.category = detailCategory;
+    }
 
-  return merged;
+    return merged;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (isLoggsplugIpBlockedMessage(message)) {
+      // Keep list row data; caller can stop hydrating further products.
+      const blocked = new Error(message) as Error & { code?: string };
+      blocked.code = 'IP_BLOCKED';
+      throw blocked;
+    }
+    return product;
+  }
 }
 
 export async function fetchLoggsplugProductDetail(productId: number): Promise<Partial<LoggsplugProductRow>> {
-  const publicDetail = await fetchLoggsplugPublicProductDetail(productId);
-  if (Object.keys(publicDetail).length > 0) {
-    return publicDetail;
-  }
-
+  // Prefer authenticated reseller detail once — avoid scraping public Cloudflare pages.
   const apiKey = getApiKey();
   const paths = [
     `/products/${productId}`,
     `/product/${productId}`,
-    `/product/details/${productId}`,
-    `/products/details/${productId}`,
   ];
 
   for (const path of paths) {
@@ -181,19 +177,35 @@ export async function fetchLoggsplugProductDetail(productId: number): Promise<Pa
         method: 'GET',
         headers: authHeaders(apiKey),
       });
-      if (!response.ok) continue;
+      if (response.status === 404) continue;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+        const message =
+          (typeof payload.message === 'string' && payload.message)
+          || (typeof payload.error === 'string' && payload.error)
+          || `LOGGSPLUG request failed (${response.status})`;
+        if (isLoggsplugIpBlockedMessage(message) || response.status === 429 || response.status === 403) {
+          const error = new Error(message) as Error & { code?: string };
+          error.code = 'IP_BLOCKED';
+          throw error;
+        }
+        continue;
+      }
 
       const payload = await parseJsonResponse<Record<string, unknown>>(response);
       const detail = unwrapLoggsplugDetailPayload(payload);
       if (detail && typeof detail === 'object' && Object.keys(detail).length > 0) {
         return detail as Partial<LoggsplugProductRow>;
       }
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (isLoggsplugIpBlockedMessage(message)) throw error;
       continue;
     }
   }
 
-  return {};
+  // Soft fallback only — never required for stock/price sync.
+  return fetchLoggsplugPublicProductDetail(productId);
 }
 
 function stripProductDetailsFromJson(raw: string): string {
