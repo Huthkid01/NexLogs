@@ -5,6 +5,7 @@ import {
   SHOP_CATEGORY_PLATFORMS,
   type ShopCategorySlug,
 } from '@/constants/shopCategories';
+import { resolveCategoryIconUrl } from '@/lib/platform-icons';
 import type { Category } from '@/types';
 
 export interface ShopCategoryOption {
@@ -33,7 +34,7 @@ export function buildShopCategoryOptions(categories: Category[] = []): ShopCateg
     .map((category) => ({
       slug: category.slug,
       label: category.name.trim().toUpperCase() || category.slug.toUpperCase(),
-      imageUrl: category.image_url,
+      imageUrl: resolveCategoryIconUrl(category),
       sortOrder: category.sort_order,
     }))
     .sort((left, right) => left.sortOrder - right.sortOrder);

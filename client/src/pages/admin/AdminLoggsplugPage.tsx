@@ -46,9 +46,9 @@ function syncHealth(iso: string | null | undefined): 'ok' | 'stale' | 'never' {
   if (!iso) return 'never';
   const at = new Date(iso).getTime();
   if (!Number.isFinite(at)) return 'never';
-  const ageMin = (Date.now() - at) / 60_000;
-  // Auto sync is every ~15 minutes; allow a small buffer.
-  return ageMin <= 25 ? 'ok' : 'stale';
+  const ageHours = (Date.now() - at) / 3_600_000;
+  // Auto sync runs twice daily (Nigeria morning/night); allow ~14h before stale.
+  return ageHours <= 14 ? 'ok' : 'stale';
 }
 
 export default function AdminLoggsplugPage() {
@@ -292,7 +292,7 @@ export default function AdminLoggsplugPage() {
                   </p>
                   <p className={`mt-1 text-xs ${adminMutedTextClass(isDark)}`}>
                     {health === 'ok'
-                      ? 'Auto sync looks healthy (updates about every 15 minutes).'
+                      ? 'Auto sync looks healthy (twice daily: morning & night, Nigeria time).'
                       : health === 'stale'
                         ? 'Sync is older than expected — click Refresh or Sync stock & prices.'
                         : 'Run Sync stock & prices once, then auto sync should keep this updated.'}
@@ -374,8 +374,8 @@ export default function AdminLoggsplugPage() {
           </div>
           <p className={`text-xs ${adminMutedTextClass(isDark)}`}>
             Stock sync uses LOGGSPLUG&apos;s reseller product list only (stock, cost, category, prices) — this avoids IP
-            blocks. Full sync also refreshes descriptions and is slower. Auto stock sync runs about every 15 minutes
-            once cron is configured.
+            blocks. Full sync also refreshes descriptions and is slower. Auto stock sync runs twice daily at 8:00 AM
+            and 8:00 PM Nigeria time.
           </p>
         </CardContent>
       </Card>

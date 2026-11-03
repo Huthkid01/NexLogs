@@ -11,20 +11,33 @@ interface CategoryDropdownProps {
   onChange: (slug: string) => void;
 }
 
-function renderCategoryIcon(option: ShopCategoryOption) {
-  if (option.imageUrl) {
-    return <img src={option.imageUrl} alt="" className="h-5 w-5 shrink-0 rounded object-contain" />;
+function CategoryInitials({ label }: { label: string }) {
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-gray-100 text-[10px] font-bold uppercase text-gray-500 dark:bg-dm-input dark:text-gray-300">
+      {label.slice(0, 2)}
+    </span>
+  );
+}
+
+function CategoryOptionIcon({ option }: { option: ShopCategoryOption }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (option.imageUrl && !imageFailed) {
+    return (
+      <img
+        src={option.imageUrl}
+        alt=""
+        className="h-5 w-5 shrink-0 rounded object-contain"
+        onError={() => setImageFailed(true)}
+      />
+    );
   }
 
   if (option.platform) {
     return <PlatformLogo platform={option.platform} className="h-5 w-5" />;
   }
 
-  return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-gray-100 text-[10px] font-bold uppercase text-gray-500 dark:bg-dm-input dark:text-gray-300">
-      {option.label.slice(0, 2)}
-    </span>
-  );
+  return <CategoryInitials label={option.label} />;
 }
 
 export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
@@ -65,7 +78,7 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
         <span className="flex items-center gap-2.5 min-w-0">
           {selected ? (
             <>
-              {renderCategoryIcon(selected)}
+              <CategoryOptionIcon option={selected} />
               <span className="truncate font-medium tracking-wide">{selected.label}</span>
             </>
           ) : (
@@ -95,7 +108,7 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
                   value === option.slug && 'bg-gray-50 dark:bg-dm-input',
                 )}
               >
-                {renderCategoryIcon(option)}
+                <CategoryOptionIcon option={option} />
                 <span className="font-medium tracking-wide">{option.label}</span>
               </button>
             </li>

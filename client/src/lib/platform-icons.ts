@@ -17,7 +17,8 @@ export function resolveCategoryIconUrl(category?: {
   image_url?: string | null;
 } | null) {
   if (!category) return null;
-  return normalizeIconUrl(category.image_url) || getCategoryIconPath(category);
+  // Prefer known local icons so Loggsplug placeholder "?" images don't win.
+  return getCategoryIconPath(category) || normalizeIconUrl(category.image_url);
 }
 
 export function resolveProductIconUrl(input: {
@@ -63,6 +64,14 @@ export function resolveProductIconUrl(input: {
 
 export const RDP_ICON_PATH = '/images/platforms/rdp.svg';
 export const TELEGRAM_ICON_PATH = '/images/platforms/telegram.png';
+export const TOOLS_ICON_PATH = '/images/platforms/tools.svg';
+export const VPN_ICON_PATH = '/images/platforms/vpn.svg';
+export const DISCORD_ICON_PATH = '/images/platforms/discord.svg';
+export const REDDIT_ICON_PATH = '/images/platforms/reddit.svg';
+export const THREADS_ICON_PATH = '/images/platforms/threads.svg';
+export const OFFERS_ICON_PATH = '/images/platforms/offers.svg';
+export const MAIL_ICON_PATH = '/images/platforms/mail.svg';
+export const TEXTING_ICON_PATH = '/images/platforms/texting.svg';
 
 function normalizeValue(value: string) {
   return value.trim().toLowerCase();
@@ -107,8 +116,45 @@ export function getPlatformFromCategory(value: string): PlatformType | null {
 }
 
 export function getCategoryIconPath(input: { name?: string | null; slug?: string | null }) {
-  const normalized = normalizeValue(input.slug || input.name || '');
+  // Use both slug + name so "DISCORD HQ..." with slug "accounts" still maps correctly.
+  const normalized = normalizeValue(`${input.slug || ''} ${input.name || ''}`);
+  if (!normalized.trim()) return null;
+
   if (normalized.includes('telegram')) return TELEGRAM_ICON_PATH;
+  if (normalized.includes('rdp')) return RDP_ICON_PATH;
+  if (normalized.includes('discord')) return DISCORD_ICON_PATH;
+  if (normalized.includes('reddit')) return REDDIT_ICON_PATH;
+  if (normalized.includes('threads')) return THREADS_ICON_PATH;
+  if (normalized.includes('vpn') || normalized.includes('proxy')) return VPN_ICON_PATH;
+  if (
+    normalized.includes('tool')
+    || normalized.includes('tutorial')
+    || normalized.includes('guide')
+  ) {
+    return TOOLS_ICON_PATH;
+  }
+  if (
+    normalized.includes('mail')
+    || normalized.includes('icloud')
+    || normalized.includes('gmail')
+  ) {
+    return MAIL_ICON_PATH;
+  }
+  if (
+    normalized.includes('texting')
+    || normalized.includes('sms')
+    || /\bnumbers?\b/.test(normalized)
+  ) {
+    return TEXTING_ICON_PATH;
+  }
+  if (
+    normalized.includes('offer')
+    || normalized.includes('nexlogs')
+    || normalized.includes('loggsplug')
+  ) {
+    return OFFERS_ICON_PATH;
+  }
+  if (normalized.includes('truth')) return PLATFORM_ICON_PATHS.x;
 
   const platform = getPlatformFromCategory(normalized);
   return platform ? getPlatformIconPath(platform) : null;
