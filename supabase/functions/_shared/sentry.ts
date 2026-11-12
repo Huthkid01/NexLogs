@@ -2,8 +2,8 @@
  * Sentry helper for Supabase Edge Functions (Deno).
  * No-ops when SENTRY_DSN is unset so local/dev keeps working.
  */
-// Prefer bare specifier via deno.json import map (keeps IDE/Deno lint clean).
-import * as Sentry from '@sentry/deno';
+// deno-lint-ignore no-import-prefix -- Supabase Edge bundler resolves npm: specs
+import * as Sentry from 'npm:@sentry/deno@10.78.0';
 
 let initialized = false;
 
