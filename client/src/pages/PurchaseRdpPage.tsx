@@ -22,6 +22,7 @@ import {
   isAuthError,
   isInsufficientFundsError,
 } from '@/lib/purchase-errors';
+import { reportClientException } from '@/lib/sentry-report';
 import { cn } from '@/lib/utils';
 import { useHandleSessionExpired } from '@/hooks/useHandleSessionExpired';
 import { orderService, productService, profileService } from '@/services';
@@ -122,6 +123,11 @@ export default function PurchaseRdpPage() {
         await handleSessionExpired();
         return;
       }
+      reportClientException(error, {
+        area: 'rdp_purchase',
+        tags: { stage: 'wallet_buy' },
+        extra: { planId: plan.id, productSlug, priceNgn },
+      });
       toast.error(getFriendlyErrorMessage(error, 'We could not complete your RDP purchase. Please try again or contact support.'));
     } finally {
       setPurchasingPlanId(null);

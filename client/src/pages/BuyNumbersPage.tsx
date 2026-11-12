@@ -32,6 +32,7 @@ import {
 } from '@/lib/sms-verification-code';
 import { useCriticalActivityLock } from '@/lib/critical-activity';
 import { getPurchaseErrorMessage, isAuthError, isInsufficientFundsError } from '@/lib/purchase-errors';
+import { reportClientException } from '@/lib/sentry-report';
 import { useHandleSessionExpired } from '@/hooks/useHandleSessionExpired';
 import {
   smsNumberService,
@@ -1010,6 +1011,10 @@ export default function BuyNumbersPage() {
         await handleSessionExpired();
         return;
       }
+      reportClientException(error, {
+        area: 'sms_purchase',
+        tags: { stage: 'reserve_number', provider: smsProvider },
+      });
       toast.error(getPurchaseErrorMessage(error));
     } finally {
       setOrderingPool(null);
@@ -1048,6 +1053,11 @@ export default function BuyNumbersPage() {
         await handleSessionExpired();
         return;
       }
+      reportClientException(error, {
+        area: 'sms_purchase',
+        tags: { stage: 'fetch_code', provider: smsProvider },
+        extra: { orderId },
+      });
       toast.error(error instanceof Error ? error.message : 'Could not fetch SMS code.');
     } finally {
       setFetchingCodeOrderId(null);
@@ -1090,6 +1100,11 @@ export default function BuyNumbersPage() {
         await handleSessionExpired();
         return;
       }
+      reportClientException(error, {
+        area: 'sms_purchase',
+        tags: { stage: 'resend_code', provider: smsProvider },
+        extra: { orderId: order.id },
+      });
       toast.error(error instanceof Error ? error.message : 'Could not resend SMS.');
     } finally {
       setResendingOrderId(null);
@@ -1138,6 +1153,11 @@ export default function BuyNumbersPage() {
         await handleSessionExpired();
         return;
       }
+      reportClientException(error, {
+        area: 'sms_purchase',
+        tags: { stage: 'cancel_order', provider: smsProvider },
+        extra: { orderId },
+      });
       const message = error instanceof Error ? error.message : 'Could not cancel order.';
       await refetchHistory();
       toast.error(message);
@@ -1188,6 +1208,11 @@ export default function BuyNumbersPage() {
         await handleSessionExpired();
         return;
       }
+      reportClientException(error, {
+        area: 'sms_purchase',
+        tags: { stage: 'ban_number', provider: smsProvider },
+        extra: { orderId },
+      });
       const message = error instanceof Error ? error.message : 'Could not report this number.';
       await refetchHistory();
       toast.error(message);

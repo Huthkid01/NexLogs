@@ -15,6 +15,7 @@ import {
   isInsufficientFundsError,
   isOutOfStockError,
 } from '@/lib/purchase-errors';
+import { reportClientException } from '@/lib/sentry-report';
 import { getDisplayOrderId } from '@/lib/purchase-utils';
 import { getProductVariants } from '@/lib/product-variants';
 import { isLoggsplugProduct, isLoggsplugProductImageUrl } from '@/lib/loggsplug-utils';
@@ -201,10 +202,20 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       }
 
       if (isOutOfStockError(err)) {
+        reportClientException(err, {
+          area: 'product_purchase',
+          tags: { stage: 'out_of_stock', kind: isLoggsplug ? 'loggsplug' : 'product' },
+          extra: { productId: displayProduct.id, variantId, price },
+        });
         toast.error('This product is out of stock.');
         return;
       }
 
+      reportClientException(err, {
+        area: 'product_purchase',
+        tags: { stage: 'wallet_buy', kind: isLoggsplug ? 'loggsplug' : 'product' },
+        extra: { productId: displayProduct.id, variantId, price },
+      });
       toast.error('Error while purchasing. Please try again or contact customer support.');
     } finally {
       setPurchasing(false);
