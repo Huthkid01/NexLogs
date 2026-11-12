@@ -9,6 +9,7 @@ import { PurchaseReviewModal } from '@/components/purchases/PurchaseReviewModal'
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { LoggsplugDescriptionView } from '@/components/home/LoggsplugDescriptionView';
+import { useCriticalActivityLock } from '@/lib/critical-activity';
 import {
   isAuthError,
   isInsufficientFundsError,
@@ -61,6 +62,7 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
   const [reviewOpen, setReviewOpen] = useState(false);
 
   useModalLock(open, onClose);
+  useCriticalActivityLock('marketplace-purchase', purchasing);
 
   const { data: liveProduct } = useQuery({
     queryKey: ['product', product?.id],

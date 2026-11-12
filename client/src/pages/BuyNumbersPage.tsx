@@ -30,6 +30,7 @@ import {
   isSmsHistoryOrder,
   isValidSmsVerificationCode,
 } from '@/lib/sms-verification-code';
+import { useCriticalActivityLock } from '@/lib/critical-activity';
 import { getPurchaseErrorMessage, isAuthError, isInsufficientFundsError } from '@/lib/purchase-errors';
 import { useHandleSessionExpired } from '@/hooks/useHandleSessionExpired';
 import {
@@ -460,6 +461,14 @@ export default function BuyNumbersPage() {
   const [banningOrderId, setBanningOrderId] = useState<string | null>(null);
   const [fetchingCodeOrderId, setFetchingCodeOrderId] = useState<string | null>(null);
   const [resendingOrderId, setResendingOrderId] = useState<string | null>(null);
+  useCriticalActivityLock(
+    'sms-purchase',
+    orderingPool != null
+      || cancellingOrderId != null
+      || banningOrderId != null
+      || fetchingCodeOrderId != null
+      || resendingOrderId != null,
+  );
   const [waitingForCodeOrderIds, setWaitingForCodeOrderIds] = useState<Set<string>>(new Set());
   const [orderSummaryContext, setOrderSummaryContext] = useState<SmsOrderSummaryContext | null>(null);
   const [noNumbersModalOpen, setNoNumbersModalOpen] = useState(false);

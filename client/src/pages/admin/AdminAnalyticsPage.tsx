@@ -360,7 +360,7 @@ export default function AdminAnalyticsPage() {
         <div className="space-y-2">
           <h1 className="admin-heading text-3xl font-semibold sm:text-4xl">Analytics</h1>
           <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
-            Daily, weekly, and monthly sales plus live stock across the marketplace.
+            Sales cover marketplace products, RDP, Loggsplug, Telegram, and SMS number orders. Stock lists every product SKU (SMS inventory is provider-side, not in this table).
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

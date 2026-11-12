@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
+import { useCriticalActivityLock } from '@/lib/critical-activity';
 import { getFriendlyErrorMessage } from '@/lib/purchase-errors';
 import { reportClientException } from '@/lib/sentry-report';
 import {
@@ -40,6 +41,11 @@ export default function AddFundsPage() {
   const redirectHandled = useRef(false);
   const recoveryHandled = useRef(false);
   const { data: walletStats } = useWalletBalance(user?.id);
+
+  useCriticalActivityLock(
+    'add-funds-flow',
+    submitting || verifyingRedirect || recoveringDeposit || confirmOpen,
+  );
 
   const refreshPendingIntents = async (userId: string) => {
     const intents = await getPendingWalletPaymentIntents(userId);

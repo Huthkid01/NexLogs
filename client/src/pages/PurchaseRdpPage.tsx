@@ -16,6 +16,7 @@ import {
   type RdpPlan,
 } from '@/lib/rdp-catalog';
 import { buildLiveRdpCatalog } from '@/lib/rdp-live-catalog';
+import { useCriticalActivityLock } from '@/lib/critical-activity';
 import {
   getFriendlyErrorMessage,
   isAuthError,
@@ -45,6 +46,7 @@ export default function PurchaseRdpPage() {
   const [durationId, setDurationId] = useState(baseCatalog.durations[0]?.id ?? '1-month');
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
+  useCriticalActivityLock('rdp-purchase', purchasingPlanId != null);
 
   const selectedDuration = useMemo(
     () => baseCatalog.durations.find((duration) => duration.id === durationId) ?? baseCatalog.durations[0],

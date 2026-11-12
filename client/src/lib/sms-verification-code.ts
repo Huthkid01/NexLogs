@@ -16,7 +16,11 @@ export function getDisplaySmsVerificationCode(order: {
     : null;
 }
 
-/** SMS orders that actually received a code (excludes cancel/refund/expired and pending numbers). */
+/**
+ * SMS sales that should count in analytics/revenue.
+ * Includes billed activations (active or completed). Excludes cancel/refund/expired.
+ * Code delivery is not required — charging the wallet is the sale.
+ */
 export function isCountableSmsOrder(order: {
   status: string;
   verification_code: string | null;
@@ -24,7 +28,7 @@ export function isCountableSmsOrder(order: {
   if (order.status === 'cancelled' || order.status === 'refunded' || order.status === 'expired') {
     return false;
   }
-  return isValidSmsVerificationCode(order.verification_code);
+  return order.status === 'active' || order.status === 'completed' || isValidSmsVerificationCode(order.verification_code);
 }
 
 /** History rows: only finished activations that received a verification code. */
