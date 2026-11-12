@@ -11,6 +11,8 @@ interface ProductIconProps {
   };
   size?: 'sm' | 'md';
   className?: string;
+  /** Load sooner for above-the-fold featured cards. */
+  priority?: boolean;
 }
 
 interface ProductIconBySlugProps {
@@ -31,6 +33,10 @@ function RdpIcon({ size = 'md', className }: { size?: 'sm' | 'md'; className?: s
     <img
       src={RDP_ICON_PATH}
       alt="RDP"
+      width={size === 'sm' ? 36 : 44}
+      height={size === 'sm' ? 36 : 44}
+      loading="lazy"
+      decoding="async"
       className={cn('shrink-0 object-contain', SIZE_CLASSES[size], className)}
     />
   );
@@ -41,22 +47,30 @@ function StoredProductIcon({
   alt,
   size = 'md',
   className,
+  priority = false,
 }: {
   src: string;
   alt: string;
   size?: 'sm' | 'md';
   className?: string;
+  priority?: boolean;
 }) {
   return (
     <img
       src={src}
       alt={alt}
+      width={size === 'sm' ? 36 : 44}
+      height={size === 'sm' ? 36 : 44}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      fetchPriority={priority ? 'high' : 'low'}
+      referrerPolicy="no-referrer"
       className={cn('shrink-0 object-contain rounded-md', SIZE_CLASSES[size], className)}
     />
   );
 }
 
-export function ProductIcon({ product, size = 'md', className }: ProductIconProps) {
+export function ProductIcon({ product, size = 'md', className, priority = false }: ProductIconProps) {
   if (isRdpProduct(product)) {
     return <RdpIcon size={size} className={className} />;
   }
@@ -69,6 +83,7 @@ export function ProductIcon({ product, size = 'md', className }: ProductIconProp
         alt={`${product.category?.name ?? product.platform} icon`}
         size={size}
         className={className}
+        priority={priority}
       />
     );
   }

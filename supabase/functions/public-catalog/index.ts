@@ -27,7 +27,13 @@ const PUBLIC_PRODUCT_COLUMNS =
 const PUBLIC_PRODUCT_SELECT =
   `${PUBLIC_PRODUCT_COLUMNS}, category:categories(id, name, slug, image_url, is_active, sort_order), product_images(image_url, sort_order)`;
 
-type CatalogAction = 'categories' | 'featured' | 'products' | 'invalidate' | 'invalidate-listings';
+type CatalogAction =
+  | 'categories'
+  | 'featured'
+  | 'home'
+  | 'products'
+  | 'invalidate'
+  | 'invalidate-listings';
 
 interface RequestBody {
   action?: CatalogAction;
@@ -106,6 +112,37 @@ Deno.serve(async (req) => {
       );
 
       return jsonResponse({ success: true, products });
+    }
+
+    // One round-trip for the guest homepage (categories + featured).
+    if (action === 'home') {
+      const limit = Math.min(24, Math.max(1, Math.floor(Number(body.limit ?? 6))));
+      const [categories, products] = await Promise.all([
+        withCache(REDIS_KEYS.categories, REDIS_TTL.categories, async () => {
+          const { data, error } = await admin
+            .from('categories')
+            .select('id, name, slug, image_url, is_active, sort_order, created_at, updated_at')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
+          if (error) throw error;
+          return data ?? [];
+        }),
+        withCache(REDIS_KEYS.featured(limit), REDIS_TTL.featured, async () => {
+          const { data, error } = await admin
+            .from('products')
+            .select(PUBLIC_PRODUCT_SELECT)
+            .eq('is_active', true)
+            .gt('stock', 0)
+            .eq('featured', true)
+            .order('sort_order', { ascending: true })
+            .order('id', { ascending: true })
+            .limit(limit);
+          if (error) throw error;
+          return data ?? [];
+        }),
+      ]);
+
+      return jsonResponse({ success: true, categories, products });
     }
 
     if (action === 'products') {

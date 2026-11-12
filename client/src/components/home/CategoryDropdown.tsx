@@ -6,10 +6,13 @@ import { buildShopCategoryOptions, type ShopCategoryOption } from '@/lib/shop-ca
 import { catalogQueryOptions } from '@/lib/query-cache';
 import { categoryService } from '@/services';
 import { cn } from '@/lib/utils';
+import type { Category } from '@/types';
 
 interface CategoryDropdownProps {
   value: string;
   onChange: (slug: string) => void;
+  /** When provided (e.g. from home-catalog bootstrap), skip a second categories fetch. */
+  categories?: Category[];
 }
 
 function CategoryInitials({ label }: { label: string }) {
@@ -28,6 +31,10 @@ function CategoryOptionIcon({ option }: { option: ShopCategoryOption }) {
       <img
         src={option.imageUrl}
         alt=""
+        width={20}
+        height={20}
+        loading="lazy"
+        decoding="async"
         className="h-5 w-5 shrink-0 rounded object-contain"
         onError={() => setImageFailed(true)}
       />
@@ -41,16 +48,18 @@ function CategoryOptionIcon({ option }: { option: ShopCategoryOption }) {
   return <CategoryInitials label={option.label} />;
 }
 
-export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
+export function CategoryDropdown({ value, onChange, categories: categoriesProp }: CategoryDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: categories = [] } = useQuery({
+  const { data: fetchedCategories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: categoryService.getAll,
     ...catalogQueryOptions,
+    enabled: !categoriesProp,
   });
 
+  const categories = categoriesProp ?? fetchedCategories;
   const options = useMemo(() => buildShopCategoryOptions(categories), [categories]);
   const selected = options.find((option) => option.slug === value);
 

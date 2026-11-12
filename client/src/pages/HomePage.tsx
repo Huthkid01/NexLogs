@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { PlatformCarousel } from '@/components/home/PlatformCarousel';
@@ -22,12 +22,13 @@ import { buildShopCategoryOptions } from '@/lib/shop-category-options';
 import { catalogQueryOptions } from '@/lib/query-cache';
 import { isRdpProduct } from '@/lib/rdp-utils';
 import { SEO_PAGES, SEO_SITE_URL } from '@/lib/seo';
-import type { Product } from '@/types';
+import type { Category, Product } from '@/types';
 
 export default function HomePage() {
   const { user } = useAuth();
   const { content } = useSiteContent();
   useSiteVisitTracking();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,19 +45,33 @@ export default function HomePage() {
   });
   const [page, setPage] = useState(1);
 
-  const { data: categories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: categoryService.getAll,
+  // One Redis-backed edge call for categories + featured (faster first paint).
+  const { data: homeCatalog, isLoading: featuredLoading } = useQuery({
+    queryKey: ['home-catalog'],
+    queryFn: async () => {
+      const { catalogCacheService } = await import('@/services/catalog-cache.service');
+      const boot = await catalogCacheService.getHome(6);
+      if (boot) {
+        queryClient.setQueryData(['categories'], boot.categories);
+        queryClient.setQueryData(['featured-products'], boot.products);
+        return boot;
+      }
+
+      const [categories, products] = await Promise.all([
+        categoryService.getAll(),
+        productService.getFeatured(6),
+      ]);
+      queryClient.setQueryData(['categories'], categories);
+      queryClient.setQueryData(['featured-products'], products);
+      return { categories, products };
+    },
     ...catalogQueryOptions,
   });
+
+  const categories = homeCatalog?.categories as Category[] | undefined;
+  const featured = homeCatalog?.products;
 
   const categoryId = categories?.find((cat) => cat.slug === categorySlug)?.id;
-
-  const { data: featured, isLoading: featuredLoading } = useQuery({
-    queryKey: ['featured-products'],
-    queryFn: () => productService.getFeatured(6),
-    ...catalogQueryOptions,
-  });
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['home-products', categorySlug, categoryId, search, sort, page],
@@ -189,8 +204,12 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
-            {featured?.map((product) => (
-              <SubscriptionCard key={product.id} product={product} />
+            {featured?.map((product, index) => (
+              <SubscriptionCard
+                key={product.id}
+                product={product}
+                priority={index < 2}
+              />
             ))}
             <div className="flex w-[min(82vw,300px)] shrink-0 snap-start flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center dark:border-dm-input-border dark:bg-dm-surface sm:w-[300px]">
               <div className="w-10 h-10 rounded-full border border-gray-300 dark:border-dm-input-border flex items-center justify-center mb-3">
@@ -227,7 +246,11 @@ export default function HomePage() {
 
       <div id="categories">
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1.5">{content.home.categoriesLabel}</p>
-        <CategoryDropdown value={categorySlug} onChange={handleCategoryChange} />
+        <CategoryDropdown
+          value={categorySlug}
+          onChange={handleCategoryChange}
+          categories={categories}
+        />
       </div>
 
       <div id="catalog">

@@ -13,6 +13,16 @@ async function invokePublicCatalog<T>(body: Record<string, unknown>): Promise<T 
 }
 
 export const catalogCacheService = {
+  /** Single request for homepage categories + featured products. */
+  async getHome(limit = 6): Promise<{ categories: Category[]; products: Product[] } | null> {
+    const payload = await invokePublicCatalog<{
+      categories?: Category[];
+      products?: Product[];
+    }>({ action: 'home', limit });
+    if (!Array.isArray(payload?.categories) || !Array.isArray(payload?.products)) return null;
+    return { categories: payload.categories, products: payload.products };
+  },
+
   async getCategories(): Promise<Category[] | null> {
     const payload = await invokePublicCatalog<{ categories?: Category[] }>({ action: 'categories' });
     return Array.isArray(payload?.categories) ? payload.categories : null;

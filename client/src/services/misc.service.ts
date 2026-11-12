@@ -175,7 +175,8 @@ export const adminService = {
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('orders').select('total_amount, status, payment_status'),
       supabase.from('sms_number_orders').select('charged_ngn, status, verification_code'),
-      supabase.from('products').select('*', { count: 'exact', head: true }),
+      // Never select('*') on products — product_details is revoked from authenticated (090/091).
+      supabase.from('products').select('id', { count: 'exact', head: true }),
       supabase
         .from('products')
         .select('id, title, slug, stock, is_active, updated_at')

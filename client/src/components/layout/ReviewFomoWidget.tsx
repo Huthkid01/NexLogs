@@ -9,9 +9,18 @@ const DISPLAY_MS = 6_000;
 const BETWEEN_PURCHASES_MS = 8_000;
 
 export function ReviewFomoWidget() {
+  const [fomoReady, setFomoReady] = useState(false);
+
+  useEffect(() => {
+    // Defer FOMO until after first paint so homepage catalog wins the network.
+    const timer = window.setTimeout(() => setFomoReady(true), 2_500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const { data: purchases = [] } = useQuery({
     queryKey: ['daily-order-fomo'],
     queryFn: orderFomoService.getDailyPurchases,
+    enabled: fomoReady,
     // Refresh often so new marketplace + SMS purchases enter the rotation.
     staleTime: CACHE_TIMES.socialStaleMs,
     gcTime: CACHE_TIMES.catalogGcMs,
