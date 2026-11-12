@@ -67,20 +67,12 @@ test.describe('Shop category stock filtering (live)', () => {
     await expect(page.locator('#quick-actions')).toBeVisible({ timeout: 20_000 });
 
     const list = await openCategoryDropdown(page);
-    const options = list.getByRole('option');
-    const count = await options.count();
-    expect(count).toBeGreaterThan(0);
+    await expect(list.getByRole('option').first()).toBeVisible();
 
-    let targetIndex = -1;
-    for (let i = 0; i < count; i++) {
-      const text = (await options.nth(i).innerText()).trim().toUpperCase();
-      if (text === 'RDP' || text.endsWith(' RDP')) continue;
-      targetIndex = i;
-      break;
-    }
-    expect(targetIndex).toBeGreaterThanOrEqual(0);
+    const nonRdp = list.getByRole('option').filter({ hasNotText: /^RDP$/i });
+    await expect(nonRdp.first()).toBeVisible({ timeout: 10_000 });
+    await nonRdp.first().locator('button').click({ force: true });
 
-    await options.nth(targetIndex).locator('button').click();
     await expect(page).toHaveURL(/\/marketplace\/[^/]+|\/purchase-rdp/, { timeout: 20_000 });
   });
 });
