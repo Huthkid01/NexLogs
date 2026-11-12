@@ -1,6 +1,22 @@
 const ERROR_BOUNDARY_KEY = 'nexlogs_error_boundary_active';
 const AUTO_RECOVERED_KEY = 'nexlogs_error_boundary_auto_recovered';
+const CHUNK_RELOAD_KEY = 'nexlogs_chunk_load_reloaded';
 const HEALTHY_BOOT_DELAY_MS = 10_000;
+
+/** Stale JS chunks after a deploy (Safari/Chrome/Firefox wording). */
+export function isChunkLoadError(error: unknown): boolean {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'string'
+      ? error
+      : String((error as { message?: unknown } | null | undefined)?.message ?? error ?? '');
+
+  return /importing a module script failed/i.test(message)
+    || /failed to fetch dynamically imported module/i.test(message)
+    || /error loading dynamically imported module/i.test(message)
+    || /loading chunk [\w-]+ failed/i.test(message)
+    || /chunkloaderror/i.test(message);
+}
 
 export function markErrorBoundaryActive() {
   try {
@@ -76,4 +92,49 @@ export function tryAutoRecoverFromError(): boolean {
   clearErrorBoundaryActive();
   window.location.reload();
   return true;
+}
+
+function takeChunkReloadSlot(): boolean {
+  try {
+    if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1') return false;
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function clearChunkReloadGuard() {
+  try {
+    sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** One hard reload when a lazy route/chunk is missing after a new deploy. */
+export function tryReloadForChunkLoadError(error?: unknown): boolean {
+  if (error !== undefined && !isChunkLoadError(error)) return false;
+  if (!takeChunkReloadSlot()) return false;
+  window.location.reload();
+  return true;
+}
+
+/**
+ * Recovers from Vite/React lazy-import failures after deploys.
+ * Without this, users on an old tab hit "Importing a module script failed".
+ */
+export function initChunkLoadRecovery() {
+  window.setTimeout(clearChunkReloadGuard, HEALTHY_BOOT_DELAY_MS);
+
+  window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault();
+    tryReloadForChunkLoadError();
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    if (!isChunkLoadError(event.reason)) return;
+    event.preventDefault();
+    tryReloadForChunkLoadError(event.reason);
+  });
 }

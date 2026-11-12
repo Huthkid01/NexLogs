@@ -33,5 +33,13 @@ if (dsn) {
     ],
     replaysSessionSampleRate: isProd ? 0.05 : 0.1,
     replaysOnErrorSampleRate: 1.0,
+    // Expected after deploys when an old tab loads a removed JS chunk; we auto-reload.
+    ignoreErrors: [
+      /Importing a module script failed/i,
+      /Failed to fetch dynamically imported module/i,
+      /error loading dynamically imported module/i,
+      /Loading chunk [\w-]+ failed/i,
+      /ChunkLoadError/i,
+    ],
   });
 }

@@ -10,13 +10,14 @@ import { SiteContentProvider } from '@/contexts/SiteContentContext';
 import { DisplayCurrencyProvider } from '@/contexts/DisplayCurrencyContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { isGoogleSignInConfigured, loadGoogleScript } from '@/lib/google-auth';
-import { initErrorBoundaryRecovery } from '@/lib/error-boundary-recovery';
+import { initChunkLoadRecovery, initErrorBoundaryRecovery } from '@/lib/error-boundary-recovery';
 import { initProductionDevtoolsGuard } from '@/lib/production-devtools-guard';
 import { CACHE_TIMES } from '@/lib/query-cache';
 import './index.css';
 
 initProductionDevtoolsGuard();
 initErrorBoundaryRecovery();
+initChunkLoadRecovery();
 
 if (isGoogleSignInConfigured()) {
   void loadGoogleScript();
