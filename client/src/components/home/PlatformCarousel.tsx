@@ -215,22 +215,27 @@ export function PlatformCarousel() {
             >
               <ChevronRight className="h-6 w-6" strokeWidth={2.5} />
             </button>
-            <div className="absolute bottom-2.5 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
-              {slides.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setCurrent(i)}
-                  className={`h-1.5 rounded-full shadow-sm transition-all ${
-                    i === safeCurrent ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
-                  }`}
-                  aria-label={`Go to slide ${i + 1}`}
-                />
-              ))}
-            </div>
           </>
         )}
       </SlideBanner>
+
+      {/* Outside the white hero art so pagination is not mistaken for design dots in the image. */}
+      {showNavigation && (
+        <div className="mt-2.5 flex items-center justify-center gap-1.5">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setCurrent(i)}
+              className={`h-1.5 rounded-full transition-all ${
+                i === safeCurrent ? 'w-4 bg-[#f26522]' : 'w-1.5 bg-gray-300 dark:bg-dm-border'
+              }`}
+              aria-label={`Go to slide ${i + 1}`}
+              aria-current={i === safeCurrent ? 'true' : undefined}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
