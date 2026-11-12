@@ -1,6 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import {
+  ArcElement,
+  Chart as ChartJS,
+  DoughnutController,
+  Legend,
+  Tooltip,
+  type Chart,
+} from 'chart.js';
 import {
   AlertTriangle,
   BarChart3,
@@ -10,16 +18,20 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import { AdminListPagination } from '@/components/admin/AdminListPagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAdminListPagination } from '@/hooks/useAdminListPagination';
 import { useTheme } from '@/hooks/useTheme';
 import { adminService } from '@/services';
 import { cn, formatPrice } from '@/lib/utils';
 import type { AdminAnalyticsSnapshot, AdminAnalyticsTrendPoint } from '@/types';
 import { toast } from 'sonner';
+
+ChartJS.register(ArcElement, DoughnutController, Legend, Tooltip);
 
 type SalesRange = 'daily' | 'weekly' | 'monthly';
 type StockFilter = 'all' | 'in_stock' | 'low' | 'out';
@@ -49,31 +61,87 @@ function AnalyticsDonut({
   centerLabel: string;
   isDark: boolean;
 }) {
-  const total = segments.reduce((sum, item) => sum + item.value, 0);
-  const gradient = (() => {
-    if (total <= 0) return isDark ? '#1e293b' : '#e2e8f0';
-    let cursor = 0;
-    return segments
-      .filter((item) => item.value > 0)
-      .map((item) => {
-        const start = cursor;
-        const share = (item.value / total) * 100;
-        cursor += share;
-        return `${item.color} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
-      })
-      .join(', ');
-  })();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const chartRef = useRef<Chart<'doughnut'> | null>(null);
+  const activeSegments = useMemo(
+    () => segments.filter((item) => item.value > 0),
+    [segments],
+  );
+  const chartKey = useMemo(
+    () => activeSegments.map((item) => `${item.label}:${item.value}:${item.color}`).join('|'),
+    [activeSegments],
+  );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    chartRef.current?.destroy();
+    chartRef.current = null;
+
+    if (!activeSegments.length) return;
+
+    chartRef.current = new ChartJS(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: activeSegments.map((item) => item.label),
+        datasets: [
+          {
+            data: activeSegments.map((item) => item.value),
+            backgroundColor: activeSegments.map((item) => item.color),
+            borderWidth: 0,
+            hoverOffset: 6,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        animation: {
+          animateRotate: true,
+          animateScale: true,
+          duration: 1100,
+          easing: 'easeOutQuart',
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            callbacks: {
+              label(context) {
+                const label = context.label ?? '';
+                const value = context.parsed;
+                return `${label}: ${value}`;
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    };
+  }, [activeSegments, chartKey, isDark]);
 
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
-      <div
-        className="relative h-40 w-40 shrink-0 rounded-full"
-        style={{ background: `conic-gradient(${gradient})` }}
-        aria-hidden
-      >
+      <div className="relative h-44 w-44 shrink-0">
+        {activeSegments.length ? (
+          <canvas ref={canvasRef} aria-label={`${centerLabel} chart`} />
+        ) : (
+          <div
+            className={cn(
+              'flex h-full w-full items-center justify-center rounded-full border',
+              isDark ? 'border-[#22324a] bg-[#081624]' : 'border-slate-200 bg-slate-50',
+            )}
+          />
+        )}
         <div
           className={cn(
-            'absolute inset-[18%] flex flex-col items-center justify-center rounded-full text-center',
+            'pointer-events-none absolute inset-[22%] flex flex-col items-center justify-center rounded-full text-center',
             isDark ? 'bg-[#0b1628]' : 'bg-white',
           )}
         >
@@ -108,10 +176,16 @@ function SalesTrendBars({
   isDark: boolean;
 }) {
   const peak = Math.max(...points.map((point) => point.revenue), 0);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [points]);
 
   return (
     <div className="space-y-3">
-      {points.map((point) => (
+      {points.map((point, index) => (
         <div key={point.label} className="space-y-1">
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className={cn('truncate', isDark ? 'text-slate-300' : 'text-slate-700')}>{point.label}</span>
@@ -122,10 +196,13 @@ function SalesTrendBars({
               </span>
             </span>
           </div>
-          <div className={cn('h-2 rounded-full', isDark ? 'bg-[#132038]' : 'bg-slate-100')}>
+          <div className={cn('h-2 overflow-hidden rounded-full', isDark ? 'bg-[#132038]' : 'bg-slate-100')}>
             <div
-              className="h-2 rounded-full bg-[#f26522] transition-[width]"
-              style={{ width: `${peak > 0 ? (point.revenue / peak) * 100 : 0}%` }}
+              className="h-2 rounded-full bg-[#f26522] transition-[width] duration-700 ease-out"
+              style={{
+                width: ready ? `${peak > 0 ? (point.revenue / peak) * 100 : 0}%` : '0%',
+                transitionDelay: `${Math.min(index, 10) * 40}ms`,
+              }}
             />
           </div>
         </div>
@@ -192,6 +269,18 @@ export default function AdminAnalyticsPage() {
       );
     });
   }, [snapshot?.stockInventory, stockFilter, stockSearch]);
+
+  const {
+    page: stockPage,
+    setPage: setStockPage,
+    totalPages: stockTotalPages,
+    totalItems: stockTotalItems,
+    pageStart: stockPageStart,
+    pageEnd: stockPageEnd,
+    paginatedItems: pagedStock,
+  } = useAdminListPagination(filteredStock, {
+    resetKey: `${stockFilter}:${stockSearch}`,
+  });
 
   const cardClass = cn(
     'rounded-2xl',
@@ -475,55 +564,66 @@ export default function AdminAnalyticsPage() {
             </select>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          {filteredStock.length ? (
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className={cn('border-b text-xs uppercase tracking-wide', isDark ? 'border-[#1c2b40] text-slate-500' : 'border-slate-200 text-slate-500')}>
-                  <th className="pb-3 pr-3 font-medium">Product</th>
-                  <th className="pb-3 pr-3 font-medium">Category</th>
-                  <th className="pb-3 pr-3 font-medium">Platform</th>
-                  <th className="pb-3 pr-3 font-medium">Stock</th>
-                  <th className="pb-3 pr-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStock.map((row) => {
-                  const level = stockLevel(row.stock);
-                  return (
-                    <tr
-                      key={row.id}
-                      className={cn('border-b last:border-0', isDark ? 'border-[#132038]' : 'border-slate-100')}
-                    >
-                      <td className="py-3 pr-3">
-                        <div className="font-medium">{row.title}</div>
-                        <div className={cn('text-xs', isDark ? 'text-slate-500' : 'text-slate-500')}>{row.slug}</div>
-                      </td>
-                      <td className="py-3 pr-3">{row.category || '—'}</td>
-                      <td className="py-3 pr-3 capitalize">{row.platform}</td>
-                      <td className="py-3 pr-3 font-semibold tabular-nums">{row.stock}</td>
-                      <td className="py-3 pr-3">
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            level === 'out' && 'bg-red-500/15 text-red-300',
-                            level === 'low' && 'bg-amber-500/15 text-amber-300',
-                            level === 'in_stock' && 'bg-emerald-500/15 text-emerald-300',
-                          )}
-                        >
-                          {level === 'out' ? 'Out' : level === 'low' ? 'Low' : 'In stock'}
-                          {!row.is_active ? ' · Hidden' : ''}
-                        </Badge>
-                      </td>
-                      <td className="py-3 text-xs tabular-nums">
-                        {new Date(row.updated_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <CardContent className="space-y-4 overflow-x-auto">
+          {pagedStock.length ? (
+            <>
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className={cn('border-b text-xs uppercase tracking-wide', isDark ? 'border-[#1c2b40] text-slate-500' : 'border-slate-200 text-slate-500')}>
+                    <th className="pb-3 pr-3 font-medium">Product</th>
+                    <th className="pb-3 pr-3 font-medium">Category</th>
+                    <th className="pb-3 pr-3 font-medium">Platform</th>
+                    <th className="pb-3 pr-3 font-medium">Stock</th>
+                    <th className="pb-3 pr-3 font-medium">Status</th>
+                    <th className="pb-3 font-medium">Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedStock.map((row) => {
+                    const level = stockLevel(row.stock);
+                    return (
+                      <tr
+                        key={row.id}
+                        className={cn('border-b last:border-0', isDark ? 'border-[#132038]' : 'border-slate-100')}
+                      >
+                        <td className="py-3 pr-3">
+                          <div className="font-medium">{row.title}</div>
+                          <div className={cn('text-xs', isDark ? 'text-slate-500' : 'text-slate-500')}>{row.slug}</div>
+                        </td>
+                        <td className="py-3 pr-3">{row.category || '—'}</td>
+                        <td className="py-3 pr-3 capitalize">{row.platform}</td>
+                        <td className="py-3 pr-3 font-semibold tabular-nums">{row.stock}</td>
+                        <td className="py-3 pr-3">
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              level === 'out' && 'bg-red-500/15 text-red-300',
+                              level === 'low' && 'bg-amber-500/15 text-amber-300',
+                              level === 'in_stock' && 'bg-emerald-500/15 text-emerald-300',
+                            )}
+                          >
+                            {level === 'out' ? 'Out' : level === 'low' ? 'Low' : 'In stock'}
+                            {!row.is_active ? ' · Hidden' : ''}
+                          </Badge>
+                        </td>
+                        <td className="py-3 text-xs tabular-nums">
+                          {new Date(row.updated_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <AdminListPagination
+                page={stockPage}
+                totalPages={stockTotalPages}
+                totalItems={stockTotalItems}
+                pageStart={stockPageStart}
+                pageEnd={stockPageEnd}
+                onPageChange={setStockPage}
+                isDark={isDark}
+              />
+            </>
           ) : (
             <p className={cn('py-8 text-center text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>
               No products match this stock filter.

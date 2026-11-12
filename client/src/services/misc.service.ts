@@ -219,7 +219,7 @@ export const adminService = {
       supabase.from('orders').select('total_amount, status, payment_status, created_at'),
       supabase
         .from('order_items')
-        .select('quantity, price, product:products(platform, country, slug, title)'),
+        .select('quantity, price, product:products(platform, country, slug, title), order:orders(payment_status, status)'),
       supabase
         .from('sms_number_orders')
         .select('charged_ngn, status, created_at, country_name, country_id, verification_code'),
@@ -246,12 +246,15 @@ export const adminService = {
         quantity: number;
         price: number;
         product: { platform: string; country: string | null; slug: string; title: string } | { platform: string; country: string | null; slug: string; title: string }[] | null;
+        order: { payment_status: string; status: string } | { payment_status: string; status: string }[] | null;
       };
       const product = Array.isArray(item.product) ? item.product[0] ?? null : item.product;
+      const order = Array.isArray(item.order) ? item.order[0] ?? null : item.order;
       return {
         quantity: Number(item.quantity),
         price: Number(item.price),
         product,
+        order,
       };
     });
 

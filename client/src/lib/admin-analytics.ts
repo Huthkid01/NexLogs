@@ -23,6 +23,10 @@ interface AnalyticsOrderItem {
     slug: string;
     title: string;
   } | null;
+  order?: {
+    payment_status: string;
+    status: string;
+  } | null;
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -258,8 +262,13 @@ export function buildAdminAnalyticsSnapshot(
     monthly: sumSalesInRange(countableOrders, countableSmsOrders, monthlyWindow.start, monthlyWindow.end),
   };
 
+  const countableOrderItems = orderItems.filter((item) => {
+    if (!item.order) return true; // legacy rows without join still counted
+    return isCountableProductOrder(item.order);
+  });
+
   const platformTotals = new Map<string, number>();
-  for (const item of orderItems) {
+  for (const item of countableOrderItems) {
     if (!item.product) continue;
     const label = getPlatformLabel(item.product);
     const amount = Number(item.price) * Number(item.quantity);
@@ -271,7 +280,7 @@ export function buildAdminAnalyticsSnapshot(
   }
 
   const countryTotals = new Map<string, number>();
-  for (const item of orderItems) {
+  for (const item of countableOrderItems) {
     if (!item.product) continue;
     const label = getCountryLabel(item.product.country);
     const amount = Number(item.quantity);
