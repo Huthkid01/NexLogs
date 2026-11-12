@@ -22,7 +22,8 @@ export function PlatformCarousel() {
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
 
-  // Guests get the branded hero image; signed-in users get admin/promo slides.
+  // Guests always get the branded hero. Signed-in users get Admin → Slides when
+  // configured; otherwise the same hero so /marketplace is never blank up top.
   const slides = useMemo(() => {
     if (!user) return [];
     return content.slides
@@ -48,11 +49,9 @@ export function PlatformCarousel() {
     );
   }
 
-  if (!user) {
+  if (!user || !slides.length) {
     return <GuestHeroBanner />;
   }
-
-  if (!slides.length) return null;
 
   const safeCurrent = current % slides.length;
   const slide = slides[safeCurrent];

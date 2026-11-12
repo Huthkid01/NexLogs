@@ -1,17 +1,24 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const HERO_MOBILE = '/images/hero/nexlogs-hero-mobile.jpg';
 const HERO_DESKTOP = '/images/hero/nexlogs-hero-desktop.jpg';
 
 /**
- * Guest homepage hero — art-directed images (mobile + desktop) so the banner
- * shows fully like Socialab-style sliders, instead of a fixed crop that clips text.
+ * Branded homepage/marketplace hero — art-directed images (mobile + desktop)
+ * so the banner shows fully instead of a fixed crop that clips text.
  */
 export function GuestHeroBanner() {
+  const { user } = useAuth();
+  const href = user ? '/marketplace#subscriptions' : '/register';
+  const label = user
+    ? 'Browse Nexlogs featured products'
+    : 'Get started on Nexlogs — shop SMS numbers, RDP, and social accounts';
+
   return (
     <Link
-      to="/register"
-      aria-label="Get started on Nexlogs — shop SMS numbers, RDP, and social accounts"
+      to={href}
+      aria-label={label}
       className="block overflow-hidden rounded-none bg-[#f26522] lg:rounded-2xl"
     >
       <picture>
