@@ -124,12 +124,15 @@ const LEGACY_DEFAULT_SLIDE_DESCRIPTION = 'Featured platforms and marketplace hig
 const DEFAULT_SLIDE_DESCRIPTION = 'Featured platforms and marketplace';
 const LEGACY_DEFAULT_SLIDE_CTA = 'Shop Now';
 
+/** Bust browser cache when hero JPG pixels change under the same path. */
+const HERO_ASSET_VERSION = '20261112e';
+
 /** Built-in heroes for homepage + marketplace until admin uploads custom slides. */
 export const GUEST_HOME_SLIDES: SiteContent['slides'] = [
   {
     id: 'slide-nexlogs-shop',
-    imageUrl: '/images/hero/nexlogs-hero-desktop.jpg',
-    mobileImageUrl: '/images/hero/nexlogs-hero-mobile.jpg',
+    imageUrl: `/images/hero/nexlogs-hero-desktop.jpg?v=${HERO_ASSET_VERSION}`,
+    mobileImageUrl: `/images/hero/nexlogs-hero-mobile.jpg?v=${HERO_ASSET_VERSION}`,
     title: '',
     description: '',
     ctaLabel: '',
@@ -139,8 +142,8 @@ export const GUEST_HOME_SLIDES: SiteContent['slides'] = [
   },
   {
     id: 'slide-nexlogs-telegram',
-    imageUrl: '/images/hero/nexlogs-hero-telegram-desktop.jpg',
-    mobileImageUrl: '/images/hero/nexlogs-hero-telegram-mobile.jpg',
+    imageUrl: `/images/hero/nexlogs-hero-telegram-desktop.jpg?v=${HERO_ASSET_VERSION}`,
+    mobileImageUrl: `/images/hero/nexlogs-hero-telegram-mobile.jpg?v=${HERO_ASSET_VERSION}`,
     title: '',
     description: '',
     ctaLabel: '',
@@ -465,22 +468,46 @@ function usesLegacySvgHeroArt(imageUrl?: string | null) {
 }
 
 function usesCurrentHeroArt(imageUrl?: string | null) {
-  return /\/images\/hero\/nexlogs-hero-/i.test(imageUrl?.trim() || '');
+  // Allow cache-busted URLs like /images/hero/nexlogs-hero-desktop.jpg?v=...
+  return /\/images\/hero\/nexlogs-hero-[^?\s]+/i.test(imageUrl?.trim() || '');
+}
+
+function looksLikeGenericStockMarketplaceBanner(slide: SiteContent['slides'][number]): boolean {
+  const title = (slide.title || '').toLowerCase();
+  const description = (slide.description || '').toLowerCase();
+  const blob = `${title} ${description}`;
+  return (
+    blob.includes('shop smarter')
+    || blob.includes('live better')
+    || blob.includes("nigeria's trusted marketplace")
+    || blob.includes('quality products at the best prices')
+    || blob.includes('wristwatch')
+    || blob.includes('smartwatch')
+  );
+}
+
+/** True when stored slides are missing the branded Nexlogs hero art (or are stock marketplace banners). */
+export function needsBuiltInHeroReset(slides?: SiteContent['slides'] | null): boolean {
+  if (!slides?.length) return false;
+  if (slides.some((slide) => usesCurrentHeroArt(slide.imageUrl))) return false;
+  return true;
 }
 
 function normalizeSlides(slides?: SiteContent['slides'] | null): SiteContent['slides'] {
   if (!slides?.length) return defaultSiteContent.slides;
 
-  // Migrate old SVG heroes (or empty custom sets) to the current 2-slide JPG heroes.
+  // Restore branded Nexlogs heroes whenever the DB/local set has no current hero art
+  // (covers legacy SVG heroes and generic stock banners like "Shop Smarter / Live Better").
   const hasCurrentHeroArt = slides.some((slide) => usesCurrentHeroArt(slide.imageUrl));
-  const onlyLegacyOrEmpty = slides.every(
-    (slide) => !slide.imageUrl.trim() || usesLegacySvgHeroArt(slide.imageUrl),
-  );
-  if (!hasCurrentHeroArt && onlyLegacyOrEmpty) {
-    return defaultSiteContent.slides;
+  if (!hasCurrentHeroArt || slides.every(looksLikeGenericStockMarketplaceBanner)) {
+    return defaultSiteContent.slides.map((slide) => ({ ...slide }));
   }
 
   return slides.map((slide) => {
+    if (looksLikeGenericStockMarketplaceBanner(slide)) {
+      return { ...slide, active: false };
+    }
+
     if (usesLegacySvgHeroArt(slide.imageUrl) && !usesCurrentHeroArt(slide.imageUrl)) {
       // Drop legacy SVG entries — current defaults replace them.
       return {

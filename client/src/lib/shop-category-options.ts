@@ -6,6 +6,7 @@ import {
   type ShopCategorySlug,
 } from '@/constants/shopCategories';
 import { resolveCategoryIconUrl } from '@/lib/platform-icons';
+import type { ShopAvailability } from '@/lib/shop-availability';
 import type { Category } from '@/types';
 
 export interface ShopCategoryOption {
@@ -19,7 +20,21 @@ export interface ShopCategoryOption {
 
 const STATIC_SLUGS = new Set<string>(SHOP_CATEGORIES.map((category) => category.slug));
 
-export function buildShopCategoryOptions(categories: Category[] = []): ShopCategoryOption[] {
+function optionHasStock(option: ShopCategoryOption, availability: ShopAvailability): boolean {
+  // Dedicated flows (RDP) stay visible even without marketplace product rows.
+  if (option.externalLink) return true;
+
+  if (option.platform) {
+    return availability.platforms.includes(option.platform);
+  }
+
+  return availability.categorySlugs.includes(option.slug);
+}
+
+export function buildShopCategoryOptions(
+  categories: Category[] = [],
+  availability?: ShopAvailability | null,
+): ShopCategoryOption[] {
   const staticOptions: ShopCategoryOption[] = SHOP_CATEGORIES.map((category, index) => ({
     slug: category.slug,
     label: category.label,
@@ -39,7 +54,10 @@ export function buildShopCategoryOptions(categories: Category[] = []): ShopCateg
     }))
     .sort((left, right) => left.sortOrder - right.sortOrder);
 
-  return [...staticOptions, ...dynamicOptions];
+  const options = [...staticOptions, ...dynamicOptions];
+  if (!availability) return options;
+
+  return options.filter((option) => optionHasStock(option, availability));
 }
 
 export function findShopCategoryOption(

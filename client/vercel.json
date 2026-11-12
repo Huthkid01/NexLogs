@@ -28,8 +28,15 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=604800, stale-while-revalidate=2592000"
+          "value": "public, max-age=300, must-revalidate"
         }
+      ]
+    },
+    {
+      "source": "/version.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Content-Type", "value": "application/json; charset=utf-8" }
       ]
     },
     {
@@ -68,7 +75,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!sitemap\\.xml$|robots\\.txt$|llms\\.txt$).*)",
+      "source": "/((?!sitemap\\.xml$|robots\\.txt$|llms\\.txt$|version\\.json$).*)",
       "destination": "/index.html"
     }
   ]

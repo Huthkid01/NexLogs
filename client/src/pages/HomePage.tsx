@@ -49,7 +49,11 @@ export default function HomePage() {
       const { catalogCacheService } = await import('@/services/catalog-cache.service');
       const boot = await catalogCacheService.getHome(6);
       if (!boot) {
-        return { categories: [] as Category[], products: [] as Product[] };
+        return {
+          categories: [] as Category[],
+          products: [] as Product[],
+          shopAvailability: { platforms: [], categorySlugs: [] },
+        };
       }
       queryClient.setQueryData(['categories'], boot.categories);
       queryClient.setQueryData(['featured-products'], boot.products);
@@ -60,6 +64,7 @@ export default function HomePage() {
 
   const categories = homeCatalog?.categories as Category[] | undefined;
   const featured = homeCatalog?.products;
+  const shopAvailability = homeCatalog?.shopAvailability;
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['home-products', search, sort, page],
@@ -230,6 +235,7 @@ export default function HomePage() {
           onChange={handleCategoryChange}
           categories={categories ?? []}
           categoriesManaged
+          shopAvailability={shopAvailability ?? { platforms: [], categorySlugs: [] }}
         />
       </div>
 

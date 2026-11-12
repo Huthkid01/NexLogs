@@ -1,4 +1,9 @@
 import { supabase } from '@/lib/supabase';
+import {
+  buildShopAvailability,
+  emptyShopAvailability,
+  type ShopAvailability,
+} from '@/lib/shop-availability';
 import type { Category, PaginatedResponse, Product, ProductFilters } from '@/types';
 
 const PUBLIC_PRODUCT_COLUMNS =
@@ -9,6 +14,12 @@ const PUBLIC_PRODUCT_SELECT =
 
 const CATEGORY_SELECT =
   'id, name, slug, image_url, is_active, sort_order, created_at, updated_at';
+
+export type HomeCatalogPayload = {
+  categories: Category[];
+  products: Product[];
+  shopAvailability: ShopAvailability;
+};
 
 async function invokePublicCatalog<T>(body: Record<string, unknown>): Promise<T | null> {
   try {
@@ -21,10 +32,26 @@ async function invokePublicCatalog<T>(body: Record<string, unknown>): Promise<T 
   }
 }
 
+async function fetchShopAvailabilityFromRest(): Promise<ShopAvailability> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('platform, supplier, category:categories(slug)')
+    .eq('is_active', true)
+    .gt('stock', 0)
+    .not('slug', 'like', '%-rdp-%');
+
+  if (error || !data) return emptyShopAvailability();
+  return buildShopAvailability(data as Array<{
+    platform?: string | null;
+    supplier?: string | null;
+    category?: { slug?: string | null } | null;
+  }>);
+}
+
 /** Direct Supabase reads — used only when the edge catalog is unavailable. */
-async function fetchHomeFromRest(limit: number): Promise<{ categories: Category[]; products: Product[] } | null> {
+async function fetchHomeFromRest(limit: number): Promise<HomeCatalogPayload | null> {
   try {
-    const [categoriesRes, featuredRes] = await Promise.all([
+    const [categoriesRes, featuredRes, shopAvailability] = await Promise.all([
       supabase
         .from('categories')
         .select(CATEGORY_SELECT)
@@ -39,6 +66,7 @@ async function fetchHomeFromRest(limit: number): Promise<{ categories: Category[
         .order('sort_order', { ascending: true })
         .order('id', { ascending: true })
         .limit(limit),
+      fetchShopAvailabilityFromRest(),
     ]);
 
     if (categoriesRes.error || featuredRes.error) return null;
@@ -46,6 +74,7 @@ async function fetchHomeFromRest(limit: number): Promise<{ categories: Category[
     return {
       categories: (categoriesRes.data || []) as Category[],
       products: (featuredRes.data || []) as unknown as Product[],
+      shopAvailability,
     };
   } catch {
     return null;
@@ -54,13 +83,20 @@ async function fetchHomeFromRest(limit: number): Promise<{ categories: Category[
 
 export const catalogCacheService = {
   /** Single request for homepage categories + featured products. */
-  async getHome(limit = 6): Promise<{ categories: Category[]; products: Product[] } | null> {
+  async getHome(limit = 6): Promise<HomeCatalogPayload | null> {
     const payload = await invokePublicCatalog<{
       categories?: Category[];
       products?: Product[];
+      shopAvailability?: ShopAvailability;
     }>({ action: 'home', limit });
     if (Array.isArray(payload?.categories) && Array.isArray(payload?.products)) {
-      return { categories: payload.categories, products: payload.products };
+      const shopAvailability = payload.shopAvailability
+        ?? await fetchShopAvailabilityFromRest();
+      return {
+        categories: payload.categories,
+        products: payload.products,
+        shopAvailability,
+      };
     }
     // Edge miss/fail → one REST round-trip (do NOT call public-catalog again).
     return fetchHomeFromRest(limit);

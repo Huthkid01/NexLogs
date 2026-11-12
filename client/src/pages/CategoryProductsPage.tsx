@@ -8,12 +8,19 @@ import { RequestProductsEmptyState } from '@/components/home/RequestProductsEmpt
 import { AppLoader } from '@/components/common/AppLoader';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { SORT_OPTIONS } from '@/constants';
-import { SHOP_CATEGORY_LINKS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
+import {
+  SHOP_CATEGORIES,
+  SHOP_CATEGORY_LINKS,
+  SHOP_CATEGORY_PLATFORMS,
+  type ShopCategorySlug,
+} from '@/constants/shopCategories';
 import { catalogQueryOptions } from '@/lib/query-cache';
 import { buildShopCategoryOptions, findShopCategoryOption } from '@/lib/shop-category-options';
 import { SEO_SITE_URL } from '@/lib/seo';
 import { productService } from '@/services';
 import type { Category } from '@/types';
+
+const STATIC_SHOP_SLUGS = new Set<string>(SHOP_CATEGORIES.map((category) => category.slug));
 
 export default function CategoryProductsPage() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -29,7 +36,11 @@ export default function CategoryProductsPage() {
       const { catalogCacheService } = await import('@/services/catalog-cache.service');
       const boot = await catalogCacheService.getHome(6);
       if (!boot) {
-        return { categories: [] as Category[], products: [] };
+        return {
+          categories: [] as Category[],
+          products: [],
+          shopAvailability: { platforms: [], categorySlugs: [] },
+        };
       }
       queryClient.setQueryData(['categories'], boot.categories);
       queryClient.setQueryData(['featured-products'], boot.products);
@@ -39,7 +50,8 @@ export default function CategoryProductsPage() {
   });
 
   const categories = (homeCatalog?.categories as Category[] | undefined) ?? [];
-  const categoryOptions = buildShopCategoryOptions(categories);
+  const shopAvailability = homeCatalog?.shopAvailability;
+  const categoryOptions = buildShopCategoryOptions(categories, shopAvailability);
   const selectedCategory = findShopCategoryOption(categoryOptions, slug);
   const categoryId = categories.find((cat) => cat.slug === slug)?.id;
   const categoryLabel = selectedCategory?.label ?? slug.toUpperCase();
@@ -55,6 +67,13 @@ export default function CategoryProductsPage() {
       navigate(link, { replace: true });
     }
   }, [slug, navigate]);
+
+  useEffect(() => {
+    if (!slug || !shopAvailability || SHOP_CATEGORY_LINKS[slug as ShopCategorySlug]) return;
+    if (!STATIC_SHOP_SLUGS.has(slug) && !categories.some((cat) => cat.slug === slug)) return;
+    if (selectedCategory) return;
+    navigate('/marketplace', { replace: true });
+  }, [slug, shopAvailability, selectedCategory, categories, navigate]);
 
   useEffect(() => {
     setSearch('');
@@ -131,6 +150,7 @@ export default function CategoryProductsPage() {
           onChange={handleCategoryChange}
           categories={categories}
           categoriesManaged
+          shopAvailability={shopAvailability ?? { platforms: [], categorySlugs: [] }}
         />
       </div>
 

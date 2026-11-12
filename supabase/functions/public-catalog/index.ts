@@ -57,6 +57,39 @@ function fingerprintProducts(body: RequestBody) {
   ].join('|');
 }
 
+type ShopAvailability = {
+  platforms: string[];
+  categorySlugs: string[];
+};
+
+async function loadShopAvailability(
+  admin: ReturnType<typeof getServiceRoleClient>,
+): Promise<ShopAvailability> {
+  const { data, error } = await admin
+    .from('products')
+    .select('platform, supplier, category:categories(slug)')
+    .eq('is_active', true)
+    .gt('stock', 0)
+    .not('slug', 'like', '%-rdp-%');
+  if (error) throw error;
+
+  const platforms = new Set<string>();
+  const categorySlugs = new Set<string>();
+
+  for (const row of data ?? []) {
+    if ((row as { supplier?: string | null }).supplier === 'loggsplug') continue;
+    const platform = (row as { platform?: string | null }).platform;
+    if (platform) platforms.add(platform);
+    const slug = (row as { category?: { slug?: string | null } | null }).category?.slug?.trim();
+    if (slug) categorySlugs.add(slug);
+  }
+
+  return {
+    platforms: [...platforms],
+    categorySlugs: [...categorySlugs],
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -114,10 +147,10 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true, products });
     }
 
-    // One round-trip for the guest homepage (categories + featured).
+    // One round-trip for the guest homepage (categories + featured + shop availability).
     if (action === 'home') {
       const limit = Math.min(24, Math.max(1, Math.floor(Number(body.limit ?? 6))));
-      const [categories, products] = await Promise.all([
+      const [categories, products, shopAvailability] = await Promise.all([
         withCache(REDIS_KEYS.categories, REDIS_TTL.categories, async () => {
           const { data, error } = await admin
             .from('categories')
@@ -140,9 +173,12 @@ Deno.serve(async (req) => {
           if (error) throw error;
           return data ?? [];
         }),
+        withCache(REDIS_KEYS.shopAvailability, REDIS_TTL.shopAvailability, () =>
+          loadShopAvailability(admin)
+        ),
       ]);
 
-      return jsonResponse({ success: true, categories, products });
+      return jsonResponse({ success: true, categories, products, shopAvailability });
     }
 
     if (action === 'products') {

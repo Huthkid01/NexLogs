@@ -86,6 +86,7 @@ export async function invalidatePublicListingCaches(): Promise<void> {
   await Promise.all([
     cacheDel(REDIS_KEYS.featured(6)),
     cacheDel(REDIS_KEYS.featured(12)),
+    cacheDel(REDIS_KEYS.shopAvailability),
     cacheDel(REDIS_KEYS.loggsplugProducts),
     cacheDelPattern('public:products:v1:*'),
   ]);
@@ -117,12 +118,14 @@ export const REDIS_TTL = {
   // Short so sold-out items drop from listings quickly after stock hits 0.
   featured: 75,
   productsPage: 75,
+  shopAvailability: 75,
   siteContent: 15 * 60,
 } as const;
 
 export const REDIS_KEYS = {
   categories: 'public:categories:active:v1',
   featured: (limit: number) => `public:featured:v1:${limit}`,
+  shopAvailability: 'public:shop-availability:v1',
   productsPage: (fingerprint: string) => `public:products:v1:${fingerprint}`,
   siteContent: 'public:site-content:v1',
   loggsplugProducts: 'loggsplug:products:list',

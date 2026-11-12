@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { PlatformLogo } from '@/components/common/platform-logos';
 import { buildShopCategoryOptions, type ShopCategoryOption } from '@/lib/shop-category-options';
+import type { ShopAvailability } from '@/lib/shop-availability';
 import { catalogQueryOptions } from '@/lib/query-cache';
 import { categoryService } from '@/services';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,8 @@ interface CategoryDropdownProps {
   categories?: Category[];
   /** Parent owns categories (home bootstrap) — never fire a parallel categories request. */
   categoriesManaged?: boolean;
+  /** Hide shop categories that currently have no in-stock own products. */
+  shopAvailability?: ShopAvailability | null;
 }
 
 function CategoryInitials({ label }: { label: string }) {
@@ -55,6 +58,7 @@ export function CategoryDropdown({
   onChange,
   categories: categoriesProp,
   categoriesManaged = false,
+  shopAvailability = null,
 }: CategoryDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +71,10 @@ export function CategoryDropdown({
   });
 
   const categories = categoriesManaged ? (categoriesProp ?? []) : (categoriesProp ?? fetchedCategories);
-  const options = useMemo(() => buildShopCategoryOptions(categories), [categories]);
+  const options = useMemo(
+    () => buildShopCategoryOptions(categories, shopAvailability),
+    [categories, shopAvailability],
+  );
   const selected = options.find((option) => option.slug === value);
 
   useEffect(() => {

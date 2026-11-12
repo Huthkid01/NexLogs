@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SessionIdleGuard } from '@/components/auth/SessionIdleGuard';
 import { AppLoader } from '@/components/common/AppLoader';
 import { AppToaster } from '@/components/common/AppToaster';
+import { DeployUpdateWatcher } from '@/components/common/DeployUpdateWatcher';
 import { AppRouter } from '@/routes';
 
 export function AppContent() {
@@ -13,6 +14,7 @@ export function AppContent() {
 
   return (
     <>
+      <DeployUpdateWatcher />
       <SessionIdleGuard />
       <AppRouter />
       <AppToaster />

@@ -29,12 +29,14 @@ function resolveSlideImageUrl(imageUrl: string) {
   return new URL(`/${value}`, window.location.origin).toString();
 }
 
+const HERO_ASSET_VERSION = '20261112e';
+
 function buildDefaultSlides(telegramUrl: string, isLoggedIn: boolean): CarouselSlide[] {
   return [
     {
       id: 'nexlogs-default-shop',
-      imageUrl: '/images/hero/nexlogs-hero-desktop.jpg',
-      mobileImageUrl: '/images/hero/nexlogs-hero-mobile.jpg',
+      imageUrl: `/images/hero/nexlogs-hero-desktop.jpg?v=${HERO_ASSET_VERSION}`,
+      mobileImageUrl: `/images/hero/nexlogs-hero-mobile.jpg?v=${HERO_ASSET_VERSION}`,
       title: '',
       description: '',
       ctaLabel: '',
@@ -45,8 +47,8 @@ function buildDefaultSlides(telegramUrl: string, isLoggedIn: boolean): CarouselS
     },
     {
       id: 'nexlogs-default-telegram',
-      imageUrl: '/images/hero/nexlogs-hero-telegram-desktop.jpg',
-      mobileImageUrl: '/images/hero/nexlogs-hero-telegram-mobile.jpg',
+      imageUrl: `/images/hero/nexlogs-hero-telegram-desktop.jpg?v=${HERO_ASSET_VERSION}`,
+      mobileImageUrl: `/images/hero/nexlogs-hero-telegram-mobile.jpg?v=${HERO_ASSET_VERSION}`,
       title: '',
       description: '',
       ctaLabel: '',
@@ -65,28 +67,25 @@ export function PlatformCarousel() {
   const navigate = useNavigate();
   const telegramUrl = getTelegramSupportUrl(content);
 
-  // Admin slides apply to BOTH homepage and marketplace for everyone.
-  // If none are active, fall back to the built-in 2-slide Nexlogs heroes.
+  // Prefer branded Nexlogs hero art. Custom admin slides only win when they use
+  // /images/hero/nexlogs-hero-* (stock "Shop Smarter" banners are ignored).
   const slides = useMemo((): CarouselSlide[] => {
     const fromContent: CarouselSlide[] = content.slides
       .filter((slide) => slide.active && slide.imageUrl.trim())
+      .filter((slide) => /\/images\/hero\/nexlogs-hero-/i.test(slide.imageUrl))
       .sort((a, b) => a.order - b.order)
-      .map((slide) => {
-        const isBuiltInHero = /\/images\/hero\/nexlogs-hero-/i.test(slide.imageUrl);
-        return {
-          id: slide.id,
-          imageUrl: slide.imageUrl,
-          mobileImageUrl: slide.mobileImageUrl,
-          title: slide.title,
-          description: slide.description,
-          ctaLabel: slide.ctaLabel,
-          linkUrl: slide.linkUrl,
-          order: slide.order,
-          active: slide.active,
-          // Built-in JPG heroes keep full art; admin uploads use cover crop.
-          fit: isBuiltInHero || slide.mobileImageUrl ? 'natural' : 'cover',
-        };
-      });
+      .map((slide) => ({
+        id: slide.id,
+        imageUrl: slide.imageUrl,
+        mobileImageUrl: slide.mobileImageUrl,
+        title: slide.title,
+        description: slide.description,
+        ctaLabel: slide.ctaLabel,
+        linkUrl: slide.linkUrl,
+        order: slide.order,
+        active: slide.active,
+        fit: 'natural' as const,
+      }));
 
     if (fromContent.length > 0) return fromContent;
     return buildDefaultSlides(telegramUrl, Boolean(user));
@@ -123,7 +122,6 @@ export function PlatformCarousel() {
   const hasOverlayContent = hasTextOverlay || hasCta;
   const isWholeSlideLink = Boolean(slide.linkUrl?.trim()) && !hasCta;
   const showNavigation = slides.length > 1;
-
   const handleSlideAction = () => {
     const target = slide.linkUrl.trim();
     if (!target) return;
