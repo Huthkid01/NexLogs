@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SiteContentContext, defaultSiteContent, mergeSiteContent, STORAGE_KEY, type SiteContent } from '@/contexts/site-content';
+import { CACHE_TIMES } from '@/lib/query-cache';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+
+const FETCHED_AT_KEY = `${STORAGE_KEY}:fetchedAt`;
 
 function readStoredContent(): SiteContent | null {
   try {
@@ -11,6 +14,30 @@ function readStoredContent(): SiteContent | null {
   } catch {
     return null;
   }
+}
+
+function readFetchedAt(): number {
+  try {
+    const raw = localStorage.getItem(FETCHED_AT_KEY);
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function markFetchedNow() {
+  try {
+    localStorage.setItem(FETCHED_AT_KEY, String(Date.now()));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function isSiteContentFresh() {
+  const fetchedAt = readFetchedAt();
+  if (!fetchedAt) return false;
+  return Date.now() - fetchedAt < CACHE_TIMES.siteContentStaleMs;
 }
 
 async function fetchSiteContent(): Promise<SiteContent | null> {
@@ -62,8 +89,12 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     void (async () => {
+      // Guests/users: skip network if local copy is still fresh. Admins always refresh.
+      if (!isAdmin && isSiteContentFresh() && readStoredContent()) return;
+
       const nextContent = await fetchSiteContent();
       if (cancelled || !nextContent) return;
+      markFetchedNow();
       setContentState(nextContent);
     })();
 
@@ -76,6 +107,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
           void (async () => {
             const nextContent = await fetchSiteContent();
             if (cancelled || !nextContent) return;
+            markFetchedNow();
             setContentState(nextContent);
           })();
         }
@@ -86,10 +118,11 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isAdmin]);
 
   const setContent = useCallback((next: SiteContent) => {
     setContentState(next);
+    markFetchedNow();
 
     if (!isAdmin || !user) return;
 

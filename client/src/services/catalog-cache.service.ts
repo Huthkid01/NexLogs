@@ -1,12 +1,52 @@
 import { supabase } from '@/lib/supabase';
 import type { Category, PaginatedResponse, Product, ProductFilters } from '@/types';
 
+const PUBLIC_PRODUCT_COLUMNS =
+  'id, title, slug, description, platform, price, stock, followers, following, account_age, country, niche, verified, featured, category_id, is_active, created_at, updated_at, sort_order, preview_url, login_instructions, supplier, supplier_product_id';
+
+const PUBLIC_PRODUCT_SELECT =
+  `${PUBLIC_PRODUCT_COLUMNS}, category:categories(id, name, slug, image_url, is_active, sort_order), product_images(image_url, sort_order)`;
+
+const CATEGORY_SELECT =
+  'id, name, slug, image_url, is_active, sort_order, created_at, updated_at';
+
 async function invokePublicCatalog<T>(body: Record<string, unknown>): Promise<T | null> {
   try {
     const { data, error } = await supabase.functions.invoke('public-catalog', { body });
     if (error) return null;
     if (data?.error) return null;
     return data as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Direct Supabase reads — used only when the edge catalog is unavailable. */
+async function fetchHomeFromRest(limit: number): Promise<{ categories: Category[]; products: Product[] } | null> {
+  try {
+    const [categoriesRes, featuredRes] = await Promise.all([
+      supabase
+        .from('categories')
+        .select(CATEGORY_SELECT)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true }),
+      supabase
+        .from('products')
+        .select(PUBLIC_PRODUCT_SELECT)
+        .eq('is_active', true)
+        .gt('stock', 0)
+        .eq('featured', true)
+        .order('sort_order', { ascending: true })
+        .order('id', { ascending: true })
+        .limit(limit),
+    ]);
+
+    if (categoriesRes.error || featuredRes.error) return null;
+
+    return {
+      categories: (categoriesRes.data || []) as Category[],
+      products: (featuredRes.data || []) as unknown as Product[],
+    };
   } catch {
     return null;
   }
@@ -19,8 +59,11 @@ export const catalogCacheService = {
       categories?: Category[];
       products?: Product[];
     }>({ action: 'home', limit });
-    if (!Array.isArray(payload?.categories) || !Array.isArray(payload?.products)) return null;
-    return { categories: payload.categories, products: payload.products };
+    if (Array.isArray(payload?.categories) && Array.isArray(payload?.products)) {
+      return { categories: payload.categories, products: payload.products };
+    }
+    // Edge miss/fail → one REST round-trip (do NOT call public-catalog again).
+    return fetchHomeFromRest(limit);
   },
 
   async getCategories(): Promise<Category[] | null> {

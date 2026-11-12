@@ -14,7 +14,9 @@ export const CACHE_TIMES = {
   /** SMS provider catalogs change rarely during a session */
   smsCatalogStaleMs: 3 * 60_000,
   /** FOMO / marketing widgets */
-  socialStaleMs: 2 * 60_000,
+  socialStaleMs: 5 * 60_000,
+  /** Site copy / slides — safe to reuse across navigations */
+  siteContentStaleMs: 5 * 60_000,
   /** Wallet / purchases / auth-sensitive */
   privateStaleMs: 5_000,
 } as const;

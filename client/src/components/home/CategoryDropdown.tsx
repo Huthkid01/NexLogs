@@ -11,8 +11,10 @@ import type { Category } from '@/types';
 interface CategoryDropdownProps {
   value: string;
   onChange: (slug: string) => void;
-  /** When provided (e.g. from home-catalog bootstrap), skip a second categories fetch. */
+  /** When provided (e.g. from home-catalog bootstrap), use these instead of fetching. */
   categories?: Category[];
+  /** Parent owns categories (home bootstrap) — never fire a parallel categories request. */
+  categoriesManaged?: boolean;
 }
 
 function CategoryInitials({ label }: { label: string }) {
@@ -48,7 +50,12 @@ function CategoryOptionIcon({ option }: { option: ShopCategoryOption }) {
   return <CategoryInitials label={option.label} />;
 }
 
-export function CategoryDropdown({ value, onChange, categories: categoriesProp }: CategoryDropdownProps) {
+export function CategoryDropdown({
+  value,
+  onChange,
+  categories: categoriesProp,
+  categoriesManaged = false,
+}: CategoryDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -56,10 +63,10 @@ export function CategoryDropdown({ value, onChange, categories: categoriesProp }
     queryKey: ['categories'],
     queryFn: categoryService.getAll,
     ...catalogQueryOptions,
-    enabled: !categoriesProp,
+    enabled: !categoriesManaged,
   });
 
-  const categories = categoriesProp ?? fetchedCategories;
+  const categories = categoriesManaged ? (categoriesProp ?? []) : (categoriesProp ?? fetchedCategories);
   const options = useMemo(() => buildShopCategoryOptions(categories), [categories]);
   const selected = options.find((option) => option.slug === value);
 

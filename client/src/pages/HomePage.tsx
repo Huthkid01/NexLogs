@@ -16,7 +16,7 @@ import { SeoHead } from '@/components/seo/SeoHead';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useSiteVisitTracking } from '@/hooks/useSiteVisitTracking';
-import { productService, categoryService } from '@/services';
+import { productService } from '@/services';
 import { SORT_OPTIONS } from '@/constants';
 import { buildShopCategoryOptions } from '@/lib/shop-category-options';
 import { catalogQueryOptions } from '@/lib/query-cache';
@@ -45,25 +45,18 @@ export default function HomePage() {
   });
   const [page, setPage] = useState(1);
 
-  // One Redis-backed edge call for categories + featured (faster first paint).
+  // One Redis-backed edge call for categories + featured (REST only if edge fails).
   const { data: homeCatalog, isLoading: featuredLoading } = useQuery({
     queryKey: ['home-catalog'],
     queryFn: async () => {
       const { catalogCacheService } = await import('@/services/catalog-cache.service');
       const boot = await catalogCacheService.getHome(6);
-      if (boot) {
-        queryClient.setQueryData(['categories'], boot.categories);
-        queryClient.setQueryData(['featured-products'], boot.products);
-        return boot;
+      if (!boot) {
+        return { categories: [] as Category[], products: [] as Product[] };
       }
-
-      const [categories, products] = await Promise.all([
-        categoryService.getAll(),
-        productService.getFeatured(6),
-      ]);
-      queryClient.setQueryData(['categories'], categories);
-      queryClient.setQueryData(['featured-products'], products);
-      return { categories, products };
+      queryClient.setQueryData(['categories'], boot.categories);
+      queryClient.setQueryData(['featured-products'], boot.products);
+      return boot;
     },
     ...catalogQueryOptions,
   });
@@ -249,7 +242,8 @@ export default function HomePage() {
         <CategoryDropdown
           value={categorySlug}
           onChange={handleCategoryChange}
-          categories={categories}
+          categories={categories ?? []}
+          categoriesManaged
         />
       </div>
 
