@@ -22,7 +22,7 @@ export function PlatformCarousel() {
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
 
-  // Guests get a fixed HTML marketplace intro; signed-in users get admin/promo slides.
+  // Guests get the branded hero image; signed-in users get admin/promo slides.
   const slides = useMemo(() => {
     if (!user) return [];
     return content.slides
@@ -44,7 +44,7 @@ export function PlatformCarousel() {
 
   if (loading) {
     return (
-      <div className="h-40 w-full animate-pulse rounded-none bg-[#f26522]/80 lg:rounded-2xl md:h-64" />
+      <div className="aspect-[4/3] w-full animate-pulse rounded-none bg-[#f26522]/80 md:aspect-[16/9] lg:rounded-2xl" />
     );
   }
 
