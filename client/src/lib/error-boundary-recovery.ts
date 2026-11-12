@@ -15,7 +15,9 @@ export function isChunkLoadError(error: unknown): boolean {
     || /failed to fetch dynamically imported module/i.test(message)
     || /error loading dynamically imported module/i.test(message)
     || /loading chunk [\w-]+ failed/i.test(message)
-    || /chunkloaderror/i.test(message);
+    || /chunkloaderror/i.test(message)
+    // React.lazy fallout when a chunk import fails mid-load.
+    || /_result\.default/i.test(message);
 }
 
 export function markErrorBoundaryActive() {

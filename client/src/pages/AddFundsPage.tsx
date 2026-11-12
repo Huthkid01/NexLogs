@@ -92,7 +92,13 @@ export default function AddFundsPage() {
           'We could not verify your payment. If money left your account, contact support.',
         );
         const normalized = friendly.toLowerCase();
-        if (normalized.includes('cancelled') || normalized.includes('canceled') || normalized.includes('no money')) {
+        if (
+          normalized.includes('cancelled')
+          || normalized.includes('canceled')
+          || normalized.includes('no money')
+          || normalized.includes('still pending')
+        ) {
+          // Expected checkout states — show toast only, do not page Sentry/Telegram.
           toast.message(friendly);
         } else {
           reportClientException(err, {

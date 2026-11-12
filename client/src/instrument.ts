@@ -40,6 +40,23 @@ if (dsn) {
       /error loading dynamically imported module/i,
       /Loading chunk [\w-]+ failed/i,
       /ChunkLoadError/i,
+      /_result\.default/i,
+      /Payment is still pending/i,
     ],
+    beforeSend(event, hint) {
+      const error = hint.originalException;
+      const message = error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(event.message || event.exception?.values?.[0]?.value || '');
+      // Deploy race / stale tab — handled by auto-reload, not actionable alerts.
+      if (/_result\.default|importing a module script failed|dynamically imported module|ChunkLoadError/i.test(message)) {
+        return null;
+      }
+      // Normal Kora state while payment settles — user already sees a toast.
+      if (/still pending|payment_pending/i.test(message)) {
+        return null;
+      }
+      return event;
+    },
   });
 }
