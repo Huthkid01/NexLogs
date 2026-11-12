@@ -2,11 +2,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { GuestHeroBanner } from '@/components/home/GuestHeroBanner';
 import { SlideBanner } from '@/components/home/SlideBanner';
 import { LinkifiedText } from '@/components/common/LinkifiedText';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { getTelegramSupportUrl } from '@/lib/telegram-url';
+
+type CarouselSlide = {
+  id: string;
+  imageUrl: string;
+  mobileImageUrl?: string;
+  title: string;
+  description: string;
+  ctaLabel: string;
+  linkUrl: string;
+  order: number;
+  active: boolean;
+  fit?: 'natural' | 'cover';
+};
 
 function resolveSlideImageUrl(imageUrl: string) {
   const value = imageUrl.trim();
@@ -16,24 +29,72 @@ function resolveSlideImageUrl(imageUrl: string) {
   return new URL(`/${value}`, window.location.origin).toString();
 }
 
+function buildDefaultSlides(telegramUrl: string, isLoggedIn: boolean): CarouselSlide[] {
+  return [
+    {
+      id: 'nexlogs-default-shop',
+      imageUrl: '/images/hero/nexlogs-hero-desktop.jpg',
+      mobileImageUrl: '/images/hero/nexlogs-hero-mobile.jpg',
+      title: '',
+      description: '',
+      ctaLabel: '',
+      linkUrl: isLoggedIn ? '/marketplace#subscriptions' : '/register',
+      order: 0,
+      active: true,
+      fit: 'natural',
+    },
+    {
+      id: 'nexlogs-default-telegram',
+      imageUrl: '/images/hero/nexlogs-hero-telegram-desktop.jpg',
+      mobileImageUrl: '/images/hero/nexlogs-hero-telegram-mobile.jpg',
+      title: '',
+      description: '',
+      ctaLabel: '',
+      linkUrl: telegramUrl,
+      order: 1,
+      active: true,
+      fit: 'natural',
+    },
+  ];
+}
+
 export function PlatformCarousel() {
   const { content } = useSiteContent();
   const { user, loading } = useAuth();
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
+  const telegramUrl = getTelegramSupportUrl(content);
 
-  // Guests always get the branded hero. Signed-in users get Admin → Slides when
-  // configured; otherwise the same hero so /marketplace is never blank up top.
-  const slides = useMemo(() => {
-    if (!user) return [];
-    return content.slides
-      .filter((slide) => slide.active)
-      .sort((a, b) => a.order - b.order);
-  }, [user, content.slides]);
+  // Admin slides apply to BOTH homepage and marketplace for everyone.
+  // If none are active, fall back to the built-in 2-slide Nexlogs heroes.
+  const slides = useMemo((): CarouselSlide[] => {
+    const fromContent: CarouselSlide[] = content.slides
+      .filter((slide) => slide.active && slide.imageUrl.trim())
+      .sort((a, b) => a.order - b.order)
+      .map((slide) => {
+        const isBuiltInHero = /\/images\/hero\/nexlogs-hero-/i.test(slide.imageUrl);
+        return {
+          id: slide.id,
+          imageUrl: slide.imageUrl,
+          mobileImageUrl: slide.mobileImageUrl,
+          title: slide.title,
+          description: slide.description,
+          ctaLabel: slide.ctaLabel,
+          linkUrl: slide.linkUrl,
+          order: slide.order,
+          active: slide.active,
+          // Built-in JPG heroes keep full art; admin uploads use cover crop.
+          fit: isBuiltInHero || slide.mobileImageUrl ? 'natural' : 'cover',
+        };
+      });
+
+    if (fromContent.length > 0) return fromContent;
+    return buildDefaultSlides(telegramUrl, Boolean(user));
+  }, [content.slides, telegramUrl, user]);
 
   useEffect(() => {
     setCurrent(0);
-  }, [user?.id]);
+  }, [user?.id, slides.length]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -49,13 +110,14 @@ export function PlatformCarousel() {
     );
   }
 
-  if (!user || !slides.length) {
-    return <GuestHeroBanner />;
-  }
+  if (!slides.length) return null;
 
   const safeCurrent = current % slides.length;
   const slide = slides[safeCurrent];
   const slideImageUrl = resolveSlideImageUrl(slide.imageUrl);
+  const slideMobileUrl = slide.mobileImageUrl
+    ? resolveSlideImageUrl(slide.mobileImageUrl)
+    : undefined;
   const hasTextOverlay = Boolean(slide.title?.trim() || slide.description?.trim());
   const hasCta = Boolean(slide.ctaLabel?.trim() && slide.linkUrl?.trim());
   const hasOverlayContent = hasTextOverlay || hasCta;
@@ -86,8 +148,10 @@ export function PlatformCarousel() {
     <div className="relative w-full">
       <SlideBanner
         src={slideImageUrl}
-        alt={slide.title || 'Homepage banner slide'}
+        mobileSrc={slideMobileUrl}
+        alt={slide.title || 'Nexlogs banner slide'}
         variant="live"
+        fit={slide.fit ?? 'cover'}
         priority={safeCurrent === 0}
         imagePosition="center"
         className="rounded-none lg:rounded-2xl"
@@ -159,8 +223,8 @@ export function PlatformCarousel() {
                   key={i}
                   type="button"
                   onClick={() => setCurrent(i)}
-                  className={`h-1.5 w-1.5 rounded-full shadow-sm transition-colors ${
-                    i === safeCurrent ? 'bg-white' : 'bg-white/40'
+                  className={`h-1.5 rounded-full shadow-sm transition-all ${
+                    i === safeCurrent ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
                   }`}
                   aria-label={`Go to slide ${i + 1}`}
                 />

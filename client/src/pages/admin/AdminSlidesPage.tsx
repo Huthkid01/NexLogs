@@ -163,7 +163,7 @@ export default function AdminSlidesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Slide Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage homepage slides and promo banners from one place.
+            Manage slides for the homepage and marketplace. Active slides show to guests and logged-in users.
           </p>
         </div>
         <Button className="bg-[#f26522] hover:bg-[#d94e0f]" onClick={openAddModal}>
@@ -179,7 +179,7 @@ export default function AdminSlidesPage() {
               <Images className="h-4 w-4 text-[#f26522]" />
               Active Slides
             </CardTitle>
-            <CardDescription>Live homepage slides currently in rotation.</CardDescription>
+            <CardDescription>Live homepage + marketplace slides currently in rotation.</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold">{activeSlides.length}</p>

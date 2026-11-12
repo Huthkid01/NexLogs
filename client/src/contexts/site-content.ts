@@ -11,6 +11,8 @@ export interface SiteContent {
   slides: Array<{
     id: string;
     imageUrl: string;
+    /** Optional phone art for <picture> when different from desktop. */
+    mobileImageUrl?: string;
     title: string;
     description: string;
     ctaLabel: string;
@@ -122,11 +124,12 @@ const LEGACY_DEFAULT_SLIDE_DESCRIPTION = 'Featured platforms and marketplace hig
 const DEFAULT_SLIDE_DESCRIPTION = 'Featured platforms and marketplace';
 const LEGACY_DEFAULT_SLIDE_CTA = 'Shop Now';
 
-/** Shown to guests only — marketplace intro ad (not the logged-in own-website promo). */
+/** Built-in heroes for homepage + marketplace until admin uploads custom slides. */
 export const GUEST_HOME_SLIDES: SiteContent['slides'] = [
   {
-    id: 'slide-nexlogs-guest-intro',
-    imageUrl: '/images/hero-nexlogs-guest.svg?v=1',
+    id: 'slide-nexlogs-shop',
+    imageUrl: '/images/hero/nexlogs-hero-desktop.jpg',
+    mobileImageUrl: '/images/hero/nexlogs-hero-mobile.jpg',
     title: '',
     description: '',
     ctaLabel: '',
@@ -134,41 +137,21 @@ export const GUEST_HOME_SLIDES: SiteContent['slides'] = [
     order: 0,
     active: true,
   },
+  {
+    id: 'slide-nexlogs-telegram',
+    imageUrl: '/images/hero/nexlogs-hero-telegram-desktop.jpg',
+    mobileImageUrl: '/images/hero/nexlogs-hero-telegram-mobile.jpg',
+    title: '',
+    description: '',
+    ctaLabel: '',
+    linkUrl: DEFAULT_TELEGRAM_SUPPORT_URL,
+    order: 1,
+    active: true,
+  },
 ];
 
 export const defaultSiteContent: SiteContent = {
-  slides: [
-    {
-      id: 'slide-nexlogs-own-website',
-      imageUrl: '/images/hero-nexlogs-marketplace.svg?v=4',
-      title: '',
-      description: '',
-      ctaLabel: '',
-      linkUrl: DEFAULT_TELEGRAM_SUPPORT_URL,
-      order: 0,
-      active: true,
-    },
-    {
-      id: 'slide-nexlogs-sms',
-      imageUrl: '/images/hero-nexlogs-sms.svg',
-      title: '',
-      description: '',
-      ctaLabel: '',
-      linkUrl: '/buy-numbers',
-      order: 1,
-      active: false,
-    },
-    {
-      id: 'slide-nexlogs-support',
-      imageUrl: '/images/hero-nexlogs-support.svg',
-      title: '',
-      description: '',
-      ctaLabel: '',
-      linkUrl: DEFAULT_TELEGRAM_SUPPORT_URL,
-      order: 2,
-      active: false,
-    },
-  ],
+  slides: GUEST_HOME_SLIDES.map((slide) => ({ ...slide })),
   home: {
     subscriptionsTitle: 'Subscriptions & others',
     purchaseRdpLabel: 'Purchase RDP',
@@ -477,43 +460,32 @@ export interface SiteContentContextType {
 
 export const SiteContentContext = createContext<SiteContentContextType | undefined>(undefined);
 
-function usesNexlogsHeroArt(imageUrl?: string | null) {
+function usesLegacySvgHeroArt(imageUrl?: string | null) {
   return /hero-nexlogs-/i.test(imageUrl?.trim() || '');
+}
+
+function usesCurrentHeroArt(imageUrl?: string | null) {
+  return /\/images\/hero\/nexlogs-hero-/i.test(imageUrl?.trim() || '');
 }
 
 function normalizeSlides(slides?: SiteContent['slides'] | null): SiteContent['slides'] {
   if (!slides?.length) return defaultSiteContent.slides;
 
-  // Ship the orange Nexlogs hero set until admin slides already use it.
-  const hasNewHeroArt = slides.some((slide) => usesNexlogsHeroArt(slide.imageUrl));
-  if (!hasNewHeroArt) {
+  // Migrate old SVG heroes (or empty custom sets) to the current 2-slide JPG heroes.
+  const hasCurrentHeroArt = slides.some((slide) => usesCurrentHeroArt(slide.imageUrl));
+  const onlyLegacyOrEmpty = slides.every(
+    (slide) => !slide.imageUrl.trim() || usesLegacySvgHeroArt(slide.imageUrl),
+  );
+  if (!hasCurrentHeroArt && onlyLegacyOrEmpty) {
     return defaultSiteContent.slides;
   }
 
   return slides.map((slide) => {
-    if (usesNexlogsHeroArt(slide.imageUrl)) {
-      const isOwnWebsiteHero =
-        /hero-nexlogs-marketplace\.svg/i.test(slide.imageUrl) ||
-        slide.id === 'slide-nexlogs-own-website' ||
-        slide.id === 'slide-nexlogs-marketplace';
-      const isSecondaryHero =
-        /hero-nexlogs-(sms|support)\.svg/i.test(slide.imageUrl) ||
-        slide.id === 'slide-nexlogs-sms' ||
-        slide.id === 'slide-nexlogs-support';
-
-      // Designed banners already include title/CTA artwork — keep overlay text empty.
-      // Only the first "own a website" hero should show for now.
+    if (usesLegacySvgHeroArt(slide.imageUrl) && !usesCurrentHeroArt(slide.imageUrl)) {
+      // Drop legacy SVG entries — current defaults replace them.
       return {
         ...slide,
-        id: isOwnWebsiteHero ? 'slide-nexlogs-own-website' : slide.id,
-        imageUrl: isOwnWebsiteHero
-          ? '/images/hero-nexlogs-marketplace.svg?v=4'
-          : slide.imageUrl,
-        title: '',
-        description: '',
-        ctaLabel: '',
-        linkUrl: isOwnWebsiteHero ? DEFAULT_TELEGRAM_SUPPORT_URL : slide.linkUrl,
-        active: isOwnWebsiteHero ? true : isSecondaryHero ? false : slide.active,
+        active: false,
       };
     }
 
