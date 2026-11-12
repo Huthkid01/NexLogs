@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { PlatformLogo } from '@/components/common/platform-logos';
 import { buildShopCategoryOptions, type ShopCategoryOption } from '@/lib/shop-category-options';
+import { catalogQueryOptions } from '@/lib/query-cache';
 import { categoryService } from '@/services';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +48,7 @@ export function CategoryDropdown({ value, onChange }: CategoryDropdownProps) {
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: categoryService.getAll,
+    ...catalogQueryOptions,
   });
 
   const options = useMemo(() => buildShopCategoryOptions(categories), [categories]);

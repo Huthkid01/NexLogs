@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFormatDisplayPrice } from '@/hooks/useFormatDisplayPrice';
 import { useModalLock } from '@/hooks/useModalLock';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { CACHE_TIMES } from '@/lib/query-cache';
 import { cn } from '@/lib/utils';
 import { matchesSmsCountrySearch } from '@/lib/sms-country-search';
 import { calculateSmsChargeNgn } from '@/lib/sms-pricing';
@@ -474,7 +475,8 @@ export default function BuyNumbersPage() {
     queryKey: ['sms-catalog', smsProvider],
     queryFn: () => smsNumberService.getCatalog(smsProvider),
     enabled: isBuyFlow,
-    staleTime: 5 * 60_000,
+    staleTime: CACHE_TIMES.smsCatalogStaleMs,
+    gcTime: CACHE_TIMES.catalogGcMs,
   });
 
   const { data: history, isLoading: historyLoading, error: historyError, refetch: refetchHistory } = useQuery({
@@ -703,13 +705,32 @@ export default function BuyNumbersPage() {
         if (user?.id) {
           void queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
         }
-        const refunded = result.orders.some(
+        const refundedIds = new Set(result.refunded_orders ?? []);
+        const refunded = refundedIds.has(order.id) || result.orders.some(
           (synced) => synced.id === order.id
             && (synced.status === 'expired' || synced.status === 'cancelled')
             && !isValidSmsVerificationCode(synced.verification_code),
         );
         if (refunded) {
           toast.message('Activation expired without a code. Your wallet has been refunded.');
+        } else {
+          // Sync may race the cron; retry once so money still comes back without Cancel.
+          window.setTimeout(() => {
+            void smsNumberService.syncActiveOrders(smsProvider).then((retry) => {
+              const retryIds = new Set(retry.refunded_orders ?? []);
+              const ok = retryIds.has(order.id) || retry.orders.some(
+                (synced) => synced.id === order.id
+                  && (synced.status === 'expired' || synced.status === 'cancelled'),
+              );
+              if (ok) {
+                toast.message('Activation expired without a code. Your wallet has been refunded.');
+                void refetchHistory();
+                if (user?.id) {
+                  void queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
+                }
+              }
+            }).catch(() => undefined);
+          }, 2500);
         }
       }).catch(() => undefined);
       return;

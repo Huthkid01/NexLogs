@@ -41,3 +41,7 @@ verify_jwt = false
 # Opt-in live support calls. Frontend flag must also be enabled.
 [functions.live-support-call]
 verify_jwt = false
+
+# Public marketplace catalog (categories/featured/products). No private data.
+[functions.public-catalog]
+verify_jwt = false

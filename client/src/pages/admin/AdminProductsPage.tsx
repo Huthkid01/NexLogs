@@ -530,6 +530,9 @@ export default function AdminProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['home-products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
+      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
+        catalogCacheService.invalidatePublicCatalog(),
+      );
       if (isRdpProduct(saved)) {
         setContent({
           ...content,
@@ -552,6 +555,9 @@ export default function AdminProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['home-products'] });
       queryClient.invalidateQueries({ queryKey: ['featured-products'] });
       queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
+      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
+        catalogCacheService.invalidatePublicCatalog(),
+      );
       if (isRdpProduct(product)) {
         const remaining = (products ?? []).filter((entry) => entry.id !== product.id);
         setContent({

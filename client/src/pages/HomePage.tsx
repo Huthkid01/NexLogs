@@ -19,6 +19,7 @@ import { useSiteVisitTracking } from '@/hooks/useSiteVisitTracking';
 import { productService, categoryService } from '@/services';
 import { SORT_OPTIONS } from '@/constants';
 import { buildShopCategoryOptions } from '@/lib/shop-category-options';
+import { catalogQueryOptions } from '@/lib/query-cache';
 import { isRdpProduct } from '@/lib/rdp-utils';
 import { SEO_PAGES, SEO_SITE_URL } from '@/lib/seo';
 import type { Product } from '@/types';
@@ -46,6 +47,7 @@ export default function HomePage() {
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: categoryService.getAll,
+    ...catalogQueryOptions,
   });
 
   const categoryId = categories?.find((cat) => cat.slug === categorySlug)?.id;
@@ -53,6 +55,7 @@ export default function HomePage() {
   const { data: featured, isLoading: featuredLoading } = useQuery({
     queryKey: ['featured-products'],
     queryFn: () => productService.getFeatured(6),
+    ...catalogQueryOptions,
   });
 
   const { data: products, isLoading } = useQuery({
@@ -69,6 +72,7 @@ export default function HomePage() {
         limit: 10,
       }),
     enabled: !!user,
+    ...catalogQueryOptions,
   });
 
   const categoryOptions = buildShopCategoryOptions(categories ?? []);

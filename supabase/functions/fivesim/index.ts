@@ -33,6 +33,10 @@ import {
   syncSmsOrderFromRemote,
   ensureSmsOrderExpiresAt,
 } from '../_shared/sms-number-handler.ts';
+import { REDIS_TTL, withCache } from '../_shared/redis-cache.ts';
+import { captureEdgeException, initEdgeSentry } from '../_shared/sentry.ts';
+
+initEdgeSentry('fivesim');
 
 const SMS_PROVIDER = 'fivesim';
 
@@ -93,15 +97,22 @@ Deno.serve(async (req) => {
     const pricing = await loadSmsPricingConfig(admin, SMS_PROVIDER);
 
     if (action === 'catalog') {
-      const [countries, services] = await Promise.all([
-        fetchFiveSimCountries(),
-        fetchFiveSimServices(),
-      ]);
+      const catalog = await withCache(
+        'fivesim:catalog:v1',
+        REDIS_TTL.smsCatalog,
+        async () => {
+          const [countries, services] = await Promise.all([
+            fetchFiveSimCountries(),
+            fetchFiveSimServices(),
+          ]);
+          return { countries, services };
+        },
+      );
 
       return jsonResponse({
         ok: true,
-        countries,
-        services,
+        countries: catalog.countries,
+        services: catalog.services,
         pricing,
       });
     }
@@ -113,11 +124,22 @@ Deno.serve(async (req) => {
 
       const country = body.country.trim();
       const service = body.service.trim();
-      const countries = await fetchFiveSimCountries().catch(() => []);
-      const services = await fetchFiveSimServices().catch(() => []);
-      const pools = await resolveCountryServicePools(country, service);
+      const poolPayload = await withCache(
+        `fivesim:pools:${country}:${service}`,
+        REDIS_TTL.smsPools,
+        async () => {
+          const countries = await fetchFiveSimCountries().catch(() => []);
+          const services = await fetchFiveSimServices().catch(() => []);
+          const pools = await resolveCountryServicePools(country, service);
+          return {
+            pools,
+            countryName: countries.find((row) => row.id === country)?.name ?? null,
+            serviceName: services.find((row) => row.id === service)?.name ?? null,
+          };
+        },
+      );
 
-      if (!pools.length) {
+      if (!poolPayload.pools.length) {
         return jsonResponse({
           ok: false,
           error: 'No numbers are available for this service and country right now. Try another country or service.',
@@ -127,11 +149,11 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         country_id: country,
-        country_name: countries.find((row) => row.id === country)?.name ?? null,
+        country_name: poolPayload.countryName,
         service_id: service,
-        service_name: services.find((row) => row.id === service)?.name ?? null,
+        service_name: poolPayload.serviceName,
         pricing,
-        rows: mapPoolPricingRows(pools, pricing),
+        rows: mapPoolPricingRows(poolPayload.pools, pricing),
       });
     }
 
@@ -608,6 +630,9 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: 'Unsupported action.' }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : '5sim request failed';
+    if (!/auth|insufficient|out of stock|not found|unsupported|not cancellable|method/i.test(message)) {
+      await captureEdgeException(error, { function: 'fivesim' });
+    }
     return jsonResponse({ ok: false, error: message }, 400);
   }
 });

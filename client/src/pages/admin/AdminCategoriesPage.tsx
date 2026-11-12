@@ -124,6 +124,10 @@ export default function AdminCategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
+        catalogCacheService.invalidatePublicCatalog(),
+      );
       toast.success(editingCategory ? 'Category updated' : 'Category created');
       setIsModalOpen(false);
       setEditingCategory(null);
@@ -137,6 +141,10 @@ export default function AdminCategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
+        catalogCacheService.invalidatePublicCatalog(),
+      );
       toast.success('Category deleted');
     },
   });

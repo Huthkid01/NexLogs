@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window", "deno.unstable"],
+    "strict": true
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-import-prefix"]
+    }
+  },
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@sentry/deno": "npm:@sentry/deno@^10.78.0"
+  }
+}

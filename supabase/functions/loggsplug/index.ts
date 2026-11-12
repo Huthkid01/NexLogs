@@ -23,6 +23,9 @@ import {
   jsonResponse,
   requireAdmin,
 } from '../_shared/sms-number-handler.ts';
+import { captureEdgeException, initEdgeSentry } from '../_shared/sentry.ts';
+
+initEdgeSentry('loggsplug');
 
 type LoggsplugAction = 'overview' | 'sync_products' | 'purchase';
 type LoggsplugSyncMode = 'stock' | 'full';
@@ -404,7 +407,9 @@ async function syncProducts(
   const mode: LoggsplugSyncMode = options.mode === 'full' ? 'full' : 'stock';
   const startedAt = Date.now();
   const TIME_BUDGET_MS = 110_000;
-  const remoteProducts = (await fetchLoggsplugProducts()).filter((product) => product?.id && product?.name);
+  // Always bypass Redis on sync so stock/price writes stay fresh.
+  const remoteProducts = (await fetchLoggsplugProducts({ bypassCache: true }))
+    .filter((product) => product?.id && product?.name);
   const total = remoteProducts.length;
   const offset = Math.max(0, Math.floor(options.offset ?? 0));
   const requestedLimit = options.limit == null
@@ -514,6 +519,14 @@ async function syncProducts(
       lastSyncedAt: new Date().toISOString(),
     };
     await saveSettings(admin, nextSettings);
+    try {
+      const { cacheDel, REDIS_KEYS } = await import('../_shared/redis-cache.ts');
+      await cacheDel(REDIS_KEYS.loggsplugProducts);
+      await cacheDel(REDIS_KEYS.categories);
+      await cacheDel(REDIS_KEYS.featured(6));
+    } catch {
+      // Ignore cache invalidation failures.
+    }
   }
 
   return {
@@ -563,10 +576,6 @@ async function purchaseProduct(
     throw new Error('This product is not supplied by LOGGSPLUG.');
   }
 
-  if (!product.is_active || Number(product.stock) < quantity) {
-    throw new Error('Out of stock');
-  }
-
   const retailPrice = Number(product.price);
   const costNgn = Number(product.supplier_cost_ngn ?? 0);
   const totalCharge = retailPrice * quantity;
@@ -576,6 +585,37 @@ async function purchaseProduct(
   // Use service-role client + explicit user id. Passing the buyer JWT makes PostgREST
   // treat the caller as `authenticated`, which cannot EXECUTE these wallet RPCs.
   const walletClient = getServiceRoleClient();
+
+  // Reserve stock first (row lock) so two buyers cannot take the same last unit.
+  const { error: reserveError } = await walletClient.rpc('reserve_loggsplug_product_stock', {
+    p_product_id: productId,
+    p_quantity: quantity,
+  });
+  if (reserveError) {
+    const message = reserveError.message || 'Could not reserve stock.';
+    if (/out of stock/i.test(message)) throw new Error('Out of stock');
+    throw new Error(message);
+  }
+
+  let stockReserved = true;
+  let walletDebited = false;
+
+  const restoreStock = async () => {
+    if (!stockReserved) return;
+    try {
+      await walletClient.rpc('restore_loggsplug_product_stock', {
+        p_product_id: productId,
+        p_quantity: quantity,
+      });
+      stockReserved = false;
+    } catch (restoreError) {
+      console.error(
+        `[loggsplug] failed to restore stock for ${productId}:`,
+        restoreError instanceof Error ? restoreError.message : restoreError,
+      );
+    }
+  };
+
   const { data: walletTxId, error: debitError } = await walletClient.rpc('wallet_debit_for_supplier_purchase', {
     p_amount_ngn: totalCharge,
     p_user_id: userId,
@@ -588,28 +628,34 @@ async function purchaseProduct(
   });
 
   if (debitError) {
+    await restoreStock();
     const message = debitError.message?.includes('INSUFFICIENT_FUNDS')
       ? 'INSUFFICIENT_FUNDS'
       : debitError.message || 'Could not debit wallet.';
     throw new Error(message);
   }
+  walletDebited = true;
 
   const SUPPORT_PURCHASE_ERROR =
     'We could not complete this purchase right now. Please contact support and we will help you.';
 
   const refundBuyer = async (reason: string) => {
-    await walletClient.rpc('wallet_refund_supplier_purchase', {
-      p_amount_ngn: totalCharge,
-      p_reason: reason,
-      p_user_id: userId,
-      p_metadata: {
-        supplier: 'loggsplug',
-        product_id: productId,
-        supplier_product_id: product.supplier_product_id,
-        quantity,
-        supplier_error: reason,
-      },
-    });
+    if (walletDebited) {
+      await walletClient.rpc('wallet_refund_supplier_purchase', {
+        p_amount_ngn: totalCharge,
+        p_reason: reason,
+        p_user_id: userId,
+        p_metadata: {
+          supplier: 'loggsplug',
+          product_id: productId,
+          supplier_product_id: product.supplier_product_id,
+          quantity,
+          supplier_error: reason,
+        },
+      });
+      walletDebited = false;
+    }
+    await restoreStock();
   };
 
   let supplierResponse;
@@ -650,6 +696,7 @@ async function purchaseProduct(
     .single();
 
   if (orderError || !order) {
+    // Supplier already delivered — keep stock reserved and leave funds debited for support recovery.
     throw new Error(orderError?.message || 'Could not create order record.');
   }
 
@@ -667,14 +714,15 @@ async function purchaseProduct(
     throw new Error(itemError.message || 'Could not create order item.');
   }
 
-  const nextStock = Math.max(Number(product.stock) - quantity, 0);
-  await admin
-    .from('products')
-    .update({
-      stock: nextStock,
-      is_active: nextStock > 0,
-    } as never)
-    .eq('id', productId);
+  // Stock was already decremented atomically at reserve time.
+
+  // Drop shared listing caches so sold-out items disappear for all visitors.
+  try {
+    const { invalidatePublicListingCaches } = await import('../_shared/redis-cache.ts');
+    await invalidatePublicListingCaches();
+  } catch {
+    // Cache flush is best-effort; purchase already succeeded.
+  }
 
   await admin.from('loggsplug_orders').insert({
     user_id: userId,
@@ -797,6 +845,9 @@ Deno.serve(async (req) => {
       : message.includes('INSUFFICIENT') || message.toLowerCase().includes('insufficient')
         ? 402
         : 400;
+    if (status >= 500 || !/auth|admin|insufficient|out of stock|not found|unsupported|disabled/i.test(message)) {
+      await captureEdgeException(error, { function: 'loggsplug' });
+    }
     return jsonResponse({ error: message, code }, status);
   }
 });

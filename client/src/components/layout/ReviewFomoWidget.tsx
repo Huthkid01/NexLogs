@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, ShoppingBag, X } from 'lucide-react';
+import { CACHE_TIMES } from '@/lib/query-cache';
 import { orderFomoService } from '@/services/order-fomo.service';
 
 const INITIAL_DELAY_MS = 3_000;
@@ -12,7 +13,8 @@ export function ReviewFomoWidget() {
     queryKey: ['daily-order-fomo'],
     queryFn: orderFomoService.getDailyPurchases,
     // Refresh often so new marketplace + SMS purchases enter the rotation.
-    staleTime: 60_000,
+    staleTime: CACHE_TIMES.socialStaleMs,
+    gcTime: CACHE_TIMES.catalogGcMs,
     refetchInterval: 2 * 60_000,
     retry: 1,
   });

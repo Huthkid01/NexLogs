@@ -10,6 +10,15 @@ export interface LoggsplugWalletPurchaseResult {
   deliveredDetails?: string;
 }
 
+async function flushListingCachesAfterPurchase() {
+  try {
+    const { catalogCacheService } = await import('@/services/catalog-cache.service');
+    await catalogCacheService.invalidateListingsAfterPurchase();
+  } catch {
+    // Best-effort; purchase already succeeded.
+  }
+}
+
 export const orderService = {
   async purchaseWithWallet(productId: string, quantity = 1): Promise<string> {
     const { data, error } = await supabase.rpc('purchase_product_with_wallet', {
@@ -17,6 +26,7 @@ export const orderService = {
       p_quantity: quantity,
     } as never);
     if (error) throw error;
+    void flushListingCachesAfterPurchase();
     return data as string;
   },
 
@@ -25,6 +35,7 @@ export const orderService = {
     quantity = 1,
   ): Promise<LoggsplugWalletPurchaseResult> {
     const result = await loggsplugService.purchaseWithWallet(productId, quantity);
+    void flushListingCachesAfterPurchase();
     return {
       orderId: result.order_id,
       orderNumber: result.order_number,
@@ -39,6 +50,7 @@ export const orderService = {
       p_quantity: quantity,
     } as never);
     if (error) throw error;
+    void flushListingCachesAfterPurchase();
     return data as string;
   },
 
@@ -48,6 +60,7 @@ export const orderService = {
       p_quantity: quantity,
     } as never);
     if (error) throw error;
+    void flushListingCachesAfterPurchase();
     return data as string;
   },
 

@@ -527,12 +527,22 @@ export async function checkFiveSimOrder(orderId: string): Promise<FiveSimCheckRe
     `/user/check/${encodeURIComponent(orderId)}`,
   );
   const { code, message } = extractFiveSimSms(payload);
-  const status = mapFiveSimStatus(payload, code);
+  let status = mapFiveSimStatus(payload, code);
   const expiresAt = resolveFiveSimExpiresAt(payload);
   const expiresMs = new Date(expiresAt).getTime() - Date.now();
   const timeLeftSeconds = Number.isFinite(expiresMs) && expiresMs > 0
     ? Math.floor(expiresMs / 1000)
     : null;
+
+  // If the activation window is over and no code arrived, force expired so wallets auto-refund.
+  if (!code && status === 'pending' && (timeLeftSeconds == null || timeLeftSeconds <= 0)) {
+    const explicitExpiry = String(payload.expires ?? payload.expiration ?? '').trim();
+    if (explicitExpiry && !Number.isNaN(new Date(explicitExpiry).getTime())) {
+      if (new Date(explicitExpiry).getTime() <= Date.now()) status = 'expired';
+    } else if (timeLeftSeconds != null && timeLeftSeconds <= 0) {
+      status = 'expired';
+    }
+  }
 
   return {
     status,

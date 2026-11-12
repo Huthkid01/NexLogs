@@ -24,6 +24,21 @@ export const productService = {
   async getProducts(filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> {
     const { search, platform, country, verified, minPrice, maxPrice, categoryId, sort = 'newest', page = 1, limit = 12 } = filters;
 
+    // Shared Redis catalog cache (public fields only). Skip when advanced filters need direct DB.
+    const canUseCache = country == null && verified == null && minPrice == null && maxPrice == null;
+    if (canUseCache) {
+      const { catalogCacheService } = await import('@/services/catalog-cache.service');
+      const cached = await catalogCacheService.getProducts({
+        search,
+        platform,
+        categoryId,
+        sort,
+        page,
+        limit,
+      });
+      if (cached) return cached;
+    }
+
     let query = supabase
       .from('products')
       .select(PUBLIC_PRODUCT_SELECT, { count: 'exact' })
@@ -65,6 +80,10 @@ export const productService = {
   },
 
   async getFeatured(limit = 6): Promise<Product[]> {
+    const { catalogCacheService } = await import('@/services/catalog-cache.service');
+    const cached = await catalogCacheService.getFeatured(limit);
+    if (cached) return cached;
+
     const { data, error } = await supabase
       .from('products')
       .select(PUBLIC_PRODUCT_SELECT)

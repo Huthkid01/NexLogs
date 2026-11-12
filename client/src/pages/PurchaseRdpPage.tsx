@@ -102,6 +102,9 @@ export default function PurchaseRdpPage() {
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });
+      await queryClient.invalidateQueries({ queryKey: ['home-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['product'] });
       toast.success(
         'Purchase completed. Check your purchase history within 5 to 10 mins for details.',
         { duration: 8000 },

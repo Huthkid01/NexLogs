@@ -165,6 +165,9 @@ export function ProductVariantsModal({ product, open, onClose }: ProductVariants
       await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['profile-stats', user.id] });
       await queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });
+      await queryClient.invalidateQueries({ queryKey: ['home-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['product'] });
 
       if (reviewOrderId) {
         setPendingReview({

@@ -77,7 +77,6 @@ const AdminMaintenancePage = lazyPage(() => import('@/pages/admin/AdminMaintenan
 const AdminReviewsPage = lazyPage(() => import('@/pages/admin/AdminReviewsPage'));
 const UnsubscribePage = lazyPage(() => import('@/pages/UnsubscribePage'));
 const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'));
-
 const router = createBrowserRouter([
   { path: '/unsubscribe/:token', element: <UnsubscribePage />, errorElement: <RouterErrorPage /> },
   { path: '/unsubscribe', element: <UnsubscribePage />, errorElement: <RouterErrorPage /> },

@@ -30,6 +30,10 @@ import {
   syncSmsOrderFromRemote,
   ensureSmsOrderExpiresAt,
 } from '../_shared/sms-number-handler.ts';
+import { REDIS_TTL, withCache } from '../_shared/redis-cache.ts';
+import { captureEdgeException, initEdgeSentry } from '../_shared/sentry.ts';
+
+initEdgeSentry('smspool');
 
 const SMS_PROVIDER = 'smspool';
 
@@ -106,15 +110,22 @@ Deno.serve(async (req) => {
     const pricing = await loadSmsPricingConfig(admin, SMS_PROVIDER);
 
     if (action === 'catalog') {
-      const [countries, services] = await Promise.all([
-        fetchSmsPoolCountries(),
-        fetchSmsPoolServices(),
-      ]);
+      const catalog = await withCache(
+        'smspool:catalog:v1',
+        REDIS_TTL.smsCatalog,
+        async () => {
+          const [countries, services] = await Promise.all([
+            fetchSmsPoolCountries(),
+            fetchSmsPoolServices(),
+          ]);
+          return { countries, services };
+        },
+      );
 
       return jsonResponse({
         ok: true,
-        countries,
-        services,
+        countries: catalog.countries,
+        services: catalog.services,
         pricing,
       });
     }
@@ -148,14 +159,20 @@ Deno.serve(async (req) => {
 
       const country = body.country.trim();
       const service = body.service.trim();
-      const countries = await fetchSmsPoolCountries().catch(() => []);
-      const pools = await resolveCountryServicePools(country, service, countries);
+      const poolPayload = await withCache(
+        `smspool:pools:${country}:${service}`,
+        REDIS_TTL.smsPools,
+        async () => {
+          const countries = await fetchSmsPoolCountries().catch(() => []);
+          const pools = await resolveCountryServicePools(country, service, countries);
+          const serviceName = (await fetchSmsPoolServices())
+            .find((row) => row.id === service)?.name ?? null;
+          const countryName = countries.find((row) => row.id === country)?.name ?? null;
+          return { pools, serviceName, countryName };
+        },
+      );
 
-      const serviceName = (await fetchSmsPoolServices())
-        .find((row) => row.id === service)?.name ?? null;
-      const countryName = countries.find((row) => row.id === country)?.name ?? null;
-
-      if (!pools.length) {
+      if (!poolPayload.pools.length) {
         return jsonResponse({
           ok: false,
           error: 'No numbers are available for this service and country right now. Try another country or service.',
@@ -165,11 +182,11 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         country_id: country,
-        country_name: countryName,
+        country_name: poolPayload.countryName,
         service_id: service,
-        service_name: serviceName,
+        service_name: poolPayload.serviceName,
         pricing,
-        rows: mapPoolPricingRows(pools, pricing),
+        rows: mapPoolPricingRows(poolPayload.pools, pricing),
       });
     }
 
@@ -638,6 +655,9 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: 'Unsupported action.' }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'SMS Pool request failed';
+    if (!/auth|insufficient|out of stock|not found|unsupported|not cancellable|method/i.test(message)) {
+      await captureEdgeException(error, { function: 'smspool' });
+    }
     return jsonResponse({ ok: false, error: message }, 400);
   }
 });

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { privateQueryOptions } from '@/lib/query-cache';
 import { supabase } from '@/lib/supabase';
 import { profileService } from '@/services/profile.service';
 
@@ -70,8 +71,7 @@ export function useWalletBalance(userId: string | undefined) {
     queryKey: ['wallet-balance', userId],
     queryFn: () => profileService.getStats(userId!),
     enabled: !!userId,
-    refetchOnWindowFocus: true,
-    staleTime: 5_000,
+    ...privateQueryOptions,
   });
 
   useEffect(() => {

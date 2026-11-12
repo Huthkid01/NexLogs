@@ -122,6 +122,10 @@ export const activityLogService = {
 
 export const categoryService = {
   async getAll(): Promise<Category[]> {
+    const { catalogCacheService } = await import('@/services/catalog-cache.service');
+    const cached = await catalogCacheService.getCategories();
+    if (cached) return cached;
+
     const { data, error } = await supabase.from('categories').select('*').eq('is_active', true).order('sort_order');
     if (error) throw error;
     return (data || []) as Category[];

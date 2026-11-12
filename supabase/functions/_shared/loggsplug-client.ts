@@ -101,20 +101,30 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function fetchLoggsplugProducts(): Promise<LoggsplugProductRow[]> {
-  const apiKey = getApiKey();
-  const response = await fetch(`${getBaseUrl()}/products`, {
-    method: 'GET',
-    headers: authHeaders(apiKey),
-  });
+export async function fetchLoggsplugProducts(options?: {
+  bypassCache?: boolean;
+}): Promise<LoggsplugProductRow[]> {
+  const { withCache, REDIS_TTL } = await import('./redis-cache.ts');
 
-  const payload = await parseJsonResponse<{ success?: boolean; data?: LoggsplugProductRow[] }>(response);
-  if (!Array.isArray(payload.data)) return [];
+  const load = async () => {
+    const apiKey = getApiKey();
+    const response = await fetch(`${getBaseUrl()}/products`, {
+      method: 'GET',
+      headers: authHeaders(apiKey),
+    });
 
-  return payload.data.map((row) => ({
-    ...row,
-    category: normalizeLoggsplugCategoryLabel(row.category) || String(row.category ?? '').trim(),
-  }));
+    const payload = await parseJsonResponse<{ success?: boolean; data?: LoggsplugProductRow[] }>(response);
+    if (!Array.isArray(payload.data)) return [];
+
+    return payload.data.map((row) => ({
+      ...row,
+      category: normalizeLoggsplugCategoryLabel(row.category) || String(row.category ?? '').trim(),
+    }));
+  };
+
+  if (options?.bypassCache) return load();
+  const { REDIS_KEYS } = await import('./redis-cache.ts');
+  return withCache(REDIS_KEYS.loggsplugProducts, REDIS_TTL.loggsplugProducts, load);
 }
 
 export async function hydrateLoggsplugProducts(

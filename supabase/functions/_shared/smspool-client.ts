@@ -7,6 +7,11 @@ export interface SmsPoolCountry {
   flag?: string;
 }
 
+export interface SmsPoolService {
+  id: string;
+  name: string;
+}
+
 export interface SmsPricingConfig {
   usdNgnRate: number;
   markupPercent: number;
@@ -171,24 +176,24 @@ export async function fetchSuggestedCountries(service: string) {
       ? (payload as { data: Record<string, unknown>[] }).data
       : [];
 
-  return rows
-    .map((row) => {
-      const countryId = String(row.country_id ?? row.ID ?? row.id ?? '').trim();
-      const countryName = String(row.name ?? row.country ?? '').trim();
-      const costUsd = Number(row.price ?? row.cost ?? 0);
-      if (!countryId || !countryName || costUsd <= 0) return null;
+  const normalized: SmsSuggestedCountryPrice[] = [];
+  for (const row of rows) {
+    const countryId = String(row.country_id ?? row.ID ?? row.id ?? '').trim();
+    const countryName = String(row.name ?? row.country ?? '').trim();
+    const costUsd = Number(row.price ?? row.cost ?? 0);
+    if (!countryId || !countryName || costUsd <= 0) continue;
 
-      return {
-        countryId,
-        countryName,
-        countryCode: String(row.short_name ?? row.code ?? '').trim() || undefined,
-        costUsd,
-        pool: row.pool !== undefined ? String(row.pool) : undefined,
-        stock: parsePoolStock(row as Record<string, unknown>),
-      } satisfies SmsSuggestedCountryPrice;
-    })
-    .filter((row): row is SmsSuggestedCountryPrice => row !== null)
-    .sort((a, b) => a.countryName.localeCompare(b.countryName));
+    normalized.push({
+      countryId,
+      countryName,
+      countryCode: String(row.short_name ?? row.code ?? '').trim() || undefined,
+      costUsd,
+      pool: row.pool !== undefined ? String(row.pool) : undefined,
+      stock: parsePoolStock(row as Record<string, unknown>),
+    });
+  }
+
+  return normalized.sort((a, b) => a.countryName.localeCompare(b.countryName));
 }
 
 export async function fetchSmsPoolPrice(country: string, service: string, pool?: string) {
@@ -472,6 +477,9 @@ export async function checkSmsPoolOrder(orderId: string): Promise<SmsPoolCheckRe
     status = 'cancelled';
   } else if (statusCode === 2 || statusCode === 4) {
     status = 'expired';
+  } else if (Number.isFinite(timeLeft) && timeLeft <= 0) {
+    // Provider often leaves status "pending" after the timer hits 0 — treat as expired for refunds.
+    status = 'expired';
   }
 
   return {
@@ -568,8 +576,15 @@ export async function fetchActiveSmsPoolOrders(): Promise<SmsPoolActiveOrder[]> 
       const providerRefunded = statusCode === 6;
       const mappedStatus = mapSmsPoolStatus(record.status);
       const code = normalizeSmsVerificationCode(sms, fullSms || undefined);
-      const status = code ? 'completed' : mappedStatus === 'completed' ? 'pending' : mappedStatus;
       const timeLeft = Number(record.time_left ?? record.timeleft ?? 0);
+      let status: SmsPoolCheckResult['status'] = code
+        ? 'completed'
+        : mappedStatus === 'completed'
+          ? 'pending'
+          : mappedStatus;
+      if (!code && status === 'pending' && Number.isFinite(timeLeft) && timeLeft <= 0) {
+        status = 'expired';
+      }
       const expiration = Number(record.expiration ?? record.expiry ?? 0);
       const expiresAt =
         expiration > 1_000_000_000
