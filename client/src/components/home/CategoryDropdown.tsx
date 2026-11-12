@@ -16,7 +16,7 @@ interface CategoryDropdownProps {
   categories?: Category[];
   /** Parent owns categories (home bootstrap) — never fire a parallel categories request. */
   categoriesManaged?: boolean;
-  /** Hide shop categories that currently have no in-stock own products. */
+  /** Hide shop categories that currently have no in-stock products (own + Loggsplug). */
   shopAvailability?: ShopAvailability | null;
 }
 

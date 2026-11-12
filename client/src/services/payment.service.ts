@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { getDepositChargeNgn, MIN_WALLET_DEPOSIT_NGN } from '@/lib/wallet-deposit-fees';
 import { profileService } from '@/services/profile.service';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from '@/lib/safe-storage';
 
@@ -44,8 +45,10 @@ export interface PendingWalletPaymentIntent {
   created_at: string;
 }
 
-/** Retry up to ~30s — Kora can lag after successful payment. */
-const VERIFY_RETRY_DELAYS_MS = [0, 1500, 3000, 5000, 8000, 12000];
+/** Retry briefly while Kora is still pending after a real payment. */
+const VERIFY_RETRY_DELAYS_MS = [0, 1500, 3000, 5000];
+/** Redirect return: one quick re-check only if still pending (cancel should exit immediately). */
+const VERIFY_REDIRECT_RETRY_DELAYS_MS = [0, 2000];
 
 function pendingDepositStorageKey(userId: string) {
   return `${PENDING_DEPOSIT_KEY}:${userId}`;
@@ -98,10 +101,16 @@ export function getPendingDeposit(userId?: string): PendingDeposit | null {
   }
 }
 
-function getDepositChargeDetails(amount: number, currency: string) {
+function getDepositChargeDetails(walletAmountNgn: number, currency: string) {
   const code = currency.toUpperCase();
+  const walletAmount = Math.round(Number(walletAmountNgn));
+  if (!Number.isFinite(walletAmount) || walletAmount < MIN_WALLET_DEPOSIT_NGN) {
+    throw new Error(`Minimum deposit amount is NGN ${MIN_WALLET_DEPOSIT_NGN.toLocaleString('en-NG')}`);
+  }
+
   return {
-    chargeAmount: Math.round(amount),
+    walletAmount,
+    chargeAmount: getDepositChargeNgn(walletAmount),
     chargeCurrency: code === 'NGN' ? 'NGN' : 'NGN',
   };
 }
@@ -112,17 +121,29 @@ async function readFunctionErrorMessage(error: unknown, data: unknown) {
   }
 
   if (error instanceof FunctionsHttpError) {
-    try {
-      const payload = await error.context.json();
-      if (payload && typeof payload === 'object' && 'error' in payload && payload.error) {
-        return String(payload.error);
+    const response = error.context as Response | undefined;
+    if (response) {
+      try {
+        const payload = await response.clone().json();
+        if (payload && typeof payload === 'object' && 'error' in payload && payload.error) {
+          return String(payload.error);
+        }
+      } catch {
+        try {
+          const text = (await response.clone().text()).trim();
+          if (text) return text.slice(0, 300);
+        } catch {
+          // Fall through.
+        }
       }
-    } catch {
-      // Fall through to generic message.
     }
   }
 
   if (error instanceof Error && error.message) {
+    // Supabase often surfaces only "Edge Function returned a non-2xx status code".
+    if (/non-2xx status code/i.test(error.message)) {
+      return 'Payment service returned an error. Please try again in a moment.';
+    }
     return error.message;
   }
 
@@ -243,6 +264,56 @@ async function verifyFlutterwaveDepositByRefWithRetry(
   );
 }
 
+class KoraVerifyError extends Error {
+  code?: string;
+  retryable: boolean;
+
+  constructor(message: string, options?: { code?: string; retryable?: boolean }) {
+    super(message);
+    this.name = 'KoraVerifyError';
+    this.code = options?.code;
+    this.retryable = options?.retryable ?? false;
+  }
+}
+
+function koraVerifyErrorFromPayload(data: unknown, fallback: string) {
+  if (!data || typeof data !== 'object') {
+    return new KoraVerifyError(fallback, { retryable: false });
+  }
+
+  const record = data as Record<string, unknown>;
+  const message = record.error ? String(record.error) : fallback;
+  const code = typeof record.code === 'string' ? record.code : undefined;
+  const retryable =
+    typeof record.retryable === 'boolean'
+      ? record.retryable
+      : code === 'payment_pending' || /still pending/i.test(message);
+
+  return new KoraVerifyError(message, { code, retryable });
+}
+
+function isRetryableVerifyError(error: Error) {
+  if (error instanceof KoraVerifyError) return error.retryable;
+
+  const message = error.message.toLowerCase();
+  if (
+    message.includes('cancelled')
+    || message.includes('canceled')
+    || message.includes('no money was charged')
+    || message.includes('not successful')
+  ) {
+    return false;
+  }
+
+  return (
+    message.includes('still pending')
+    || message.includes('payment_pending')
+    || message.includes('network')
+    || message.includes('fetch')
+    || message.includes('non-2xx')
+  );
+}
+
 async function verifyKoraDeposit(reference: string, paymentMethod: string, userId: string) {
   const pending = getPendingDeposit(userId);
   const body: Record<string, string | number> = {
@@ -263,11 +334,12 @@ async function verifyKoraDeposit(reference: string, paymentMethod: string, userI
   });
 
   if (error) {
-    throw new Error(await readFunctionErrorMessage(error, data));
+    const message = await readFunctionErrorMessage(error, data);
+    throw koraVerifyErrorFromPayload(data, message);
   }
 
   if (data && typeof data === 'object' && 'error' in data && data.error) {
-    throw new Error(String(data.error));
+    throw koraVerifyErrorFromPayload(data, String(data.error));
   }
 
   return data;
@@ -290,15 +362,7 @@ async function verifyKoraDepositWithRetry(
       return await verifyKoraDeposit(reference, paymentMethod, userId);
     } catch (err) {
       lastError = err instanceof Error ? err : new Error('Payment verification failed');
-      const message = lastError.message.toLowerCase();
-
-      const retryable =
-        message.includes('not successful') ||
-        message.includes('verification failed') ||
-        message.includes('network') ||
-        message.includes('fetch');
-
-      if (!retryable) {
+      if (!isRetryableVerifyError(lastError)) {
         throw lastError;
       }
     }
@@ -346,7 +410,13 @@ export async function verifyWalletDepositReference(
 
 function isUnpaidKoraError(message: string) {
   const normalized = message.toLowerCase();
-  return normalized.includes('not successful') || normalized.includes('payment was not');
+  return (
+    normalized.includes('not successful')
+    || normalized.includes('payment was not')
+    || normalized.includes('cancelled')
+    || normalized.includes('canceled')
+    || normalized.includes('no money was charged')
+  );
 }
 
 /** Try local pending deposit + server-side payment intents (e.g. user paid but redirect/webhook missed). */
@@ -454,7 +524,13 @@ export async function completeKoraRedirect(searchParams: URLSearchParams, userId
     clearPendingDeposit(userId);
   }
 
-  await verifyKoraDepositWithRetry(reference, pending?.paymentMethod ?? 'kora', userId);
+  // Cancel/fail should resolve in one (or two) checks — do not spin for ~30s.
+  await verifyKoraDepositWithRetry(
+    reference,
+    pending?.paymentMethod ?? 'kora',
+    userId,
+    VERIFY_REDIRECT_RETRY_DELAYS_MS,
+  );
   clearPendingDeposit(userId);
   return true;
 }
@@ -467,20 +543,19 @@ export interface DepositResult {
 export type KoraDepositResult = DepositResult;
 
 export async function startKoraDeposit(params: StartDepositParams): Promise<DepositResult> {
+  // Always derive the Kora charge from the wallet credit amount so fee math
+  // cannot drift if a caller accidentally passes the charge as `amount`.
+  const walletAmount = Math.round(Number(params.walletAmount ?? params.amount));
   const { chargeAmount, chargeCurrency } = getDepositChargeDetails(
-    params.amount,
+    walletAmount,
     params.currency,
   );
-
-  if (chargeAmount <= 0) {
-    throw new Error('Invalid payment amount');
-  }
 
   const { data, error } = await supabase.functions.invoke('kora-init', {
     body: {
       amount: chargeAmount,
       currency: chargeCurrency,
-      wallet_amount: params.walletAmount,
+      wallet_amount: walletAmount,
       payment_method: params.paymentMethod,
       name: params.name,
     },
@@ -488,6 +563,10 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
 
   if (error) {
     throw new Error(await readFunctionErrorMessage(error, data));
+  }
+
+  if (data && typeof data === 'object' && 'error' in data && data.error) {
+    throw new Error(String(data.error));
   }
 
   const reference =
@@ -505,11 +584,11 @@ export async function startKoraDeposit(params: StartDepositParams): Promise<Depo
     userId: params.userId,
     provider: 'kora',
     reference,
-    amount: params.amount,
+    amount: walletAmount,
     currency: params.currency,
     chargeAmount,
     chargeCurrency,
-    walletAmount: params.walletAmount,
+    walletAmount,
     paymentMethod: params.paymentMethod,
     createdAt: new Date().toISOString(),
     resumeOnLoad: false,

@@ -1,6 +1,6 @@
 import type { PlatformType } from '@/types';
 
-/** Platforms / category slugs that currently have in-stock own products (not Loggsplug). */
+/** Platforms / category slugs that currently have in-stock marketplace products (own + Loggsplug). */
 export interface ShopAvailability {
   platforms: PlatformType[];
   categorySlugs: string[];
@@ -21,8 +21,6 @@ export function buildShopAvailability(
   const categorySlugs = new Set<string>();
 
   for (const row of rows) {
-    if (row.supplier === 'loggsplug') continue;
-
     if (row.platform) {
       platforms.add(row.platform as PlatformType);
     }

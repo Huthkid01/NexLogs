@@ -203,7 +203,7 @@ export function PlatformCarousel() {
               type="button"
               onClick={goPrev}
               aria-label="Previous slide"
-              className="absolute left-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-white transition hover:bg-black/35 sm:left-2 sm:h-9 sm:w-9"
+              className="absolute left-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-white transition hover:bg-black/35 sm:left-2 sm:h-9 sm:w-9 md:hidden"
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.5} />
             </button>
@@ -211,7 +211,7 @@ export function PlatformCarousel() {
               type="button"
               onClick={goNext}
               aria-label="Next slide"
-              className="absolute right-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-white transition hover:bg-black/35 sm:right-2 sm:h-9 sm:w-9"
+              className="absolute right-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/20 text-white transition hover:bg-black/35 sm:right-2 sm:h-9 sm:w-9 md:hidden"
             >
               <ChevronRight className="h-6 w-6" strokeWidth={2.5} />
             </button>

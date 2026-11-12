@@ -119,6 +119,18 @@ export function getFriendlyErrorMessage(
     return 'Your session expired. Please log in again.';
   }
 
+  if (
+    normalized.includes('CANCELLED')
+    || normalized.includes('CANCELED')
+    || normalized.includes('NO MONEY WAS CHARGED')
+  ) {
+    return 'Payment was cancelled. No money was charged.';
+  }
+
+  if (normalized.includes('STILL PENDING')) {
+    return 'Payment is still pending. If you already paid, wait a moment and tap Verify payment.';
+  }
+
   // Prefer clear server messages for payment/deposit flows over a generic fallback.
   if (
     message

@@ -1,19 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/http.ts';
 import {
   extractBearerToken,
-  isSuccessfulCharge,
+  getKoraChargeOutcome,
   KORA_API_BASE,
   koraErrorMessage,
   resolveChargedAmount,
   resolveCreditAmount,
   resolveMerchantReference,
+  unpaidChargeUserMessage,
   type KoraChargeData,
 } from '../_shared/kora-payment.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 interface VerifyRequestBody {
   reference: string;
@@ -223,12 +220,43 @@ Deno.serve(async (req) => {
     }
 
     const payment = verifyPayload.data as KoraChargeData;
-
-    if (!isSuccessfulCharge(payment)) {
-      throw new Error('Payment was not successful');
-    }
-
+    const outcome = getKoraChargeOutcome(payment);
     const merchantReference = resolveMerchantReference(clientReference, payment);
+
+    if (outcome !== 'success') {
+      const intentStatus = outcome === 'cancelled' ? 'cancelled' : outcome === 'failed' ? 'failed' : null;
+      if (intentStatus) {
+        await admin
+          .from('wallet_payment_intents')
+          .update({
+            status: intentStatus,
+            metadata: {
+              source: 'kora_verify',
+              outcome,
+              kora_status: payment.status ?? null,
+              kora_transaction_status: payment.transaction_status ?? null,
+            },
+          })
+          .eq('provider', 'kora')
+          .eq('reference', merchantReference)
+          .in('status', ['pending', 'processing'])
+          .is('wallet_transaction_id', null);
+      }
+
+      return new Response(
+        JSON.stringify({
+          error: unpaidChargeUserMessage(outcome),
+          code: outcome === 'pending' ? 'payment_pending' : outcome === 'cancelled' ? 'payment_cancelled' : 'payment_failed',
+          retryable: outcome === 'pending',
+          payment_status: payment.status ?? null,
+          transaction_status: payment.transaction_status ?? null,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
 
     const { data: intent, error: intentError } = await admin
       .from('wallet_payment_intents')

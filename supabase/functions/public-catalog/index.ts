@@ -77,7 +77,6 @@ async function loadShopAvailability(
   const categorySlugs = new Set<string>();
 
   for (const row of data ?? []) {
-    if ((row as { supplier?: string | null }).supplier === 'loggsplug') continue;
     const platform = (row as { platform?: string | null }).platform;
     if (platform) platforms.add(platform);
     const slug = (row as { category?: { slug?: string | null } | null }).category?.slug?.trim();

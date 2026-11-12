@@ -1,10 +1,112 @@
 # Nexlogs
 
-Production-ready digital marketplace for social media accounts and related products.
+Nexlogs is a production digital marketplace for SMS verification numbers, RDP plans, and social / digital products. Buyers fund a wallet, shop by category, and receive delivery in-app (or via Telegram for supported products). Admins manage catalog, stock sync, wallets, and support from a protected dashboard.
 
-**Live site:** [https://www.nexlogs.store](https://www.nexlogs.store)
+**Live site:** [https://www.nexlogs.site](https://www.nexlogs.site)
 
 Built with React 19, Vite, TypeScript, Tailwind CSS v4, and Supabase (PostgreSQL, Auth, Edge Functions, RLS).
+
+---
+
+## How Nexlogs works
+
+At a high level:
+
+1. **Guests** browse the home page, featured products, and public pages (RDP / SMS landing, legal).
+2. **Signed-in buyers** open shop categories, buy with wallet balance, top up via **Kora**, and view orders in **My Purchases**.
+3. **Edge Functions** handle payment init/verify, public catalog caching, SMS providers, Loggsplug stock sync, email, and Telegram alerts.
+4. **Postgres + RLS** store users, wallets, products, orders, and admin-only data. Redis (Upstash) caches public catalog reads.
+
+### Buyer journey
+
+```mermaid
+flowchart LR
+  visitor[Visitor] --> home[Home / catalog]
+  home --> auth{Signed in?}
+  auth -->|No| login[Login / Register]
+  auth -->|Yes| shop[Pick category]
+  login --> shop
+  shop --> product[Choose product]
+  product --> balance{Enough wallet?}
+  balance -->|No| addFunds[Add Funds via Kora]
+  addFunds --> kora[Kora checkout]
+  kora --> wallet[Wallet credited]
+  wallet --> product
+  balance -->|Yes| purchase[Wallet purchase]
+  purchase --> delivery[My Purchases / delivery]
+```
+
+### System architecture
+
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    web[React app on Vercel]
+  end
+
+  subgraph supabase [Supabase]
+    auth[Auth]
+    db[(Postgres + RLS)]
+    fn[Edge Functions]
+    storage[Storage]
+  end
+
+  subgraph cache [Cache]
+    redis[(Upstash Redis)]
+  end
+
+  subgraph payments [Payments]
+    kora[Kora]
+  end
+
+  subgraph suppliers [Suppliers / alerts]
+    loggsplug[Loggsplug API]
+    sms[SMS Pool / 5sim]
+    telegram[Telegram]
+    email[Transactional email]
+  end
+
+  web --> auth
+  web --> fn
+  web --> db
+  fn --> db
+  fn --> redis
+  fn --> kora
+  fn --> loggsplug
+  fn --> sms
+  fn --> telegram
+  fn --> email
+  storage --> web
+```
+
+### Wallet top-up flow
+
+```mermaid
+sequenceDiagram
+  participant Buyer
+  participant App as Nexlogs web
+  participant Init as kora-init
+  participant Kora as Kora
+  participant Hook as kora-webhook / kora-verify
+  participant DB as Postgres
+
+  Buyer->>App: Enter amount, confirm
+  App->>Init: Start deposit
+  Init->>DB: Create payment intent
+  Init->>Kora: Initialize charge
+  Kora-->>App: Checkout URL
+  App->>Kora: Redirect buyer
+  Kora-->>Hook: Payment result
+  Hook->>DB: Credit wallet
+  Hook-->>App: Balance updated
+```
+
+### Catalog & categories
+
+- **`public-catalog`** Edge Function serves categories, featured products, paginated listings, and **shop availability** (which categories currently have in-stock items, including Loggsplug).
+- Responses are cached in Redis so the homepage stays fast.
+- The category dropdown hides empty categories; **RDP** stays visible as its own flow (`/purchase-rdp`).
+- Stocked marketplace products appear on home and `/marketplace/:slug` category pages.
 
 ---
 
@@ -12,28 +114,29 @@ Built with React 19, Vite, TypeScript, Tailwind CSS v4, and Supabase (PostgreSQL
 
 ### Customers
 
-- **Authentication** — Email/password and Google Sign-In (`signInWithIdToken`)
-- **Marketplace** — Browse, search, filter, and sort product listings
-- **Wallet checkout** — Add funds (Kora / Flutterwave), pay with wallet balance, instant delivery for digital inventory
-- **Featured products** — Highlighted listings with direct product deep-links
-- **My Purchases** — Order history and delivered account details
-- **RDP plans** — Purchase remote desktop plans from a live admin-synced catalog
-- **Profile & notifications** — Account settings, wallet balance, in-app alerts
+- **Authentication** — Email/password and Google Sign-In
+- **Marketplace** — Categories, search, sort, featured listings, deep-links
+- **Wallet checkout** — Add funds with Kora; pay with wallet balance
+- **My Purchases** — Order history and delivered credentials / instructions
+- **RDP plans** — Purchase remote desktop plans
+- **SMS numbers** — Buy verification numbers (provider-backed)
+- **Profile & support** — Wallet balance, FAQ, Telegram support
 
 ### Admin
 
 - **Dashboard** — Users, products, categories, orders, coupons, tickets
-- **Wallet & transactions** — Deposits, purchases, manual credits, NGN-native balances
-- **RDP catalog** — Plan pricing synced with marketplace products
-- **Site content** — Hero slides, FAQ, support channels, terms, refund policy
-- **Email** — Transactional emails, HTML campaigns, broadcast sends
-- **Analytics & activity** — Site visits, order alerts (Telegram), audit logs
+- **Loggsplug sync** — Supplier catalog / stock sync
+- **Wallet & transactions** — Deposits, purchases, manual credits (NGN)
+- **Site content** — Hero slides, FAQ, support channels, policies
+- **Email** — Transactional mail, HTML campaigns, broadcasts
+- **Alerts** — Telegram order notifications, activity logs
 
 ### Platform
 
 - **Row Level Security (RLS)** on Supabase tables
-- **Realtime** catalog, wallet, and admin updates
-- **Privacy & legal pages** — `/privacy`, `/refund`, `/terms`
+- **Realtime** catalog / wallet / admin updates where enabled
+- **Redis-backed public catalog** via `public-catalog`
+- **Soft deploy updates** — clients can pick up new frontend builds without a hard refresh where configured
 
 ---
 
@@ -46,8 +149,10 @@ Built with React 19, Vite, TypeScript, Tailwind CSS v4, and Supabase (PostgreSQL
 | Data | TanStack Query, Zustand |
 | Forms | React Hook Form + Zod |
 | Backend | Supabase (PostgreSQL, Auth, Storage, Edge Functions) |
-| Payments | Kora, Flutterwave (wallet top-ups) |
-| Email | Supabase Edge Functions + optional Node email API (`server/`) |
+| Cache | Upstash Redis (public catalog) |
+| Payments | Kora (wallet top-ups) |
+| Suppliers | Loggsplug, SMS Pool, 5sim |
+| Email | Supabase Edge Functions + optional Node API (`server/`) |
 | Deployment | Vercel (frontend), Supabase (database & functions) |
 
 ---
@@ -57,27 +162,31 @@ Built with React 19, Vite, TypeScript, Tailwind CSS v4, and Supabase (PostgreSQL
 ```
 Nexlogs/
 ├── client/                    # React frontend (Vercel root)
+│   ├── e2e/                   # Playwright live / local tests
 │   └── src/
-│       ├── components/        # UI, home, admin, auth
-│       ├── contexts/          # Auth, theme, display currency, site content
+│       ├── components/
+│       ├── contexts/
 │       ├── hooks/
 │       ├── layouts/
-│       ├── lib/               # Utilities, email templates, RDP catalog
-│       ├── pages/             # Public, auth, admin routes
+│       ├── lib/
+│       ├── pages/
 │       ├── routes/
-│       ├── services/          # Supabase service layer
+│       ├── services/
 │       └── types/
 ├── supabase/
-│   ├── migrations/            # SQL schema, RPCs, RLS (001–055+)
-│   ├── functions/             # Edge Functions (email, payments, Telegram)
-│   └── seed.sql               # Optional seed data
-├── server/                    # Optional Node email API (Hostinger/Nodemailer)
+│   ├── migrations/            # SQL schema, RPCs, RLS
+│   ├── functions/             # Edge Functions
+│   │   └── _shared/           # cors/auth helpers (http.ts), Redis, fees, etc.
+│   └── seed.sql
+├── server/                    # Optional Node email API
 ├── scripts/
-├── .env.example               # Root / shared env reference
-├── DEPLOYMENT.md              # Vercel + Supabase deployment
-├── DEPLOYMENT_EMAIL.md        # Transactional & campaign email setup
-└── client/GOOGLE_SIGNIN.md    # Google OAuth origins & verification notes
+├── .env.example
+├── DEPLOYMENT.md
+├── DEPLOYMENT_EMAIL.md
+└── client/GOOGLE_SIGNIN.md
 ```
+
+Important shared Edge helper: `supabase/functions/_shared/http.ts` — CORS headers, JSON responses, service-role clients, auth, and admin checks used by functions such as `public-catalog`, `kora-init`, and `kora-verify`.
 
 ---
 
@@ -85,9 +194,9 @@ Nexlogs/
 
 ### Prerequisites
 
-- **Node.js 22.x** (see `package.json` engines)
+- **Node.js 22.x**
 - A [Supabase](https://supabase.com) project
-- [Supabase CLI](https://supabase.com/docs/guides/cli) (optional, for `db push`)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (optional, for `db push` / function deploys)
 
 ### 1. Install dependencies
 
@@ -116,39 +225,26 @@ VITE_USE_MOCK_DATA=false
 VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
 
-Secrets (Google client secret, Kora keys, email passwords) belong in **Supabase Dashboard** or `server/.env` — not in the Vercel frontend. See `.env.example` and `client/.env.example` for the full list.
+Secrets (Kora, Loggsplug, SMS, email, Redis, Telegram) belong in **Supabase Edge Function secrets** or `server/.env` — not in the Vercel frontend bundle. See `.env.example` and `client/.env.example`.
+
+Production `APP_URL` for Edge Functions should be `https://www.nexlogs.site`.
 
 ### 3. Run database migrations
-
-**Option A — Supabase CLI (recommended):**
 
 ```bash
 supabase link --project-ref your-project-ref
 supabase db push
 ```
 
-**Option B — SQL Editor:**  
-Run every file in `supabase/migrations/` in numeric order, then optionally `supabase/seed.sql`.
-
-Recent important migrations:
-
-- `053_wallet_ngn_native.sql` — NGN-native wallet & pricing
-- `054_reconcile_wallet_balances_ngn.sql` — Balance reconciliation RPC
-- `055_restore_purchase_product_details.sql` — Per-buyer product detail delivery
+Or run files in `supabase/migrations/` in order via the SQL Editor, then optionally `supabase/seed.sql`.
 
 ### 4. Configure Google Sign-In
 
-1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com)
-2. Add authorized JavaScript origins (`http://localhost:5173`, your production domain)
-3. Enable **Google** in Supabase → Authentication → Providers (same Client ID + Secret)
-4. Set `VITE_GOOGLE_CLIENT_ID` in `client/.env` / Vercel
-5. Ensure **Privacy Policy** at `/privacy` documents Google data use (required for OAuth verification)
-
-Full checklist: [`client/GOOGLE_SIGNIN.md`](./client/GOOGLE_SIGNIN.md)
+See [`client/GOOGLE_SIGNIN.md`](./client/GOOGLE_SIGNIN.md).
 
 ### 5. Create an admin user
 
-Register on the site, then in the Supabase SQL Editor:
+Register on the site, then:
 
 ```sql
 UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
@@ -164,6 +260,25 @@ Open [http://localhost:5173](http://localhost:5173)
 
 ---
 
+## Key Edge Functions
+
+| Function | Role |
+|----------|------|
+| `public-catalog` | Cached categories, featured products, listings, shop availability |
+| `kora-init` / `kora-verify` / `kora-webhook` | Wallet deposits via Kora |
+| `loggsplug` | Supplier sync / purchase |
+| `smspool` / `fivesim` | SMS number flows |
+| `send-transactional-email` | Purchase / deposit emails |
+| `telegram-order-alert` | Admin order alerts |
+
+Deploy example:
+
+```bash
+supabase functions deploy public-catalog kora-init kora-verify --project-ref your-project-ref
+```
+
+---
+
 ## Scripts
 
 | Command | Description |
@@ -172,13 +287,16 @@ Open [http://localhost:5173](http://localhost:5173)
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
 | `npm run lint` | ESLint (`client/`) |
+| `npm run test:e2e --workspace=client` | Playwright e2e (see `client/e2e/`) |
 
-From repo root with Supabase CLI:
+Live e2e against production:
 
 ```bash
-supabase db push              # Apply pending migrations
-supabase functions deploy     # Deploy Edge Functions
+cd client
+E2E_BASE_URL=https://www.nexlogs.site npm run test:e2e -- --project=chromium
 ```
+
+Requires `client/.env.e2e` with `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` for authenticated flows.
 
 ---
 
@@ -186,14 +304,14 @@ supabase functions deploy     # Deploy Edge Functions
 
 | Component | Platform |
 |-----------|----------|
-| Frontend | Vercel — set **Root Directory** to `client` |
+| Frontend | Vercel — **Root Directory** = `client` |
 | Database, Auth, Functions | Supabase |
 
 Guides:
 
-- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — Vercel + Supabase setup
-- [`DEPLOYMENT_EMAIL.md`](./DEPLOYMENT_EMAIL.md) — Transactional & marketing email
-- [`client/VERCEL_ENV.md`](./client/VERCEL_ENV.md) — Vercel environment variables
+- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — Vercel + Supabase
+- [`DEPLOYMENT_EMAIL.md`](./DEPLOYMENT_EMAIL.md) — Email setup
+- [`client/VERCEL_ENV.md`](./client/VERCEL_ENV.md) — Vercel env vars
 
 ---
 
@@ -201,14 +319,14 @@ Guides:
 
 | Path | Description |
 |------|-------------|
-| `/` | Home & marketplace catalog |
-| `/marketplace?product=<slug>` | Deep-link to a product purchase modal |
-| `/add-funds` | Wallet top-up |
+| `/` | Home, featured catalog, category entry |
+| `/marketplace/:slug` | Category product list (signed-in) |
+| `/add-funds` | Wallet top-up (Kora) |
 | `/purchases` | Order history |
-| `/purchase-rdp` | RDP plan checkout |
-| `/privacy` | Privacy Policy (incl. Google Sign-In disclosure) |
-| `/refund` | Refund Policy |
-| `/admin` | Admin dashboard (role: `admin`) |
+| `/purchase-rdp` | RDP plans |
+| `/buy-numbers` | SMS verification numbers |
+| `/privacy` `/refund` `/terms` | Legal |
+| `/admin` | Admin dashboard (`role = admin`) |
 
 ---
 

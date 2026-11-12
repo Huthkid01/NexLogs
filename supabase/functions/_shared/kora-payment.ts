@@ -41,6 +41,58 @@ export function isSuccessfulCharge(payment: KoraChargeData) {
   return status === 'success' || txStatus === 'success' || txStatus === 'overpaid';
 }
 
+/** Normalized charge outcome for verify / cancel UX. */
+export type KoraChargeOutcome = 'success' | 'pending' | 'cancelled' | 'failed';
+
+export function getKoraChargeOutcome(payment: KoraChargeData): KoraChargeOutcome {
+  if (isSuccessfulCharge(payment)) return 'success';
+
+  const status = String(payment.status ?? '').toLowerCase();
+  const txStatus = String(payment.transaction_status ?? '').toLowerCase();
+  const combined = `${status} ${txStatus}`;
+
+  if (
+    combined.includes('cancel')
+    || combined.includes('abandoned')
+    || combined.includes('expired')
+    || combined.includes('void')
+  ) {
+    return 'cancelled';
+  }
+
+  if (
+    combined.includes('fail')
+    || combined.includes('declin')
+    || combined.includes('error')
+    || combined.includes('reject')
+  ) {
+    return 'failed';
+  }
+
+  if (
+    combined.includes('pending')
+    || combined.includes('processing')
+    || combined.includes('ongoing')
+    || combined.includes('initiated')
+    || !status
+  ) {
+    return 'pending';
+  }
+
+  // Unknown non-success → treat as failed so the UI does not spin forever.
+  return 'failed';
+}
+
+export function unpaidChargeUserMessage(outcome: Exclude<KoraChargeOutcome, 'success'>) {
+  if (outcome === 'cancelled') {
+    return 'Payment was cancelled. No money was charged.';
+  }
+  if (outcome === 'pending') {
+    return 'Payment is still pending. If you already paid, wait a moment and tap Verify payment.';
+  }
+  return 'Payment was not successful. No money was charged.';
+}
+
 export function resolveMerchantReference(clientReference: string, payment: KoraChargeData) {
   const merchantRef = String(payment.payment_reference ?? '').trim();
   if (merchantRef) return merchantRef;

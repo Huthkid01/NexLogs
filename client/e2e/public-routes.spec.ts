@@ -31,9 +31,12 @@ test.describe('Public routes', () => {
     await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
   });
 
-  test('buy numbers redirects guests to login', async ({ page }) => {
+  test('buy numbers page is reachable for guests', async ({ page }) => {
     await page.goto('/buy-numbers');
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/buy-numbers/);
+    await expect(page.getByText(/sms|number|verification|country|service/i).first()).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test('register page loads', async ({ page }) => {

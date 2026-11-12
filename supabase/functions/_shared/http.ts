@@ -4,9 +4,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  // Include Sentry/OpenTelemetry tracing headers (`baggage`, `sentry-trace`) so
+  // browser calls from the live site are not blocked by CORS preflight.
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-loggsplug-cron-secret',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'authorization, x-client-info, apikey, content-type, x-supabase-auth, x-loggsplug-cron-secret, baggage, sentry-trace, traceparent, tracestate',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
 export function jsonResponse(body: Record<string, unknown>, status = 200) {

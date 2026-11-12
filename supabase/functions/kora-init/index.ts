@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/http.ts';
 import {
   extractBearerToken,
   KORA_API_BASE,
@@ -9,11 +10,6 @@ import {
   getDepositChargeNgn,
   MIN_WALLET_DEPOSIT_NGN,
 } from '../_shared/wallet-deposit-fees.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 interface InitRequestBody {
   amount: number;
@@ -36,11 +32,21 @@ function normalizeAmount(value: unknown) {
 }
 
 function resolveAppUrl(req: Request) {
-  const configured = Deno.env.get('APP_URL')?.trim();
-  if (configured) return configured;
-  const origin = req.headers.get('origin')?.trim();
+  const configured = (Deno.env.get('APP_URL') || Deno.env.get('VITE_APP_URL') || '').trim().replace(/\/$/, '');
+  const origin = (req.headers.get('origin') || '').trim().replace(/\/$/, '');
+
+  // Prefer the browser origin when the user is on the live site.
+  if (/^https:\/\/(www\.)?nexlogs\.site$/i.test(origin)) {
+    return origin;
+  }
+
+  // nexlogs.store no longer resolves — never send buyers back there after checkout.
+  if (configured && !/nexlogs\.store$/i.test(configured.replace(/^https?:\/\//i, '').split('/')[0] || '')) {
+    return configured;
+  }
+
   if (origin) return origin;
-  throw new Error('APP_URL is not configured');
+  return 'https://www.nexlogs.site';
 }
 
 Deno.serve(async (req) => {

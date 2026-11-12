@@ -80,7 +80,17 @@ export default function AddFundsPage() {
         await handleDepositCredited();
         setSearchParams({}, { replace: true });
       } catch (err: unknown) {
-        toast.error(getFriendlyErrorMessage(err, 'We could not verify your payment. If money left your account, contact support.'));
+        const friendly = getFriendlyErrorMessage(
+          err,
+          'We could not verify your payment. If money left your account, contact support.',
+        );
+        const normalized = friendly.toLowerCase();
+        if (normalized.includes('cancelled') || normalized.includes('canceled') || normalized.includes('no money')) {
+          toast.message(friendly);
+        } else {
+          toast.error(friendly);
+        }
+        await refreshPendingIntents(user.id).catch(() => undefined);
         setSearchParams({}, { replace: true });
       } finally {
         setVerifyingRedirect(false);
@@ -181,8 +191,6 @@ export default function AddFundsPage() {
       return;
     }
 
-    const totalToPay = getDepositChargeNgn(value);
-
     setSubmitting(true);
     try {
       if (!hasSupabaseConfig()) {
@@ -199,7 +207,8 @@ export default function AddFundsPage() {
         userId: user.id,
         email: user.email,
         name: profile?.full_name,
-        amount: totalToPay,
+        // wallet credit amount — startKoraDeposit derives the fee/charge from this
+        amount: value,
         currency: 'NGN' as const,
         walletAmount: value,
         paymentMethod: 'kora_card',

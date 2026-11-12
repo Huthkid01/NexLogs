@@ -125,7 +125,7 @@ export const REDIS_TTL = {
 export const REDIS_KEYS = {
   categories: 'public:categories:active:v1',
   featured: (limit: number) => `public:featured:v1:${limit}`,
-  shopAvailability: 'public:shop-availability:v1',
+  shopAvailability: 'public:shop-availability:v2',
   productsPage: (fingerprint: string) => `public:products:v1:${fingerprint}`,
   siteContent: 'public:site-content:v1',
   loggsplugProducts: 'loggsplug:products:list',
