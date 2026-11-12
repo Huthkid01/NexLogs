@@ -215,7 +215,7 @@ export const adminService = {
   },
 
   async getAnalytics(): Promise<AdminAnalyticsSnapshot> {
-    const [ordersRes, orderItemsRes, smsOrdersRes] = await Promise.all([
+    const [ordersRes, orderItemsRes, smsOrdersRes, productsRes] = await Promise.all([
       supabase.from('orders').select('total_amount, status, payment_status, created_at'),
       supabase
         .from('order_items')
@@ -223,11 +223,17 @@ export const adminService = {
       supabase
         .from('sms_number_orders')
         .select('charged_ngn, status, created_at, country_name, country_id, verification_code'),
+      // Never select product_details — revoked from authenticated (090/091).
+      supabase
+        .from('products')
+        .select('id, title, slug, platform, stock, is_active, updated_at, category:categories(name)')
+        .order('stock', { ascending: true }),
     ]);
 
     if (ordersRes.error) throw ordersRes.error;
     if (orderItemsRes.error) throw orderItemsRes.error;
     if (smsOrdersRes.error) throw smsOrdersRes.error;
+    if (productsRes.error) throw productsRes.error;
 
     const orders = (ordersRes.data || []) as Array<{
       total_amount: number;
@@ -268,11 +274,37 @@ export const adminService = {
       };
     });
 
-    if (!orders.length && !orderItems.length && !smsOrders.length) {
+    const stockInventory = (productsRes.data || []).map((row) => {
+      const product = row as {
+        id: string;
+        title: string;
+        slug: string;
+        platform: string;
+        stock: number;
+        is_active: boolean;
+        updated_at: string;
+        category: { name: string } | { name: string }[] | null;
+      };
+      const category = Array.isArray(product.category)
+        ? product.category[0]?.name ?? null
+        : product.category?.name ?? null;
+      return {
+        id: product.id,
+        title: product.title,
+        slug: product.slug,
+        platform: product.platform,
+        category,
+        stock: Number(product.stock) || 0,
+        is_active: Boolean(product.is_active),
+        updated_at: product.updated_at,
+      };
+    });
+
+    if (!orders.length && !orderItems.length && !smsOrders.length && !stockInventory.length) {
       return EMPTY_ADMIN_ANALYTICS;
     }
 
-    return buildAdminAnalyticsSnapshot(orders, orderItems, smsOrders);
+    return buildAdminAnalyticsSnapshot(orders, orderItems, smsOrders, stockInventory);
   },
 
   async clearOrderHistory(): Promise<{ deleted_orders: number }> {

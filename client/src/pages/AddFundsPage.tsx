@@ -8,6 +8,7 @@ import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { isKoraTestMode } from '@/lib/kora-config';
 import { hasSupabaseConfig } from '@/lib/mock-mode';
 import { getFriendlyErrorMessage } from '@/lib/purchase-errors';
+import { reportClientException } from '@/lib/sentry-report';
 import {
   getDepositChargeNgn,
   MIN_WALLET_DEPOSIT_NGN,
@@ -88,6 +89,10 @@ export default function AddFundsPage() {
         if (normalized.includes('cancelled') || normalized.includes('canceled') || normalized.includes('no money')) {
           toast.message(friendly);
         } else {
+          reportClientException(err, {
+            area: 'add_funds',
+            tags: { stage: 'redirect_verify' },
+          });
           toast.error(friendly);
         }
         await refreshPendingIntents(user.id).catch(() => undefined);
@@ -136,6 +141,11 @@ export default function AddFundsPage() {
       } else if (normalized.includes('still pending')) {
         toast.message(friendly);
       } else {
+        reportClientException(err, {
+          area: 'add_funds',
+          tags: { stage: 'pending_verify' },
+          extra: { reference: intent.reference },
+        });
         toast.error(friendly);
       }
       await refreshPendingIntents(user.id);
@@ -231,6 +241,11 @@ export default function AddFundsPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Payment failed';
       if (message !== 'Payment cancelled') {
+        reportClientException(err, {
+          area: 'add_funds',
+          tags: { stage: 'init' },
+          extra: { amount: value },
+        });
         toast.error(getFriendlyErrorMessage(err, 'We could not start your payment. Please try again or contact support.'));
       }
     } finally {

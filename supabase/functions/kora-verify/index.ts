@@ -11,6 +11,9 @@ import {
   unpaidChargeUserMessage,
   type KoraChargeData,
 } from '../_shared/kora-payment.ts';
+import { captureEdgeException, initEdgeSentry } from '../_shared/sentry.ts';
+
+initEdgeSentry('kora-verify');
 
 interface VerifyRequestBody {
   reference: string;
@@ -399,6 +402,10 @@ Deno.serve(async (req) => {
         : typeof error === 'object' && error !== null && 'message' in error
           ? String((error as { message: unknown }).message)
           : 'Verification failed';
+    const expectedClientError = /cancel|pending|unpaid|not found|invalid|unauthorized|auth|reference/i.test(message);
+    if (!expectedClientError) {
+      await captureEdgeException(error, { function: 'kora-verify' });
+    }
     return new Response(JSON.stringify({ error: message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

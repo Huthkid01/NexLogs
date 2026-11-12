@@ -6,10 +6,13 @@ import {
   koraErrorMessage,
   type KoraInitializeResponse,
 } from '../_shared/kora-payment.ts';
+import { captureEdgeException, initEdgeSentry } from '../_shared/sentry.ts';
 import {
   getDepositChargeNgn,
   MIN_WALLET_DEPOSIT_NGN,
 } from '../_shared/wallet-deposit-fees.ts';
+
+initEdgeSentry('kora-init');
 
 interface InitRequestBody {
   amount: number;
@@ -220,6 +223,10 @@ Deno.serve(async (req) => {
         : typeof error === 'object' && error !== null && 'message' in error
           ? String((error as { message: unknown }).message)
           : 'Unable to start payment';
+    const expectedClientError = /invalid|minimum|required|unauthorized|auth|email|amount/i.test(message);
+    if (!expectedClientError) {
+      await captureEdgeException(error, { function: 'kora-init' });
+    }
     return new Response(JSON.stringify({ error: message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

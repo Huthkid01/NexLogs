@@ -7,6 +7,9 @@ import {
   resolveMerchantReference,
   type KoraChargeData,
 } from '../_shared/kora-payment.ts';
+import { captureEdgeException, initEdgeSentry } from '../_shared/sentry.ts';
+
+initEdgeSentry('kora-webhook');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -121,6 +124,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('kora-webhook failed:', error);
+    await captureEdgeException(error, { function: 'kora-webhook' });
     const message = error instanceof Error ? error.message : 'Webhook failed';
     return new Response(JSON.stringify({ ok: false, error: message }), {
       status: 500,

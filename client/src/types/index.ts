@@ -302,9 +302,44 @@ export interface AdminStats {
   }>;
 }
 
+export interface AdminAnalyticsTrendPoint {
+  label: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface AdminAnalyticsRangeTotals {
+  daily: { revenue: number; orders: number };
+  weekly: { revenue: number; orders: number };
+  monthly: { revenue: number; orders: number };
+}
+
+export interface AdminAnalyticsStockItem {
+  id: string;
+  title: string;
+  slug: string;
+  platform: string;
+  category: string | null;
+  stock: number;
+  is_active: boolean;
+  updated_at: string;
+}
+
 export interface AdminAnalyticsSnapshot {
+  /** @deprecated Prefer salesByWeek — kept for older callers */
   revenueByWeek: { label: string; value: number }[];
+  salesByDay: AdminAnalyticsTrendPoint[];
+  salesByWeek: AdminAnalyticsTrendPoint[];
+  salesByMonth: AdminAnalyticsTrendPoint[];
+  rangeTotals: AdminAnalyticsRangeTotals;
   platformBreakdown: { label: string; value: number }[];
   topCountries: { label: string; value: number }[];
   orderStatusBreakdown: { label: string; value: number }[];
+  stockInventory: AdminAnalyticsStockItem[];
+  stockSummary: {
+    inStock: number;
+    low: number;
+    out: number;
+    totalUnits: number;
+  };
 }
