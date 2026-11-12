@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Lock, Mail, User, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout';
 import { authService } from '@/services/auth.service';
 import { completeGoogleAuth } from '@/lib/google-sign-in';
@@ -14,6 +14,7 @@ import { APP_NAME } from '@/constants';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { getSignUpVerificationToast, getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
+
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email'),
@@ -65,50 +66,123 @@ export default function RegisterPage() {
   return (
     <AuthPageLayout title="Create account" description={`Join ${APP_NAME} today`}>
       <div className="space-y-4">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" error={errors.name?.message} {...register('name')} />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label
+              htmlFor="name"
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400"
+            >
+              Full Name
+            </label>
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="name"
+                autoComplete="name"
+                placeholder="Enter your full name"
+                className="h-12 pl-10"
+                error={errors.name?.message}
+                {...register('name')}
+              />
             </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" error={errors.email?.message} {...register('email')} />
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" error={errors.password?.message} {...register('password')} />
-            </div>
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input id="confirmPassword" type="password" error={errors.confirmPassword?.message} {...register('confirmPassword')} />
-            </div>
-            <Button type="submit" className="w-full" loading={loading}>Create Account</Button>
-          </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground lg:bg-white lg:dark:bg-dm-bg">or continue with</span></div>
           </div>
+          <div>
+            <label
+              htmlFor="email"
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400"
+            >
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="Enter your email"
+                className="h-12 pl-10"
+                error={errors.email?.message}
+                {...register('email')}
+              />
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor="password"
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                className="h-12 pl-10"
+                error={errors.password?.message}
+                {...register('password')}
+              />
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400"
+            >
+              Confirm Password
+            </label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Re-enter your password"
+                className="h-12 pl-10"
+                error={errors.confirmPassword?.message}
+                {...register('confirmPassword')}
+              />
+            </div>
+          </div>
+          <Button type="submit" className="h-12 w-full gap-2" loading={loading}>
+            <UserPlus className="h-4 w-4" aria-hidden />
+            Create Account
+          </Button>
+        </form>
 
-          {isGoogleSignInConfigured() ? (
-            <GoogleSignInButton
-              disabled={loading}
-              processing={googleLoading}
-              onCredential={completeGoogleSignIn}
-              onError={(error) => {
-                if (error.message === 'Google sign-in was cancelled') return;
-                toast.error('Google sign-up could not be completed. Please try again or use the registration form.');
-              }}
-            />
-          ) : (
-            <Button variant="outline" className="w-full" disabled>
-              Google sign-in not configured
-            </Button>
-          )}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-white px-2 text-muted-foreground dark:bg-dm-surface">or continue with</span>
+          </div>
+        </div>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
-          </p>
+        {isGoogleSignInConfigured() ? (
+          <GoogleSignInButton
+            disabled={loading}
+            processing={googleLoading}
+            onCredential={completeGoogleSignIn}
+            onError={(error) => {
+              if (error.message === 'Google sign-in was cancelled') return;
+              toast.error('Google sign-up could not be completed. Please try again or use the registration form.');
+            }}
+          />
+        ) : (
+          <Button variant="outline" className="w-full" disabled>
+            Google sign-in not configured
+          </Button>
+        )}
+
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{' '}
+          <Link to="/login" className="font-medium text-[#f26522] hover:underline">
+            Sign in
+          </Link>
+        </p>
       </div>
     </AuthPageLayout>
   );

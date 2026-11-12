@@ -56,7 +56,13 @@ export function MainLayout() {
   );
 
   return (
-    <div className="min-h-screen-safe bg-white dark:bg-dm-bg">
+    <div
+      className={`bg-white dark:bg-dm-bg ${
+        isAuthPage
+          ? 'max-lg:min-h-[100dvh] lg:flex lg:h-[100dvh] lg:flex-col lg:overflow-hidden'
+          : 'min-h-screen-safe'
+      }`}
+    >
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <header className="site-header-fixed shrink-0">
@@ -95,8 +101,27 @@ export function MainLayout() {
         </div>
       </header>
 
-      <div className="min-h-screen-safe flex flex-col site-main-offset">
-        <main className={`w-full flex-1 ${isAuthPage ? 'lg:flex lg:flex-col' : ''}`}>
+      {/* Matches fixed header height so auth content is exactly the remaining viewport */}
+      {isAuthPage ? (
+        <div
+          className="hidden shrink-0 lg:block"
+          style={{ height: 'calc(52px + env(safe-area-inset-top, 0px))' }}
+          aria-hidden
+        />
+      ) : null}
+
+      <div
+        className={
+          isAuthPage
+            ? 'flex max-lg:min-h-[100dvh] max-lg:flex-col max-lg:pt-[calc(52px+env(safe-area-inset-top,0px))] lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden'
+            : 'flex min-h-screen-safe flex-col site-main-offset'
+        }
+      >
+        <main
+          className={`w-full flex-1 ${
+            isAuthPage ? 'lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden' : ''
+          }`}
+        >
           <Outlet />
         </main>
 
