@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@sentry/deno@10.78.0": "10.78.0",
     "npm:@sentry/deno@^10.78.0": "10.78.0"
   },
   "npm": {

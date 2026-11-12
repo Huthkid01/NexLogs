@@ -9,8 +9,7 @@ import { ProductListRow } from '@/components/home/ProductListRow';
 import { ProductVariantsModal } from '@/components/home/ProductVariantsModal';
 import { RequestProductsEmptyState } from '@/components/home/RequestProductsEmptyState';
 import { AppLoader } from '@/components/common/AppLoader';
-import { findShopCategoryOption } from '@/lib/shop-category-options';
-import { SHOP_CATEGORY_LINKS, SHOP_CATEGORY_PLATFORMS, type ShopCategorySlug } from '@/constants/shopCategories';
+import { SHOP_CATEGORY_LINKS, type ShopCategorySlug } from '@/constants/shopCategories';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +17,6 @@ import { useSiteContent } from '@/hooks/useSiteContent';
 import { useSiteVisitTracking } from '@/hooks/useSiteVisitTracking';
 import { productService } from '@/services';
 import { SORT_OPTIONS } from '@/constants';
-import { buildShopCategoryOptions } from '@/lib/shop-category-options';
 import { catalogQueryOptions } from '@/lib/query-cache';
 import { isRdpProduct } from '@/lib/rdp-utils';
 import { SEO_PAGES, SEO_SITE_URL } from '@/lib/seo';
@@ -35,7 +33,6 @@ export default function HomePage() {
   const productSlug = searchParams.get('product');
   const [deepLinkProduct, setDeepLinkProduct] = useState<Product | null>(null);
   const [deepLinkOpen, setDeepLinkOpen] = useState(false);
-  const [categorySlug, setCategorySlug] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]['value']>(() => {
     const param = searchParams.get('sort');
@@ -64,16 +61,10 @@ export default function HomePage() {
   const categories = homeCatalog?.categories as Category[] | undefined;
   const featured = homeCatalog?.products;
 
-  const categoryId = categories?.find((cat) => cat.slug === categorySlug)?.id;
-
   const { data: products, isLoading } = useQuery({
-    queryKey: ['home-products', categorySlug, categoryId, search, sort, page],
+    queryKey: ['home-products', search, sort, page],
     queryFn: () =>
       productService.getProducts({
-        categoryId: categoryId || undefined,
-        platform: !categoryId && categorySlug
-          ? SHOP_CATEGORY_PLATFORMS[categorySlug as ShopCategorySlug]
-          : undefined,
         search: search || undefined,
         sort,
         page,
@@ -82,10 +73,6 @@ export default function HomePage() {
     enabled: !!user,
     ...catalogQueryOptions,
   });
-
-  const categoryOptions = buildShopCategoryOptions(categories ?? []);
-  const selectedCategory = findShopCategoryOption(categoryOptions, categorySlug);
-  const sectionTitle = selectedCategory?.label ?? content.home.catalogTitle;
 
   const handleCategoryChange = (slug: string) => {
     if (!user) {
@@ -99,8 +86,7 @@ export default function HomePage() {
       return;
     }
 
-    setCategorySlug(slug);
-    setPage(1);
+    navigate(`/marketplace/${slug}`);
   };
 
   useEffect(() => {
@@ -240,7 +226,7 @@ export default function HomePage() {
       <div id="categories">
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1.5">{content.home.categoriesLabel}</p>
         <CategoryDropdown
-          value={categorySlug}
+          value=""
           onChange={handleCategoryChange}
           categories={categories ?? []}
           categoriesManaged
@@ -248,7 +234,7 @@ export default function HomePage() {
       </div>
 
       <div id="catalog">
-        <h2 className="text-[17px] font-bold text-gray-900 dark:text-gray-100 mb-6">{sectionTitle}</h2>
+        <h2 className="text-[17px] font-bold text-gray-900 dark:text-gray-100 mb-6">{content.home.catalogTitle}</h2>
 
         {!user ? (
           <div className="flex justify-center pb-20">
@@ -291,10 +277,7 @@ export default function HomePage() {
                 <AppLoader iconClassName="h-9 w-9" />
               </div>
             ) : !products?.data?.length ? (
-              <RequestProductsEmptyState
-                categoryLabel={selectedCategory?.label}
-                searchQuery={search}
-              />
+              <RequestProductsEmptyState searchQuery={search} />
             ) : (
               <div>
                 {(products?.data ?? []).map((product) => (
