@@ -203,6 +203,31 @@ Deno.serve(async (req) => {
 
     const clientReference = reference.trim();
 
+    async function markIntentUnpaid(
+      refs: string[],
+      outcome: 'cancelled' | 'failed',
+      extra: Record<string, unknown> = {},
+    ) {
+      const uniqueRefs = [...new Set(refs.map((value) => value.trim()).filter(Boolean))];
+      if (uniqueRefs.length === 0) return;
+
+      await admin
+        .from('wallet_payment_intents')
+        .update({
+          status: outcome,
+          metadata: {
+            source: 'kora_verify',
+            outcome,
+            ...extra,
+          },
+        })
+        .eq('provider', 'kora')
+        .in('reference', uniqueRefs)
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'processing'])
+        .is('wallet_transaction_id', null);
+    }
+
     const verifyResponse = await fetch(
       `${KORA_API_BASE}/charges/${encodeURIComponent(clientReference)}`,
       {
@@ -216,7 +241,23 @@ Deno.serve(async (req) => {
     const verifyPayload = await verifyResponse.json();
 
     if (!verifyResponse.ok || !verifyPayload.status) {
-      throw new Error(koraErrorMessage(verifyResponse.status, verifyPayload));
+      // Abandoned/cancelled checkouts often never become a successful charge.
+      // Clear the buyer's pending intent so Add Funds does not keep showing "Verify".
+      await markIntentUnpaid([clientReference], 'cancelled', {
+        kora_http_status: verifyResponse.status,
+        kora_message: verifyPayload?.message ?? null,
+      });
+      return new Response(
+        JSON.stringify({
+          error: unpaidChargeUserMessage('cancelled'),
+          code: 'payment_cancelled',
+          retryable: false,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const payment = verifyPayload.data as KoraChargeData;
@@ -224,23 +265,11 @@ Deno.serve(async (req) => {
     const merchantReference = resolveMerchantReference(clientReference, payment);
 
     if (outcome !== 'success') {
-      const intentStatus = outcome === 'cancelled' ? 'cancelled' : outcome === 'failed' ? 'failed' : null;
-      if (intentStatus) {
-        await admin
-          .from('wallet_payment_intents')
-          .update({
-            status: intentStatus,
-            metadata: {
-              source: 'kora_verify',
-              outcome,
-              kora_status: payment.status ?? null,
-              kora_transaction_status: payment.transaction_status ?? null,
-            },
-          })
-          .eq('provider', 'kora')
-          .eq('reference', merchantReference)
-          .in('status', ['pending', 'processing'])
-          .is('wallet_transaction_id', null);
+      if (outcome === 'cancelled' || outcome === 'failed') {
+        await markIntentUnpaid([clientReference, merchantReference], outcome, {
+          kora_status: payment.status ?? null,
+          kora_transaction_status: payment.transaction_status ?? null,
+        });
       }
 
       return new Response(

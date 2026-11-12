@@ -126,7 +126,18 @@ export default function AddFundsPage() {
       await verifyWalletDepositReference(intent.reference, user.id, intent.payment_method);
       await handleDepositCredited();
     } catch (err: unknown) {
-      toast.error(getFriendlyErrorMessage(err, 'We could not verify your payment. If money left your account, contact support.'));
+      const friendly = getFriendlyErrorMessage(
+        err,
+        'We could not verify your payment. If money left your account, contact support.',
+      );
+      const normalized = friendly.toLowerCase();
+      if (normalized.includes('cancelled') || normalized.includes('canceled') || normalized.includes('no money')) {
+        toast.message(friendly);
+      } else if (normalized.includes('still pending')) {
+        toast.message(friendly);
+      } else {
+        toast.error(friendly);
+      }
       await refreshPendingIntents(user.id);
     } finally {
       setRecoveringDeposit(false);
