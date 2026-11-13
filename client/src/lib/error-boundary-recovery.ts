@@ -3,13 +3,17 @@ const AUTO_RECOVERED_KEY = 'nexlogs_error_boundary_auto_recovered';
 const CHUNK_RELOAD_KEY = 'nexlogs_chunk_load_reloaded';
 const HEALTHY_BOOT_DELAY_MS = 10_000;
 
-/** Stale JS chunks after a deploy (Safari/Chrome/Firefox wording). */
-export function isChunkLoadError(error: unknown): boolean {
-  const message = error instanceof Error
+function errorMessage(error: unknown): string {
+  return error instanceof Error
     ? error.message
     : typeof error === 'string'
       ? error
       : String((error as { message?: unknown } | null | undefined)?.message ?? error ?? '');
+}
+
+/** Stale JS chunks after a deploy (Safari/Chrome/Firefox wording). */
+export function isChunkLoadError(error: unknown): boolean {
+  const message = errorMessage(error);
 
   return /importing a module script failed/i.test(message)
     || /failed to fetch dynamically imported module/i.test(message)
@@ -18,6 +22,14 @@ export function isChunkLoadError(error: unknown): boolean {
     || /chunkloaderror/i.test(message)
     // React.lazy fallout when a chunk import fails mid-load.
     || /_result\.default/i.test(message);
+}
+
+/**
+ * Mixed old/new bundles after a deploy can duplicate the AuthContext module,
+ * so useAuth sees no provider even though AuthProvider is mounted.
+ */
+export function isAuthProviderSkewError(error: unknown): boolean {
+  return /useAuth must be used within AuthProvider/i.test(errorMessage(error));
 }
 
 export function markErrorBoundaryActive() {
@@ -116,7 +128,9 @@ function clearChunkReloadGuard() {
 
 /** One hard reload when a lazy route/chunk is missing after a new deploy. */
 export function tryReloadForChunkLoadError(error?: unknown): boolean {
-  if (error !== undefined && !isChunkLoadError(error)) return false;
+  if (error !== undefined && !isChunkLoadError(error) && !isAuthProviderSkewError(error)) {
+    return false;
+  }
   if (!takeChunkReloadSlot()) return false;
   window.location.reload();
   return true;

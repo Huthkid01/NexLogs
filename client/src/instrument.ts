@@ -41,6 +41,7 @@ if (dsn) {
       /Loading chunk [\w-]+ failed/i,
       /ChunkLoadError/i,
       /_result\.default/i,
+      /useAuth must be used within AuthProvider/i,
       /Payment is still pending/i,
     ],
     beforeSend(event, hint) {
@@ -49,7 +50,7 @@ if (dsn) {
         ? `${error.name}: ${error.message}`
         : String(event.message || event.exception?.values?.[0]?.value || '');
       // Deploy race / stale tab — handled by auto-reload, not actionable alerts.
-      if (/_result\.default|importing a module script failed|dynamically imported module|ChunkLoadError/i.test(message)) {
+      if (/_result\.default|importing a module script failed|dynamically imported module|ChunkLoadError|useAuth must be used within AuthProvider/i.test(message)) {
         return null;
       }
       // Normal Kora state while payment settles — user already sees a toast.

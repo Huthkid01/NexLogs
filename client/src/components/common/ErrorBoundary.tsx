@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   clearErrorBoundaryActive,
+  isAuthProviderSkewError,
   isChunkLoadError,
   markErrorBoundaryActive,
   tryAutoRecoverFromError,
@@ -23,8 +24,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Missing chunk after deploy — reload onto the new build; don't spam Sentry.
-    if (isChunkLoadError(error) && tryReloadForChunkLoadError(error)) {
+    // Missing chunk / AuthContext skew after deploy — reload onto the new build.
+    if ((isChunkLoadError(error) || isAuthProviderSkewError(error)) && tryReloadForChunkLoadError(error)) {
       return;
     }
 

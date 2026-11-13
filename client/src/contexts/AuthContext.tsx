@@ -3,6 +3,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import { authService } from '@/services/auth.service';
 import { resetDisplayCurrencyForLogin } from '@/contexts/display-currency';
 import { clearLoginAnnouncementForUser } from '@/lib/login-announcement';
+import { tryReloadForChunkLoadError } from '@/lib/error-boundary-recovery';
 import { clearSessionActivity, touchSessionActivity } from '@/lib/session-idle';
 import type { Profile } from '@/types';
 
@@ -159,6 +160,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {
+    // After a deploy, mixed old/new JS can duplicate AuthContext — reload once.
+    tryReloadForChunkLoadError(new Error('useAuth must be used within AuthProvider'));
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return context;
 }
