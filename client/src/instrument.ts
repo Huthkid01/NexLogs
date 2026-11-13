@@ -14,6 +14,8 @@ if (dsn) {
 
   Sentry.init({
     dsn,
+    // Local/Cursor browser hits were paging Telegram (e.g. HMR AuthProvider skew).
+    enabled: isProd,
     environment: import.meta.env.MODE,
     integrations: [
       Sentry.reactRouterV7BrowserTracingIntegration({
