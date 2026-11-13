@@ -13,7 +13,7 @@ initEdgeSentry('kora-webhook');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-korapay-signature',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, baggage, sentry-trace, traceparent, tracestate, x-korapay-signature',
 };
 
 interface KoraWebhookPayload {

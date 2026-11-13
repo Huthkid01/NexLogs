@@ -27,10 +27,10 @@ if (dsn) {
     ],
     // Full traces locally; keep production light.
     tracesSampleRate: isProd ? 0.1 : 1.0,
-    tracePropagationTargets: [
-      /^\//,
-      /^https:\/\/opmjctjzwkvwsxenddfi\.supabase\.co\/functions/,
-    ],
+    // Only same-origin. Propagating Sentry `baggage`/`sentry-trace` to Supabase
+    // Edge Functions breaks CORS preflight on any function not yet redeployed
+    // with those headers allow-listed (Service 2 / fivesim was failing live).
+    tracePropagationTargets: [/^\//],
     replaysSessionSampleRate: isProd ? 0.05 : 0.1,
     replaysOnErrorSampleRate: 1.0,
     // Expected after deploys when an old tab loads a removed JS chunk; we auto-reload.

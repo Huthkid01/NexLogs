@@ -5,7 +5,7 @@ import { buildPurchaseEmail, buildWalletDepositEmail, buildOrderDetailsReadyEmai
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-email-webhook-secret',
+    'authorization, x-client-info, apikey, content-type, baggage, sentry-trace, traceparent, tracestate, x-email-webhook-secret',
 };
 
 function toError(error: unknown, fallback: string) {
