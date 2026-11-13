@@ -1,9 +1,11 @@
 import { supabase } from '@/lib/supabase';
+import { assertNotDisposableEmail } from '@/lib/disposable-email';
 import { getVisitorLocation } from '@/lib/visitor-location';
 import type { Profile } from '@/types';
 
 export const authService = {
   async signUp(email: string, password: string, fullName: string) {
+    assertNotDisposableEmail(email);
     const location = await getVisitorLocation();
     const { data, error } = await supabase.auth.signUp({
       email,

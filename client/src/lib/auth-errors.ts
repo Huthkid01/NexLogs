@@ -34,6 +34,15 @@ export function getUserSignUpMessage(message: string) {
     return 'An account with this email already exists. Try signing in instead.';
   }
 
+  if (
+    normalized.includes('disposable')
+    || normalized.includes('temporary or disposable')
+    || normalized.includes('temp mail')
+    || normalized.includes('temporary email')
+  ) {
+    return 'Temporary or disposable email addresses are not allowed. Please use a permanent email.';
+  }
+
   if (normalized.includes('error sending confirmation email') || normalized.includes('error sending email')) {
     return 'Account setup failed while sending the verification email. Contact support@nexlogs.site.';
   }

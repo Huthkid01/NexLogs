@@ -14,12 +14,17 @@ import { APP_NAME } from '@/constants';
 import { isGoogleSignInConfigured } from '@/lib/google-auth';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { getSignUpVerificationToast, getUserSignUpMessage, normalizeAuthErrorMessage } from '@/lib/auth-errors';
+import { DISPOSABLE_EMAIL_MESSAGE, isDisposableEmail } from '@/lib/disposable-email';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email'),
+  email: z.string().email('Invalid email').refine((value) => !isDisposableEmail(value), {
+    message: DISPOSABLE_EMAIL_MESSAGE,
+  }),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
+  // Honeypot — bots fill this; humans never see it. Search crawlers do not POST signup.
+  website: z.string().max(0, 'Invalid submission').optional(),
 }).refine((d) => d.password === d.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -32,9 +37,16 @@ export default function RegisterPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
+    defaultValues: { website: '' },
   });
 
   const onSubmit = async (data: RegisterForm) => {
+    if (data.website) {
+      // Silent drop for bot honeypot submissions.
+      toast.success('Check your email to verify your account.');
+      navigate('/login');
+      return;
+    }
     setLoading(true);
     try {
       await authService.signUp(data.email, data.password, data.name);
@@ -66,7 +78,21 @@ export default function RegisterPage() {
   return (
     <AuthPageLayout title="Create account" description={`Join ${APP_NAME} today`}>
       <div className="space-y-4">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="relative space-y-4" autoComplete="on">
+          {/* Honeypot field: hidden from people, filled by many signup bots */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-[9999px] h-0 w-0 overflow-hidden opacity-0"
+          >
+            <label htmlFor="website">Website</label>
+            <input
+              id="website"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              {...register('website')}
+            />
+          </div>
           <div>
             <label
               htmlFor="name"

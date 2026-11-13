@@ -1,0 +1,7 @@
+-- Run the contents of:
+--   supabase/migrations/102_block_disposable_email_signups.sql
+-- in Supabase → SQL Editor if migrations are not applied automatically.
+--
+-- That script:
+-- 1) Blocks disposable/temp-mail signups at auth.users insert
+-- 2) Suspends the Nov 12 spam accounts (Alex Mercer / Vikki Ng disposable emails)
