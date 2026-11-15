@@ -21,6 +21,7 @@ const navItemsBeforeProducts = [
 const productNavItems = [
   { href: '/admin/products', label: 'My Products', icon: Package },
   { href: '/admin/products/loggsplug', label: 'LOGGSPLUG Products', icon: Plug },
+  { href: '/admin/products/featured', label: 'Featured Products', icon: Star },
 ];
 
 const navItems = [
