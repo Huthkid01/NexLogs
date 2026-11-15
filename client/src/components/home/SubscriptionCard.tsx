@@ -8,9 +8,15 @@ import type { Product } from '@/types';
 interface SubscriptionCardProps {
   product: Product;
   priority?: boolean;
+  /** When false, Purchase is visual-only (admin site preview). */
+  interactive?: boolean;
 }
 
-export function SubscriptionCard({ product, priority = false }: SubscriptionCardProps) {
+export function SubscriptionCard({
+  product,
+  priority = false,
+  interactive = true,
+}: SubscriptionCardProps) {
   const { user } = useAuth();
   const { formatProductPrice } = useFormatDisplayPrice();
   const purchasePath = buildProductMarketplacePath(product.slug);
@@ -27,13 +33,24 @@ export function SubscriptionCard({ product, priority = false }: SubscriptionCard
       </div>
 
       <p className="mt-4 text-sm font-semibold text-[#1b5e20]">{formatProductPrice(product.price)}</p>
-      <Link
-        to={user ? purchasePath : '/login'}
-        state={user ? undefined : { from: { pathname: purchasePath } }}
-        className="btn-orange mt-3 w-full py-2 text-center text-sm"
-      >
-        Purchase
-      </Link>
+      {interactive ? (
+        <Link
+          to={user ? purchasePath : '/login'}
+          state={user ? undefined : { from: { pathname: purchasePath } }}
+          className="btn-orange mt-3 w-full py-2 text-center text-sm"
+        >
+          Purchase
+        </Link>
+      ) : (
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className="btn-orange mt-3 w-full cursor-default py-2 text-center text-sm opacity-90"
+        >
+          Purchase
+        </button>
+      )}
     </div>
   );
 }

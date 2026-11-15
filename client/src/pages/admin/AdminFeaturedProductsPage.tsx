@@ -148,7 +148,12 @@ export default function AdminFeaturedProductsPage() {
           ) : (
             <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
               {sitePreview.map((product, index) => (
-                <SubscriptionCard key={product.id} product={product} priority={index < 2} />
+                <SubscriptionCard
+                  key={product.id}
+                  product={product}
+                  priority={index < 2}
+                  interactive={false}
+                />
               ))}
             </div>
           )}
