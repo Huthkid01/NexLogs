@@ -135,19 +135,36 @@ export const productService = {
   },
 
   async getAllAdmin(): Promise<Product[]> {
-    const [{ data: products, error }, { data: categories, error: categoriesError }] = await Promise.all([
+    const [
+      { data: products, error },
+      { data: categories, error: categoriesError },
+      { data: images, error: imagesError },
+    ] = await Promise.all([
       supabase.rpc('admin_list_products'),
       supabase.from('categories').select('*'),
+      supabase
+        .from('product_images')
+        .select('product_id, image_url, sort_order')
+        .order('sort_order', { ascending: true }),
     ]);
     if (error) throw error;
     if (categoriesError) throw categoriesError;
+    if (imagesError) throw imagesError;
 
     const categoryById = new Map((categories || []).map((category) => [category.id, category]));
+    const imagesByProductId = new Map<string, Product['product_images']>();
+    for (const image of images || []) {
+      const list = imagesByProductId.get(image.product_id) ?? [];
+      list.push(image as NonNullable<Product['product_images']>[number]);
+      imagesByProductId.set(image.product_id, list);
+    }
+
     return (products || []).map((row: Product) => {
       const product = row;
       return {
         ...product,
         category: categoryById.get(product.category_id),
+        product_images: imagesByProductId.get(product.id) ?? [],
       };
     });
   },

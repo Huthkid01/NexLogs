@@ -1,5 +1,11 @@
+import { useState } from 'react';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
-import { RDP_ICON_PATH, resolveProductIconUrl } from '@/lib/platform-icons';
+import {
+  getProductIconPathFromSlug,
+  RDP_ICON_PATH,
+  resolveCategoryIconUrl,
+  resolveProductIconUrl,
+} from '@/lib/platform-icons';
 import { isRdpProduct } from '@/lib/rdp-utils';
 import { cn } from '@/lib/utils';
 import type { Category, PlatformType, Product, ProductImage } from '@/types';
@@ -48,12 +54,14 @@ function StoredProductIcon({
   size = 'md',
   className,
   priority = false,
+  onError,
 }: {
   src: string;
   alt: string;
   size?: 'sm' | 'md';
   className?: string;
   priority?: boolean;
+  onError?: () => void;
 }) {
   return (
     <img
@@ -65,17 +73,34 @@ function StoredProductIcon({
       decoding="async"
       fetchPriority={priority ? 'high' : 'low'}
       referrerPolicy="no-referrer"
+      onError={onError}
       className={cn('shrink-0 object-contain rounded-md', SIZE_CLASSES[size], className)}
     />
   );
 }
 
+function resolveFallbackIconUrl(product: ProductIconProps['product']) {
+  return (
+    resolveCategoryIconUrl(product.category)
+    || getProductIconPathFromSlug(product.slug, product.platform)
+  );
+}
+
 export function ProductIcon({ product, size = 'md', className, priority = false }: ProductIconProps) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+
   if (isRdpProduct(product)) {
     return <RdpIcon size={size} className={className} />;
   }
 
-  const iconUrl = resolveProductIconUrl(product);
+  const primaryUrl = resolveProductIconUrl(product);
+  const fallbackUrl = resolveFallbackIconUrl(product);
+  const iconUrl = primaryUrl && primaryUrl !== failedUrl
+    ? primaryUrl
+    : fallbackUrl && fallbackUrl !== failedUrl
+      ? fallbackUrl
+      : null;
+
   if (iconUrl) {
     return (
       <StoredProductIcon
@@ -84,6 +109,7 @@ export function ProductIcon({ product, size = 'md', className, priority = false 
         size={size}
         className={className}
         priority={priority}
+        onError={() => setFailedUrl(iconUrl)}
       />
     );
   }

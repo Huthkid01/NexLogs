@@ -83,9 +83,9 @@ export default function AdminFeaturedProductsPage() {
           product.title.toLowerCase().includes(query)
           || product.slug.toLowerCase().includes(query)
           || product.platform.toLowerCase().includes(query)
+          || (product.category?.name?.toLowerCase().includes(query) ?? false)
         );
-      })
-      .slice(0, 40);
+      });
   }, [products, search]);
 
   const setFeatured = useMutation({
@@ -246,7 +246,7 @@ export default function AdminFeaturedProductsPage() {
               </button>
             </div>
 
-            <div className="relative mb-4">
+            <div className="relative mb-3">
               <Search className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', isDark ? 'text-slate-500' : 'text-slate-400')} />
               <Input
                 value={search}
@@ -255,8 +255,12 @@ export default function AdminFeaturedProductsPage() {
                 className={cn(adminInputClass(isDark), 'pl-9')}
               />
             </div>
+            <p className={cn('mb-3 text-xs', adminMutedTextClass(isDark))}>
+              Showing {addableProducts.length} product{addableProducts.length === 1 ? '' : 's'}
+              {search.trim() ? ' matching your search' : ''}.
+            </p>
 
-            <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
               {addableProducts.length === 0 ? (
                 <p className={cn('py-8 text-center text-sm', adminMutedTextClass(isDark))}>
                   No matching products to add.
