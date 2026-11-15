@@ -10,6 +10,7 @@ export async function invalidateStorefrontCatalog(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ['home-catalog'] }),
     queryClient.invalidateQueries({ queryKey: ['home-products'] }),
     queryClient.invalidateQueries({ queryKey: ['featured-products'] }),
+    queryClient.invalidateQueries({ queryKey: ['featured-products-all'] }),
     queryClient.invalidateQueries({ queryKey: ['categories'] }),
     queryClient.invalidateQueries({ queryKey: ['product'] }),
     queryClient.invalidateQueries({ queryKey: ['admin-products'] }),

@@ -200,10 +200,10 @@ export default function HomePage() {
                 <Plus className="h-5 w-5 text-gray-400" />
               </div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">View more</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Browse all subscription products</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Browse all featured products</p>
               <Link
-                to={user ? '/marketplace' : '/login'}
-                state={user ? undefined : { from: { pathname: '/marketplace' } }}
+                to={user ? '/featured' : '/login'}
+                state={user ? undefined : { from: { pathname: '/featured' } }}
                 className="w-full py-2 text-sm font-medium bg-[#1e293b] text-white rounded-md text-center hover:bg-[#0f172a]"
               >
                 See all

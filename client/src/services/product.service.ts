@@ -97,6 +97,20 @@ export const productService = {
     return (data || []) as unknown as Product[];
   },
 
+  /** Full featured catalog for /featured (not capped to homepage strip size). */
+  async getAllFeatured(): Promise<Product[]> {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`${PUBLIC_PRODUCT_SELECT}, category:categories(id, name, slug, image_url), product_images(image_url, sort_order)`)
+      .eq('is_active', true)
+      .gt('stock', 0)
+      .eq('featured', true)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
+    if (error) throw error;
+    return (data || []) as unknown as Product[];
+  },
+
   async getBySlug(slug: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from('products')

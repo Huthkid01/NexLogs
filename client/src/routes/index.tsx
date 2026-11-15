@@ -36,6 +36,7 @@ const RDP_SEO_LANDING = {
 
 const HomePage = lazyPage(() => import('@/pages/HomePage'));
 const CategoryProductsPage = lazyPage(() => import('@/pages/CategoryProductsPage'));
+const FeaturedProductsPage = lazyPage(() => import('@/pages/FeaturedProductsPage'));
 const AboutPage = lazyPage(() => import('@/pages/AboutPage'));
 const FaqPage = lazyPage(() => import('@/pages/FaqPage'));
 const SupportPage = lazyPage(() => import('@/pages/SupportPage'));
@@ -89,6 +90,7 @@ const router = createBrowserRouter([
     errorElement: <RouterErrorPage />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'featured', element: <ProtectedRoute><FeaturedProductsPage /></ProtectedRoute> },
       { path: 'marketplace', element: <ProtectedRoute><HomePage /></ProtectedRoute> },
       { path: 'marketplace/:slug', element: <ProtectedRoute><CategoryProductsPage /></ProtectedRoute> },
       { path: 'cart', element: <Navigate to="/marketplace" replace /> },

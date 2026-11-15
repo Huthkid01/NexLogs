@@ -14,6 +14,7 @@ function invalidateAdminCatalog(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ['home-products'] });
   void queryClient.invalidateQueries({ queryKey: ['home-catalog'] });
   void queryClient.invalidateQueries({ queryKey: ['featured-products'] });
+  void queryClient.invalidateQueries({ queryKey: ['featured-products-all'] });
   void queryClient.invalidateQueries({ queryKey: ['categories'] });
   void queryClient.invalidateQueries({ queryKey: ['product'] });
 }
