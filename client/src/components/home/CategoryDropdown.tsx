@@ -62,6 +62,8 @@ export function CategoryDropdown({
 }: CategoryDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const selectedOptionRef = useRef<HTMLLIElement>(null);
 
   const { data: fetchedCategories = [] } = useQuery({
     queryKey: ['categories'],
@@ -87,6 +89,24 @@ export function CategoryDropdown({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Keep the active category in view when the menu opens (don't jump back to the top).
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => {
+      const list = listRef.current;
+      const selectedItem = selectedOptionRef.current;
+      if (!list || !selectedItem) return;
+      const listRect = list.getBoundingClientRect();
+      const itemRect = selectedItem.getBoundingClientRect();
+      if (itemRect.top < listRect.top) {
+        list.scrollTop -= listRect.top - itemRect.top;
+      } else if (itemRect.bottom > listRect.bottom) {
+        list.scrollTop += itemRect.bottom - listRect.bottom;
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, value]);
 
   return (
     <div ref={containerRef} className="relative w-full max-w-[280px]">
@@ -117,27 +137,36 @@ export function CategoryDropdown({
 
       {open && (
         <ul
+          ref={listRef}
           className="absolute z-30 mt-1 max-h-80 w-full overflow-y-auto bg-white dark:bg-dm-surface border border-gray-200 dark:border-dm-border rounded-md shadow-lg py-1"
           role="listbox"
         >
-          {options.map((option) => (
-            <li key={option.slug} role="option" aria-selected={value === option.slug}>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(option.slug);
-                  setOpen(false);
-                }}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dm-input',
-                  value === option.slug && 'bg-gray-50 dark:bg-dm-input',
-                )}
+          {options.map((option) => {
+            const isSelected = value === option.slug;
+            return (
+              <li
+                key={option.slug}
+                ref={isSelected ? selectedOptionRef : undefined}
+                role="option"
+                aria-selected={isSelected}
               >
-                <CategoryOptionIcon option={option} />
-                <span className="font-medium tracking-wide">{option.label}</span>
-              </button>
-            </li>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(option.slug);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dm-input',
+                    isSelected && 'bg-gray-50 dark:bg-dm-input',
+                  )}
+                >
+                  <CategoryOptionIcon option={option} />
+                  <span className="font-medium tracking-wide">{option.label}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
