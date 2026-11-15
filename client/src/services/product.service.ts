@@ -99,9 +99,21 @@ export const productService = {
 
   /** Full featured catalog for /featured (not capped to homepage strip size). */
   async getAllFeatured(): Promise<Product[]> {
+    // Try Redis/edge first (same path as homepage strip), then fall back to DB.
+    try {
+      const { catalogCacheService } = await import('@/services/catalog-cache.service');
+      const cached = await catalogCacheService.getFeatured(24);
+      if (cached && cached.length > 0) {
+        // If edge returned a full page, still load DB for any extras beyond the strip cache.
+        if (cached.length < 24) return cached;
+      }
+    } catch {
+      // Fall through to direct DB.
+    }
+
     const { data, error } = await supabase
       .from('products')
-      .select(`${PUBLIC_PRODUCT_SELECT}, category:categories(id, name, slug, image_url), product_images(image_url, sort_order)`)
+      .select(PUBLIC_PRODUCT_SELECT)
       .eq('is_active', true)
       .gt('stock', 0)
       .eq('featured', true)

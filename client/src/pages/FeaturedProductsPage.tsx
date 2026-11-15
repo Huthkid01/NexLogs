@@ -41,7 +41,12 @@ export default function FeaturedProductsPage() {
   const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]['value']>('newest');
   const [page, setPage] = useState(1);
 
-  const { data: featured = [], isLoading } = useQuery({
+  const {
+    data: featured = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['featured-products-all'],
     queryFn: () => productService.getAllFeatured(),
     ...catalogQueryOptions,
@@ -129,6 +134,10 @@ export default function FeaturedProductsPage() {
           <div className="py-10">
             <AppLoader iconClassName="h-9 w-9" />
           </div>
+        ) : isError ? (
+          <p className="py-10 text-center text-sm text-red-500">
+            {error instanceof Error ? error.message : 'Could not load featured products.'}
+          </p>
         ) : !pageItems.length ? (
           <RequestProductsEmptyState
             categoryLabel="Featured"
