@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Star, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Search, Star, X } from 'lucide-react';
 import { SubscriptionCard } from '@/components/home/SubscriptionCard';
 import { ProductIcon } from '@/components/common/ProductIcon';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import type { Product } from '@/types';
 
 const SITE_FEATURED_LIMIT = 6;
+const ADD_LIST_PAGE_SIZE = 12;
 
 function invalidateFeaturedCaches(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -50,6 +51,7 @@ export default function AdminFeaturedProductsPage() {
   const { formatProductPrice } = useFormatDisplayPrice();
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [visibleAddCount, setVisibleAddCount] = useState(ADD_LIST_PAGE_SIZE);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -88,6 +90,23 @@ export default function AdminFeaturedProductsPage() {
       });
   }, [products, search]);
 
+  const visibleAddableProducts = useMemo(
+    () => addableProducts.slice(0, visibleAddCount),
+    [addableProducts, visibleAddCount],
+  );
+  const hasMoreAddable = visibleAddCount < addableProducts.length;
+  const canShowLess = visibleAddCount > ADD_LIST_PAGE_SIZE;
+
+  useEffect(() => {
+    setVisibleAddCount(ADD_LIST_PAGE_SIZE);
+  }, [search, addOpen]);
+
+  const closeAddModal = () => {
+    setAddOpen(false);
+    setSearch('');
+    setVisibleAddCount(ADD_LIST_PAGE_SIZE);
+  };
+
   const setFeatured = useMutation({
     mutationFn: ({ id, featured }: { id: string; featured: boolean }) =>
       productService.update(id, { featured }),
@@ -95,8 +114,7 @@ export default function AdminFeaturedProductsPage() {
       invalidateFeaturedCaches(queryClient);
       toast.success(variables.featured ? 'Added to featured' : 'Removed from featured');
       if (variables.featured) {
-        setAddOpen(false);
-        setSearch('');
+        closeAddModal();
       }
     },
     onError: (error: Error) => {
@@ -227,7 +245,7 @@ export default function AdminFeaturedProductsPage() {
       </Card>
 
       {addOpen ? (
-        <div className={adminModalOverlayClass(isDark)} onClick={() => setAddOpen(false)}>
+        <div className={adminModalOverlayClass(isDark)} onClick={closeAddModal}>
           <div
             className={cn(adminModalClass(isDark), 'max-w-xl')}
             onClick={(event) => event.stopPropagation()}
@@ -243,7 +261,7 @@ export default function AdminFeaturedProductsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setAddOpen(false)}
+                onClick={closeAddModal}
                 className={cn('rounded-lg p-2', isDark ? 'hover:bg-[#122033]' : 'hover:bg-slate-100')}
                 aria-label="Close"
               >
@@ -261,8 +279,8 @@ export default function AdminFeaturedProductsPage() {
               />
             </div>
             <p className={cn('mb-3 text-xs', adminMutedTextClass(isDark))}>
-              Showing {addableProducts.length} product{addableProducts.length === 1 ? '' : 's'}
-              {search.trim() ? ' matching your search' : ''}.
+              Showing {Math.min(visibleAddCount, addableProducts.length)} of {addableProducts.length}
+              {search.trim() ? ' matching' : ''} product{addableProducts.length === 1 ? '' : 's'}.
             </p>
 
             <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
@@ -271,39 +289,76 @@ export default function AdminFeaturedProductsPage() {
                   No matching products to add.
                 </p>
               ) : (
-                addableProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className={cn(
-                      'flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5',
-                      isDark ? 'border-[#22324a]' : 'border-slate-200',
-                    )}
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <ProductIcon product={product} size="sm" className="shrink-0" />
-                      <div className="min-w-0">
-                        <p className={cn('truncate text-sm font-medium', adminStrongTextClass(isDark))}>
-                          {product.title}
-                        </p>
-                        <p className={cn('truncate text-xs', adminMutedTextClass(isDark))}>
-                          {product.slug}
-                          {!product.is_active || product.stock <= 0
-                            ? ' · won’t show on site until active with stock'
-                            : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="shrink-0 bg-[#f26522] hover:bg-[#d94e0f]"
-                      disabled={setFeatured.isPending}
-                      onClick={() => setFeatured.mutate({ id: product.id, featured: true })}
+                <>
+                  {visibleAddableProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className={cn(
+                        'flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5',
+                        isDark ? 'border-[#22324a]' : 'border-slate-200',
+                      )}
                     >
-                      Add
-                    </Button>
-                  </div>
-                ))
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ProductIcon product={product} size="sm" className="shrink-0" />
+                        <div className="min-w-0">
+                          <p className={cn('truncate text-sm font-medium', adminStrongTextClass(isDark))}>
+                            {product.title}
+                          </p>
+                          <p className={cn('truncate text-xs', adminMutedTextClass(isDark))}>
+                            {product.slug}
+                            {!product.is_active || product.stock <= 0
+                              ? ' · won’t show on site until active with stock'
+                              : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="shrink-0 bg-[#f26522] hover:bg-[#d94e0f]"
+                        disabled={setFeatured.isPending}
+                        onClick={() => setFeatured.mutate({ id: product.id, featured: true })}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ))}
+
+                  {(hasMoreAddable || canShowLess) ? (
+                    <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+                      {hasMoreAddable ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn('w-full', adminOutlineButtonClass(isDark))}
+                          onClick={() =>
+                            setVisibleAddCount((current) =>
+                              Math.min(current + ADD_LIST_PAGE_SIZE, addableProducts.length),
+                            )
+                          }
+                        >
+                          See more
+                          <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      ) : null}
+                      {canShowLess ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn('w-full', adminOutlineButtonClass(isDark))}
+                          onClick={() =>
+                            setVisibleAddCount((current) =>
+                              Math.max(ADD_LIST_PAGE_SIZE, current - ADD_LIST_PAGE_SIZE),
+                            )
+                          }
+                        >
+                          Show less
+                          <ChevronUp className="ml-2 h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
           </div>
