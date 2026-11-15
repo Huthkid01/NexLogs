@@ -53,7 +53,9 @@ export default function AdminRdpPage() {
     try {
       await syncRdpCatalogProducts(catalog);
       void queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
-      void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      void import('@/lib/invalidate-storefront-catalog').then(({ invalidateStorefrontCatalog }) =>
+        invalidateStorefrontCatalog(queryClient),
+      );
       toast.success('RDP catalog updated and products synced.');
     } catch {
       toast.success('RDP catalog saved. Run migration 024 on Supabase if purchases fail.');

@@ -122,11 +122,8 @@ export default function AdminCategoriesPage() {
       return saved;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
-        catalogCacheService.invalidatePublicCatalog(),
+      void import('@/lib/invalidate-storefront-catalog').then(({ invalidateStorefrontCatalog }) =>
+        invalidateStorefrontCatalog(queryClient),
       );
       toast.success(editingCategory ? 'Category updated' : 'Category created');
       setIsModalOpen(false);
@@ -139,11 +136,8 @@ export default function AdminCategoriesPage() {
   const deleteCategory = useMutation({
     mutationFn: categoryService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
-        catalogCacheService.invalidatePublicCatalog(),
+      void import('@/lib/invalidate-storefront-catalog').then(({ invalidateStorefrontCatalog }) =>
+        invalidateStorefrontCatalog(queryClient),
       );
       toast.success('Category deleted');
     },

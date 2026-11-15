@@ -526,12 +526,9 @@ export default function AdminProductsPage() {
       return saved;
     },
     onSuccess: (saved) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['home-products'] });
-      queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
-      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
-        catalogCacheService.invalidatePublicCatalog(),
+      void queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
+      void import('@/lib/invalidate-storefront-catalog').then(({ invalidateStorefrontCatalog }) =>
+        invalidateStorefrontCatalog(queryClient),
       );
       if (isRdpProduct(saved)) {
         setContent({
@@ -551,12 +548,9 @@ export default function AdminProductsPage() {
   const deleteProduct = useMutation({
     mutationFn: (product: Product) => productService.delete(product.id),
     onSuccess: (result, product) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      queryClient.invalidateQueries({ queryKey: ['home-products'] });
-      queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-      queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
-      void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
-        catalogCacheService.invalidatePublicCatalog(),
+      void queryClient.invalidateQueries({ queryKey: ['rdp-products'] });
+      void import('@/lib/invalidate-storefront-catalog').then(({ invalidateStorefrontCatalog }) =>
+        invalidateStorefrontCatalog(queryClient),
       );
       if (isRdpProduct(product)) {
         const remaining = (products ?? []).filter((entry) => entry.id !== product.id);

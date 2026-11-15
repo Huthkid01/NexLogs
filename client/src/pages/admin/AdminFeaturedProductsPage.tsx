@@ -30,15 +30,8 @@ const SITE_FEATURED_LIMIT = 6;
 const ADD_LIST_PAGE_SIZE = 12;
 
 async function invalidateFeaturedCaches(queryClient: ReturnType<typeof useQueryClient>) {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
-    queryClient.invalidateQueries({ queryKey: ['featured-products'] }),
-    queryClient.invalidateQueries({ queryKey: ['home-catalog'] }),
-    queryClient.invalidateQueries({ queryKey: ['home-products'] }),
-  ]);
-  // Flush Redis public-catalog cache so the live homepage picks up featured changes immediately.
-  const { catalogCacheService } = await import('@/services/catalog-cache.service');
-  await catalogCacheService.invalidatePublicCatalog();
+  const { invalidateStorefrontCatalog } = await import('@/lib/invalidate-storefront-catalog');
+  await invalidateStorefrontCatalog(queryClient);
 }
 
 function visibleOnSite(product: Product) {
