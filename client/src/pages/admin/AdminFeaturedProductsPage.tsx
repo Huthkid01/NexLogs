@@ -29,14 +29,16 @@ import type { Product } from '@/types';
 const SITE_FEATURED_LIMIT = 6;
 const ADD_LIST_PAGE_SIZE = 12;
 
-function invalidateFeaturedCaches(queryClient: ReturnType<typeof useQueryClient>) {
-  void queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-  void queryClient.invalidateQueries({ queryKey: ['featured-products'] });
-  void queryClient.invalidateQueries({ queryKey: ['home-catalog'] });
-  void queryClient.invalidateQueries({ queryKey: ['home-products'] });
-  void import('@/services/catalog-cache.service').then(({ catalogCacheService }) =>
-    catalogCacheService.invalidatePublicCatalog(),
-  );
+async function invalidateFeaturedCaches(queryClient: ReturnType<typeof useQueryClient>) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+    queryClient.invalidateQueries({ queryKey: ['featured-products'] }),
+    queryClient.invalidateQueries({ queryKey: ['home-catalog'] }),
+    queryClient.invalidateQueries({ queryKey: ['home-products'] }),
+  ]);
+  // Flush Redis public-catalog cache so the live homepage picks up featured changes immediately.
+  const { catalogCacheService } = await import('@/services/catalog-cache.service');
+  await catalogCacheService.invalidatePublicCatalog();
 }
 
 function visibleOnSite(product: Product) {
@@ -108,10 +110,12 @@ export default function AdminFeaturedProductsPage() {
   };
 
   const setFeatured = useMutation({
-    mutationFn: ({ id, featured }: { id: string; featured: boolean }) =>
-      productService.update(id, { featured }),
+    mutationFn: async ({ id, featured }: { id: string; featured: boolean }) => {
+      const saved = await productService.update(id, { featured });
+      await invalidateFeaturedCaches(queryClient);
+      return saved;
+    },
     onSuccess: (_saved, variables) => {
-      invalidateFeaturedCaches(queryClient);
       toast.success(variables.featured ? 'Added to featured' : 'Removed from featured');
       if (variables.featured) {
         closeAddModal();

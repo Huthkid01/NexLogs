@@ -7,6 +7,7 @@ interface MarketplaceRealtimeOptions {
 }
 
 function invalidateCatalogQueries(queryClient: QueryClient, userId?: string | null) {
+  void queryClient.invalidateQueries({ queryKey: ['home-catalog'] });
   void queryClient.invalidateQueries({ queryKey: ['home-products'] });
   void queryClient.invalidateQueries({ queryKey: ['featured-products'] });
   void queryClient.invalidateQueries({ queryKey: ['categories'] });
