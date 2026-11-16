@@ -108,10 +108,8 @@ async function getAdminUserIds(): Promise<string[]> {
   return (data ?? []).map((profile) => profile.id);
 }
 
-function excludeAdminSessions<T extends { or: (filters: string) => T; not: (col: string, op: string, val: string) => T }>(
-  query: T,
-  adminIds: string[],
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function excludeAdminSessions(query: any, adminIds: string[]) {
   let filtered = query.or(MARKETPLACE_SESSION_PATH_FILTER);
   if (adminIds.length > 0) {
     filtered = filtered.not('user_id', 'in', `(${adminIds.join(',')})`);
@@ -119,10 +117,8 @@ function excludeAdminSessions<T extends { or: (filters: string) => T; not: (col:
   return filtered;
 }
 
-function excludeAdminPageViews<T extends { or: (filters: string) => T; not: (col: string, op: string, val: string) => T }>(
-  query: T,
-  adminIds: string[],
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function excludeAdminPageViews(query: any, adminIds: string[]) {
   let filtered = query.or(MARKETPLACE_PAGE_VIEW_PATH_FILTER);
   if (adminIds.length > 0) {
     filtered = filtered.not('user_id', 'in', `(${adminIds.join(',')})`);
@@ -361,8 +357,23 @@ export const siteVisitService = {
 
     if (error) throw error;
 
+    type ActiveSessionRow = {
+      user_id: string | null;
+      last_seen_at: string;
+      page_views: number;
+      country: string | null;
+      region: string | null;
+      city: string | null;
+      ip: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      postal_code: string | null;
+      last_path: string;
+      profile?: { full_name: string; email: string; role?: string } | null;
+    };
+
     const byUser = new Map<string, ActiveRegisteredUser>();
-    for (const row of (data || []) as Array<SiteSession>) {
+    for (const row of (data || []) as unknown as ActiveSessionRow[]) {
       if (!row.user_id || row.profile?.role === 'admin') continue;
       const existing = byUser.get(row.user_id);
       if (existing && existing.last_seen_at >= row.last_seen_at) {
