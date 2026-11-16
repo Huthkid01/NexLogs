@@ -13,9 +13,13 @@ import { APP_NAME } from '@/constants';
 import { NexLogsLogo } from '@/components/common/NexLogsLogo';
 import { EmailSenderStateProvider } from '@/contexts/EmailSenderStateContext';
 
-const navItemsBeforeProducts = [
+const navItemsBeforeUsers = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/users', label: 'Users', icon: Users },
+];
+
+const userNavItems = [
+  { href: '/admin/users', label: 'All Users', icon: Users },
+  { href: '/admin/users/active', label: 'Active Users', icon: Activity },
 ];
 
 const productNavItems = [
@@ -65,6 +69,7 @@ export function AdminLayout() {
   const [contentFlyoutTop, setContentFlyoutTop] = useState<number | null>(null);
   const [smsPricingFlyoutTop, setSmsPricingFlyoutTop] = useState<number | null>(null);
   const [productsFlyoutTop, setProductsFlyoutTop] = useState<number | null>(null);
+  const [usersFlyoutTop, setUsersFlyoutTop] = useState<number | null>(null);
   const { profile, signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -77,6 +82,9 @@ export function AdminLayout() {
   const productsMenuActive = location.pathname === '/admin/products'
     || location.pathname.startsWith('/admin/products/');
   const [productsMenuOpen, setProductsMenuOpen] = useState(productsMenuActive);
+  const usersMenuActive = location.pathname === '/admin/users'
+    || location.pathname.startsWith('/admin/users/');
+  const [usersMenuOpen, setUsersMenuOpen] = useState(usersMenuActive);
 
   useScrollLock(mobileSidebarOpen);
 
@@ -131,6 +139,17 @@ export function AdminLayout() {
     setProductsFlyoutTop(nextTop);
   };
 
+  const updateUsersFlyoutPosition = (event: React.MouseEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const estimatedFlyoutHeight = 120;
+    const viewportPadding = 16;
+    const nextTop = Math.max(
+      viewportPadding,
+      Math.min(rect.top, window.innerHeight - estimatedFlyoutHeight - viewportPadding)
+    );
+    setUsersFlyoutTop(nextTop);
+  };
+
   const closeAllFlyouts = () => {
     setContentMenuOpen(false);
     setContentFlyoutTop(null);
@@ -138,10 +157,12 @@ export function AdminLayout() {
     setSmsPricingFlyoutTop(null);
     setProductsMenuOpen(false);
     setProductsFlyoutTop(null);
+    setUsersMenuOpen(false);
+    setUsersFlyoutTop(null);
     hideCollapsedTooltip();
   };
 
-  const renderNavLink = (item: (typeof navItems)[number] | (typeof navItemsBeforeProducts)[number]) => {
+  const renderNavLink = (item: (typeof navItems)[number] | (typeof navItemsBeforeUsers)[number]) => {
     const Icon = item.icon;
     const active = item.href === '/admin'
       ? location.pathname === item.href
@@ -239,7 +260,85 @@ export function AdminLayout() {
             <p className={cn('px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]', isDark ? 'text-slate-500' : 'text-slate-500', desktopSidebarCollapsed && 'lg:hidden')}>
               Overview
             </p>
-            {navItemsBeforeProducts.map((item) => renderNavLink(item))}
+            {navItemsBeforeUsers.map((item) => renderNavLink(item))}
+            <div className="relative space-y-1">
+              <button
+                type="button"
+                onClick={(event) => {
+                  if (desktopSidebarCollapsed) {
+                    updateUsersFlyoutPosition(event);
+                  } else {
+                    setUsersFlyoutTop(null);
+                  }
+                  setUsersMenuOpen((current) => !current);
+                  setProductsMenuOpen(false);
+                  setProductsFlyoutTop(null);
+                  setContentMenuOpen(false);
+                  setContentFlyoutTop(null);
+                  setSmsPricingMenuOpen(false);
+                  setSmsPricingFlyoutTop(null);
+                  hideCollapsedTooltip();
+                }}
+                onMouseEnter={(event) => showCollapsedTooltip(event, 'Users', { showStateIcon: true })}
+                onMouseLeave={hideCollapsedTooltip}
+                className={cn(
+                  'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                  desktopSidebarCollapsed && 'lg:justify-center lg:px-0',
+                  usersMenuActive
+                    ? isDark
+                      ? 'bg-[#2d1a0f] text-orange-100 shadow-[inset_0_0_0_1px_rgba(242,101,34,0.25)]'
+                      : 'bg-[#fff3eb] text-[#f26522] shadow-[inset_0_0_0_1px_rgba(242,101,34,0.22)]'
+                    : isDark
+                      ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                      : 'text-slate-600 hover:bg-[#fff3eb] hover:text-[#f26522]'
+                )}
+                title={desktopSidebarCollapsed ? 'Users' : undefined}
+              >
+                <Users className="h-4 w-4" />
+                <span className={cn('truncate', desktopSidebarCollapsed && 'lg:hidden')}>Users</span>
+                {usersMenuOpen ? (
+                  <ChevronUp className={cn('ml-auto h-4 w-4', desktopSidebarCollapsed && 'lg:hidden')} />
+                ) : (
+                  <ChevronDown className={cn('ml-auto h-4 w-4', desktopSidebarCollapsed && 'lg:hidden')} />
+                )}
+              </button>
+              {usersMenuOpen && !desktopSidebarCollapsed && (
+                <div
+                  className={cn(
+                    'ml-3 space-y-1 rounded-2xl border px-2 py-2',
+                    isDark ? 'border-[#18263b] bg-[#081321]' : 'border-[#fde4d4] bg-[#fffaf7]'
+                  )}
+                >
+                  {userNavItems.map((item) => {
+                    const active = location.pathname === item.href;
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => {
+                          setMobileSidebarOpen(false);
+                          setUsersFlyoutTop(null);
+                        }}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                          active
+                            ? isDark
+                              ? 'bg-[#2d1a0f] text-orange-100'
+                              : 'bg-[#ffe8d9] text-[#c44d10]'
+                            : isDark
+                              ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                              : 'text-slate-700 hover:bg-[#fff3eb] hover:text-[#f26522]'
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <div className="relative space-y-1">
               <button
                 type="button"
@@ -250,6 +349,8 @@ export function AdminLayout() {
                     setProductsFlyoutTop(null);
                   }
                   setProductsMenuOpen((current) => !current);
+                  setUsersMenuOpen(false);
+                  setUsersFlyoutTop(null);
                   setContentMenuOpen(false);
                   setContentFlyoutTop(null);
                   setSmsPricingMenuOpen(false);
@@ -331,6 +432,8 @@ export function AdminLayout() {
                   setContentFlyoutTop(null);
                   setProductsMenuOpen(false);
                   setProductsFlyoutTop(null);
+                  setUsersMenuOpen(false);
+                  setUsersFlyoutTop(null);
                   hideCollapsedTooltip();
                 }}
                 onMouseEnter={(event) => showCollapsedTooltip(event, 'SMS Pricing', { showStateIcon: true })}
@@ -408,6 +511,8 @@ export function AdminLayout() {
                   setSmsPricingFlyoutTop(null);
                   setProductsMenuOpen(false);
                   setProductsFlyoutTop(null);
+                  setUsersMenuOpen(false);
+                  setUsersFlyoutTop(null);
                   hideCollapsedTooltip();
                 }}
                 onMouseEnter={(event) => showCollapsedTooltip(event, 'Site Content', { showStateIcon: true })}
@@ -511,6 +616,50 @@ export function AdminLayout() {
           {hoverTooltip.showStateIcon ? (
             contentMenuOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />
           ) : null}
+        </div>
+      )}
+
+      {usersMenuOpen && desktopSidebarCollapsed && usersFlyoutTop !== null && (
+        <div
+          className={cn(
+            'fixed left-[92px] z-[85] hidden min-w-[240px] overflow-y-auto rounded-xl border p-2 shadow-xl lg:block',
+            isDark ? 'border-[#22324a] bg-[#081624] text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+          )}
+          style={{ top: usersFlyoutTop }}
+        >
+          <p className={cn('px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]', isDark ? 'text-slate-500' : 'text-slate-500')}>
+            Users
+          </p>
+          <div className="space-y-1">
+            {userNavItems.map((item) => {
+              const active = location.pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => {
+                    setMobileSidebarOpen(false);
+                    setUsersMenuOpen(false);
+                    setUsersFlyoutTop(null);
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                    active
+                      ? isDark
+                        ? 'bg-[#2d1a0f] text-orange-100'
+                        : 'bg-[#fff3eb] text-[#f26522]'
+                      : isDark
+                        ? 'text-slate-400 hover:bg-[#2d1a0f]/50 hover:text-orange-100'
+                        : 'text-slate-600 hover:bg-[#fff3eb] hover:text-[#f26522]'
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 

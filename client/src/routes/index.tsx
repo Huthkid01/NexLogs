@@ -61,6 +61,7 @@ const BuyNumbersPage = lazyPage(() => import('@/pages/BuyNumbersPage'));
 
 const AdminDashboardPage = lazyPage(() => import('@/pages/admin/AdminDashboardPage'));
 const AdminUsersPage = lazyPage(() => import('@/pages/admin/AdminUsersPage'));
+const AdminActiveUsersPage = lazyPage(() => import('@/pages/admin/AdminActiveUsersPage'));
 const AdminProductsPage = lazyPage(() => import('@/pages/admin/AdminProductsPage'));
 const AdminFeaturedProductsPage = lazyPage(() => import('@/pages/admin/AdminFeaturedProductsPage'));
 const AdminOrdersPage = lazyPage(() => import('@/pages/admin/AdminOrdersPage'));
@@ -148,6 +149,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'users', element: <AdminUsersPage /> },
+      { path: 'users/active', element: <AdminActiveUsersPage /> },
       { path: 'products', element: <AdminProductsPage /> },
       { path: 'products/loggsplug', element: <AdminProductsPage /> },
       { path: 'products/featured', element: <AdminFeaturedProductsPage /> },
